@@ -24,13 +24,10 @@ jobs:
           New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" -Name "LongPathsEnabled" -Value 1 -PropertyType DWORD -Force
         shell: pwsh
 
-      - name: Cache vcpkg binary cache (Windows)
+      - name: Install rdkit via conda (Windows)
         if: matrix.os == 'windows-latest'
-        uses: actions/cache@v4
-        with:
-          path: C:\vcpkg-cache
-          key: vcpkg-rdkit-${{ hashFiles('Cargo.lock') }}
-          restore-keys: vcpkg-rdkit-
+        shell: cmd
+        run: C:\Miniconda\Scripts\conda.exe install -c conda-forge rdkit -y --quiet
 
       - name: Build wheels
         uses: pypa/cibuildwheel@v3.3
@@ -41,18 +38,33 @@ jobs:
           CIBW_BUILD: "cp39-* cp310-* cp311-* cp312-* cp313-* cp314-*"
           CIBW_SKIP: "*-win32 *-manylinux_i686 *-musllinux_*"
 
-          # Linux: build RDKit from source (not available in manylinux_2_28 repos)
+          # Linux: build Boost from source (system has 1.66, RDKit needs 1.70+), then build RDKit
           CIBW_BEFORE_ALL_LINUX: |
             set -ex
-            dnf install -y clang llvm-devel cmake boost-devel eigen3-devel python3-devel sqlite-devel git
+            dnf install -y epel-release
+            dnf install -y clang llvm-devel cmake eigen3-devel python3-devel sqlite-devel git wget
+
+            # Boost 1.82 from source
+            wget -q https://boostorg.jfrog.io/artifactory/main/release/1.82.0/source/boost_1_82_0.tar.gz -O /tmp/boost.tar.gz
+            tar xf /tmp/boost.tar.gz -C /tmp
+            cd /tmp/boost_1_82_0
+            ./bootstrap.sh --prefix=/usr/local
+            ./b2 install --prefix=/usr/local -j$(nproc) link=shared \
+              --with-serialization --with-regex --with-iostreams \
+              --with-system --with-filesystem --with-thread \
+              --with-date_time --with-random
+
+            # RDKit from source
             git clone --depth 1 --branch Release_2024_09_6 https://github.com/rdkit/rdkit.git /tmp/rdkit
             cmake -S /tmp/rdkit -B /tmp/rdkit/build \
               -DRDK_BUILD_PYTHON_WRAPPERS=OFF \
               -DRDK_BUILD_TESTS=OFF \
               -DCMAKE_INSTALL_PREFIX=/usr/local \
-              -DCMAKE_BUILD_TYPE=Release
+              -DCMAKE_BUILD_TYPE=Release \
+              -DBOOST_ROOT=/usr/local
             cmake --build /tmp/rdkit/build -j$(nproc)
             cmake --install /tmp/rdkit/build
+
             curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable -y
 
           # macOS: install llvm (for libclang), rdkit, and rust
@@ -60,18 +72,13 @@ jobs:
             brew install llvm rdkit &&
             curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable -y
 
-          # Windows: install llvm, update vcpkg (runner copy is outdated), install rdkit, ensure rust is ready
-          CIBW_BEFORE_ALL_WINDOWS: >-
-            choco install llvm -y &&
-            git -C C:\vcpkg pull &&
-            C:\vcpkg\bootstrap-vcpkg.bat -disableMetrics &&
-            vcpkg install rdkit:x64-windows &&
-            rustup default stable
+          # Windows: rdkit installed via conda in a separate step above
+          CIBW_BEFORE_ALL_WINDOWS: "choco install llvm -y && rustup default stable"
 
           # Environment variables
           CIBW_ENVIRONMENT_LINUX: "PATH=$HOME/.cargo/bin:$PATH RDBASE=/usr/local LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH"
-          CIBW_ENVIRONMENT_MACOS: "PATH=$HOME/.cargo/bin:$PATH LIBCLANG_PATH=$(brew --prefix llvm)/lib MACOSX_DEPLOYMENT_TARGET=10.14"          
-          CIBW_ENVIRONMENT_WINDOWS: 'LIBCLANG_PATH="C:\\Program Files\\LLVM\\bin" PATH="C:\\Program Files\\LLVM\\bin;$PATH" VCPKG_BINARY_SOURCES="clear;files,C:\\vcpkg-cache,readwrite"'
+          CIBW_ENVIRONMENT_MACOS: "PATH=$HOME/.cargo/bin:$PATH LIBCLANG_PATH=$(brew --prefix llvm)/lib MACOSX_DEPLOYMENT_TARGET=15.0"
+          CIBW_ENVIRONMENT_WINDOWS: 'LIBCLANG_PATH="C:\\Program Files\\LLVM\\bin" PATH="C:\\Program Files\\LLVM\\bin;C:\\Miniconda\\Library\\bin;$PATH" RDBASE="C:\\Miniconda\\Library"'
 
           # Tests
           CIBW_TEST_REQUIRES: "pytest rdkit"
