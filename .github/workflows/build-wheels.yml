@@ -36,7 +36,12 @@ jobs:
         if: matrix.os == 'windows-latest'
         shell: pwsh
         run: |
-          vcpkg install boost-serialization:x64-windows boost-regex:x64-windows boost-iostreams:x64-windows boost-filesystem:x64-windows boost-system:x64-windows boost-date-time:x64-windows boost-random:x64-windows boost-thread:x64-windows eigen3:x64-windows
+          vcpkg install boost-serialization:x64-windows boost-regex:x64-windows boost-iostreams:x64-windows boost-filesystem:x64-windows boost-system:x64-windows boost-date-time:x64-windows boost-random:x64-windows boost-thread:x64-windows freetype:x64-windows
+          # Eigen 3.4.0 from source (vcpkg eigen3 is too old for RDKit)
+          Invoke-WebRequest -Uri https://gitlab.com/libeigen/eigen/-/archive/3.4.0/eigen-3.4.0.tar.gz -OutFile C:\eigen.tar.gz
+          tar xf C:\eigen.tar.gz -C C:\
+          cmake -S C:\eigen-3.4.0 -B C:\eigen-build -A x64 -DCMAKE_INSTALL_PREFIX=C:\eigen-install
+          cmake --install C:\eigen-build
           git clone --depth 1 --branch Release_2024_09_6 https://github.com/rdkit/rdkit.git C:\rdkit
           cmake -S C:\rdkit -B C:\rdkit\build -A x64 `
             -DRDK_BUILD_PYTHON_WRAPPERS=OFF `
@@ -44,7 +49,8 @@ jobs:
             -DCMAKE_INSTALL_PREFIX=C:\rdkit-install `
             -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake `
             -DVCPKG_TARGET_TRIPLET=x64-windows `
-            -DCMAKE_BUILD_TYPE=Release
+            -DCMAKE_BUILD_TYPE=Release `
+            -DEigen3_DIR=C:\eigen-install\share\eigen3\cmake
           cmake --build C:\rdkit\build --config Release -j 4
           cmake --install C:\rdkit\build --config Release
 
@@ -61,7 +67,14 @@ jobs:
           CIBW_BEFORE_ALL_LINUX: |
             set -ex
             dnf install -y epel-release
-            dnf install -y clang llvm-devel cmake eigen3-devel python3-devel sqlite-devel git wget
+            dnf install -y clang llvm-devel cmake python3-devel sqlite-devel git wget \
+              freetype-devel cairo-devel
+
+            # Eigen 3.4.0 from source (dnf eigen3-devel is too old for RDKit)
+            wget -q https://gitlab.com/libeigen/eigen/-/archive/3.4.0/eigen-3.4.0.tar.gz -O /tmp/eigen.tar.gz
+            tar xf /tmp/eigen.tar.gz -C /tmp
+            cmake -S /tmp/eigen-3.4.0 -B /tmp/eigen-build -DCMAKE_INSTALL_PREFIX=/usr/local
+            cmake --install /tmp/eigen-build
 
             # Boost 1.82 from source
             wget -q https://archives.boost.io/release/1.82.0/source/boost_1_82_0.tar.gz -O /tmp/boost.tar.gz
@@ -80,7 +93,7 @@ jobs:
               -DRDK_BUILD_TESTS=OFF \
               -DCMAKE_INSTALL_PREFIX=/usr/local \
               -DCMAKE_BUILD_TYPE=Release \
-              -DBOOST_ROOT=/usr/local
+              -DCMAKE_PREFIX_PATH=/usr/local
             cmake --build /tmp/rdkit/build -j$(nproc)
             cmake --install /tmp/rdkit/build
 
