@@ -53,6 +53,13 @@ fn main() {
             include_paths.push("/usr/include".to_string());
             include_paths.push("/usr/include/rdkit".to_string());
         }
+        ("windows", _, _) => {
+            let rdkit_dir = std::env::var("RDKIT_DIR")
+                .expect("RDKIT_DIR must be set on Windows (path to RDKit install prefix)");
+            include_paths.push(format!("{rdkit_dir}/include"));
+            include_paths.push(format!("{rdkit_dir}/include/rdkit"));
+            lib_paths.push(format!("{rdkit_dir}/lib"));
+        }
         (unsupported_os, unsupported_arch, use_conda) => panic!(
             "sorry, rdkit-sys doesn't support {}/{}/use_conda={} at this time",
             unsupported_os, unsupported_arch, use_conda

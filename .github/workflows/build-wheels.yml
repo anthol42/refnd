@@ -24,10 +24,29 @@ jobs:
           New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" -Name "LongPathsEnabled" -Value 1 -PropertyType DWORD -Force
         shell: pwsh
 
-      - name: Install rdkit via conda (Windows)
+      - name: Cache vcpkg packages (Windows)
         if: matrix.os == 'windows-latest'
-        shell: cmd
-        run: C:\Miniconda\Scripts\conda.exe install -c conda-forge rdkit -y --quiet
+        uses: actions/cache@v4
+        with:
+          path: C:\vcpkg\packages
+          key: vcpkg-rdkit-boost-${{ hashFiles('Cargo.lock') }}
+          restore-keys: vcpkg-rdkit-boost-
+
+      - name: Build RDKit from source (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          vcpkg install boost-serialization:x64-windows boost-regex:x64-windows boost-iostreams:x64-windows boost-filesystem:x64-windows boost-system:x64-windows boost-date-time:x64-windows boost-random:x64-windows boost-thread:x64-windows eigen3:x64-windows
+          git clone --depth 1 --branch Release_2024_09_6 https://github.com/rdkit/rdkit.git C:\rdkit
+          cmake -S C:\rdkit -B C:\rdkit\build -A x64 `
+            -DRDK_BUILD_PYTHON_WRAPPERS=OFF `
+            -DRDK_BUILD_TESTS=OFF `
+            -DCMAKE_INSTALL_PREFIX=C:\rdkit-install `
+            -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake `
+            -DVCPKG_TARGET_TRIPLET=x64-windows `
+            -DCMAKE_BUILD_TYPE=Release
+          cmake --build C:\rdkit\build --config Release -j 4
+          cmake --install C:\rdkit\build --config Release
 
       - name: Build wheels
         uses: pypa/cibuildwheel@v3.3
@@ -35,7 +54,7 @@ jobs:
           package-dir: py
         env:
           CIBW_MANYLINUX_X86_64_IMAGE: manylinux_2_28
-          CIBW_BUILD: "cp39-* cp310-* cp311-* cp312-* cp313-* cp314-*"
+          CIBW_BUILD: "cp313-*"
           CIBW_SKIP: "*-win32 *-manylinux_i686 *-musllinux_*"
 
           # Linux: build Boost from source (system has 1.66, RDKit needs 1.70+), then build RDKit
@@ -45,7 +64,7 @@ jobs:
             dnf install -y clang llvm-devel cmake eigen3-devel python3-devel sqlite-devel git wget
 
             # Boost 1.82 from source
-            wget -q https://boostorg.jfrog.io/artifactory/main/release/1.82.0/source/boost_1_82_0.tar.gz -O /tmp/boost.tar.gz
+            wget -q https://archives.boost.io/release/1.82.0/source/boost_1_82_0.tar.gz -O /tmp/boost.tar.gz
             tar xf /tmp/boost.tar.gz -C /tmp
             cd /tmp/boost_1_82_0
             ./bootstrap.sh --prefix=/usr/local
@@ -72,13 +91,16 @@ jobs:
             brew install llvm rdkit &&
             curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable -y
 
-          # Windows: rdkit installed via conda in a separate step above
+          # Windows: rdkit built from source in a separate step above
           CIBW_BEFORE_ALL_WINDOWS: "choco install llvm -y && rustup default stable"
 
           # Environment variables
           CIBW_ENVIRONMENT_LINUX: "PATH=$HOME/.cargo/bin:$PATH RDBASE=/usr/local LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH"
           CIBW_ENVIRONMENT_MACOS: "PATH=$HOME/.cargo/bin:$PATH LIBCLANG_PATH=$(brew --prefix llvm)/lib MACOSX_DEPLOYMENT_TARGET=15.0"
-          CIBW_ENVIRONMENT_WINDOWS: 'LIBCLANG_PATH="C:\\Program Files\\LLVM\\bin" PATH="C:\\Program Files\\LLVM\\bin;C:\\Miniconda\\Library\\bin;$PATH" RDBASE="C:\\Miniconda\\Library"'
+          CIBW_ENVIRONMENT_WINDOWS: 'LIBCLANG_PATH="C:\\Program Files\\LLVM\\bin" PATH="C:\\Program Files\\LLVM\\bin;C:\\rdkit-install\\bin;$PATH" RDKIT_DIR="C:\\rdkit-install"'
+          CIBW_REPAIR_COMMAND_WINDOWS: "delvewheel repair -w {dest_dir} {wheel}"
+
+          CIBW_BEFORE_BUILD_WINDOWS: "pip install delvewheel"
 
           # Tests
           CIBW_TEST_REQUIRES: "pytest rdkit"
