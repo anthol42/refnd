@@ -1,0 +1,110 @@
+name: Build Wheels
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  release:
+    types: [ published ]
+
+jobs:
+  build_wheels:
+    name: Build wheels on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-14, macos-15-intel, windows-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Enable long paths on Windows
+        if: matrix.os == 'windows-latest'
+        run: |
+          New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" -Name "LongPathsEnabled" -Value 1 -PropertyType DWORD -Force
+        shell: pwsh
+
+      - name: Cache vcpkg binary cache (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: actions/cache@v4
+        with:
+          path: C:\vcpkg-cache
+          key: vcpkg-rdkit-${{ hashFiles('Cargo.lock') }}
+          restore-keys: vcpkg-rdkit-
+
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v3.3
+        with:
+          package-dir: py
+        env:
+          CIBW_MANYLINUX_X86_64_IMAGE: manylinux_2_28
+          CIBW_BUILD: "cp39-* cp310-* cp311-* cp312-* cp313-* cp314-*"
+          CIBW_SKIP: "*-win32 *-manylinux_i686 *-musllinux_*"
+
+          # Linux: install clang/llvm, cmake, rdkit (via EPEL on manylinux_2_28/AlmaLinux 8), and rust
+          CIBW_BEFORE_ALL_LINUX: >
+            dnf install -y epel-release &&
+            dnf install -y clang llvm-devel cmake rdkit-devel &&
+            curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable -y
+
+          # macOS: install llvm (for libclang), rdkit, and rust
+          CIBW_BEFORE_ALL_MACOS: >
+            brew install llvm rdkit &&
+            curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable -y
+
+          # Windows: install llvm, rdkit via vcpkg, and ensure rust is ready
+          # NOTE: vcpkg rdkit build is slow; consider a pre-built binary cache if this times out
+          CIBW_BEFORE_ALL_WINDOWS: >-
+            choco install llvm -y &&
+            vcpkg install rdkit:x64-windows &&
+            rustup default stable
+
+          # Environment variables
+          CIBW_ENVIRONMENT_LINUX: "PATH=$HOME/.cargo/bin:$PATH"
+          CIBW_ENVIRONMENT_MACOS: "PATH=$HOME/.cargo/bin:$PATH LIBCLANG_PATH=$(brew --prefix llvm)/lib MACOSX_DEPLOYMENT_TARGET=10.14"          
+          CIBW_ENVIRONMENT_WINDOWS: 'LIBCLANG_PATH="C:\\Program Files\\LLVM\\bin" PATH="C:\\Program Files\\LLVM\\bin;$PATH" VCPKG_BINARY_SOURCES="clear;files,C:\\vcpkg-cache,readwrite"'
+
+          # Tests
+          CIBW_TEST_REQUIRES: "pytest rdkit"
+          CIBW_TEST_COMMAND: "pytest {project}/pytests -v"
+
+          CIBW_BUILD_VERBOSITY: 3
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.os }}
+          path: ./wheelhouse/*.whl
+
+  build_sdist:
+    name: Build source distribution
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build sdist
+        run: pipx run build --sdist
+        working-directory: py
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sdist
+          path: py/dist/*.tar.gz
+
+  upload_pypi:
+    needs: [build_wheels, build_sdist]
+    runs-on: ubuntu-latest
+    # Only upload to PyPI on release
+    if: github.event_name == 'release' && github.event.action == 'published'
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: "*"
+          path: dist
+          merge-multiple: true
+
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}

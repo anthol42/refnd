@@ -1,0 +1,28 @@
+[package]
+name = "refnd"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+monitor = []
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+dashmap = { version = "6", features = ["rayon"] }
+fixedbitset = "0.5.7"
+indicatif = "0.17"
+quick_cache = "0.6"
+mimalloc = { version = "0.1", default-features = false }
+parking_lot = "0.12"
+parasail-rs = "0.9.0"
+rand = "0.10.0"
+rayon = "1.10"
+rustc-hash = "2.1.2"
+rich_rust = "0.2.1"
+regex = "1.12.3"
+clap_complete = "4.6.2"
+petgraph = "0.8.3"
+bincode = { version = "<3.0", features = ["derive"] }
+ndarray = "0.17.2"
+rdkit = "0.4.12"
+

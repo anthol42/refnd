@@ -1,0 +1,14 @@
+[project]
+name = "pytests"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "refnd",
+    "pytest>=9.0.3",
+    "rdkit>=2026.3.1",
+]
+
+[tool.uv.sources]
+refnd = { path = "../py", editable = true }

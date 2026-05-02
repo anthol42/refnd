@@ -1,0 +1,17 @@
+[package]
+name = "py-refnd"
+version = "0.1.0"
+edition = "2024"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+name = "refnd"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+pyo3 = { version = "0.28.3"}
+pyo3-stub-gen = "0.22.1"
+refnd-core = { package = "refnd", path = "../refnd" }
+indicatif = "0.17"
+fixedbitset = "0.5"
+numpy = "0.28"
