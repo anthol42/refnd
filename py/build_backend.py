@@ -24,6 +24,10 @@ def prepare_metadata_for_build_wheel(metadata_directory, config_settings=None):
     return _maturin.prepare_metadata_for_build_wheel(metadata_directory, config_settings)
 
 
+def build_sdist(sdist_directory, config_settings=None):
+    return _maturin.build_sdist(sdist_directory, config_settings)
+
+
 def build_wheel(wheel_directory, config_settings=None, metadata_directory=None):
     result = _maturin.build_wheel(wheel_directory, config_settings, metadata_directory)
     _run_stub_gen()
