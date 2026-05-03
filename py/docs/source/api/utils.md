@@ -1,6 +1,6 @@
-# py_proto.utils
+# refnd.utils
 
 ```{eval-rst}
-.. automodule:: py_proto.utils
+.. automodule:: refnd.utils
    :members:
 ```

@@ -36,7 +36,7 @@ jobs:
         if: matrix.os == 'windows-latest'
         shell: pwsh
         run: |
-          vcpkg install boost-serialization:x64-windows boost-regex:x64-windows boost-iostreams:x64-windows boost-filesystem:x64-windows boost-system:x64-windows boost-date-time:x64-windows boost-random:x64-windows boost-thread:x64-windows boost-format:x64-windows freetype:x64-windows
+          vcpkg install boost-serialization:x64-windows boost-regex:x64-windows boost-iostreams:x64-windows boost-filesystem:x64-windows boost-system:x64-windows boost-date-time:x64-windows boost-random:x64-windows boost-thread:x64-windows boost-format:x64-windows boost-graph:x64-windows freetype:x64-windows
           # Eigen 3.4.0 from source (vcpkg eigen3 is too old for RDKit)
           Invoke-WebRequest -Uri https://gitlab.com/libeigen/eigen/-/archive/3.4.0/eigen-3.4.0.tar.gz -OutFile C:\eigen.tar.gz
           tar xf C:\eigen.tar.gz -C C:\
@@ -45,13 +45,13 @@ jobs:
           git clone --depth 1 --branch Release_2024_09_6 https://github.com/rdkit/rdkit.git C:\rdkit
           cmake -S C:\rdkit -B C:\rdkit\build -A x64 `
             -DRDK_BUILD_PYTHON_WRAPPERS=OFF `
-            -DRDK_BUILD_TESTS=OFF `
+            -DRDK_BUILD_CPP_TESTS=OFF `
+            -DRDK_INSTALL_STATIC_LIBS=OFF `
+            -DRDK_INSTALL_INTREE=OFF `
             -DCMAKE_INSTALL_PREFIX=C:\rdkit-install `
             -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake `
             -DVCPKG_TARGET_TRIPLET=x64-windows `
             -DCMAKE_BUILD_TYPE=Release `
-            -DRDK_BUILD_CONTRIB=OFF `
-            -DRDK_BUILD_PUBCHEMSHAPE_SUPPORT=OFF `
             -DEIGEN3_INCLUDE_DIR=C:\eigen-install\include\eigen3
           cmake --build C:\rdkit\build --config Release -j 4
           cmake --install C:\rdkit\build --config Release
@@ -92,12 +92,13 @@ jobs:
             git clone --depth 1 --branch Release_2024_09_6 https://github.com/rdkit/rdkit.git /tmp/rdkit
             cmake -S /tmp/rdkit -B /tmp/rdkit/build \
               -DRDK_BUILD_PYTHON_WRAPPERS=OFF \
-              -DRDK_BUILD_TESTS=OFF \
-              -DRDK_BUILD_CONTRIB=OFF \
+              -DRDK_BUILD_CPP_TESTS=OFF \
+              -DRDK_INSTALL_STATIC_LIBS=OFF \
+              -DRDK_INSTALL_INTREE=OFF \
               -DCMAKE_INSTALL_PREFIX=/usr/local \
               -DCMAKE_BUILD_TYPE=Release \
-              -DCMAKE_PREFIX_PATH=/usr/local \
-              -DBoost_NO_BOOST_CMAKE=ON
+              -DBOOST_ROOT=/usr/local \
+              -DBoost_NO_SYSTEM_PATHS=ON
             cmake --build /tmp/rdkit/build -j$(nproc)
             cmake --install /tmp/rdkit/build
 

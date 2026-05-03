@@ -5,16 +5,16 @@ from pathlib import Path
 
 # ── Project info ───────────────────────────────────────────────────────────────
 
-project = "py-proto"
+project = "refnd"
 author = "Anthony Lavertu, Jacob Côté"
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
 
 _DOCS_DIR = Path(__file__).parent
-_STUB_DIR = _DOCS_DIR.parents[1] / "python"  # proto/py-proto/python/
+_STUB_DIR = _DOCS_DIR.parents[1] / "python"  # py/python/
 
 sys.path.insert(0, str(_STUB_DIR))
-import py_proto  # noqa: E402, F401 — must be importable before autodoc runs
+import refnd  # noqa: E402, F401 — must be importable before autodoc runs
 
 # ── Extensions ────────────────────────────────────────────────────────────────
 
@@ -29,6 +29,7 @@ extensions = [
 
 html_theme = "furo"
 html_static_path = ["_static"]
+html_baseurl = "/refnd/"
 
 html_js_files = [
     ("https://cdn.jsdelivr.net/npm/turndown@7.2.0/dist/turndown.js", {}),
