@@ -50,6 +50,8 @@ jobs:
             -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake `
             -DVCPKG_TARGET_TRIPLET=x64-windows `
             -DCMAKE_BUILD_TYPE=Release `
+            -DRDK_BUILD_CONTRIB=OFF `
+            -DRDK_BUILD_PUBCHEM_SHAPE=OFF `
             -DEIGEN3_INCLUDE_DIR=C:\eigen-install\include\eigen3
           cmake --build C:\rdkit\build --config Release -j 4
           cmake --install C:\rdkit\build --config Release
@@ -91,6 +93,7 @@ jobs:
             cmake -S /tmp/rdkit -B /tmp/rdkit/build \
               -DRDK_BUILD_PYTHON_WRAPPERS=OFF \
               -DRDK_BUILD_TESTS=OFF \
+              -DRDK_BUILD_CONTRIB=OFF \
               -DCMAKE_INSTALL_PREFIX=/usr/local \
               -DCMAKE_BUILD_TYPE=Release \
               -DCMAKE_PREFIX_PATH=/usr/local

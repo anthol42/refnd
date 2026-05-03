@@ -41,6 +41,7 @@ fn main() {
         ("macos", "x86_64", _) => {
             include_paths.push("/usr/local/include".to_string());
             include_paths.push("/usr/local/include/rdkit".to_string());
+            lib_paths.push("/usr/local/lib".to_string());
         }
         ("macos", "aarch64", _) => {
             include_paths.push("/opt/homebrew/include".to_string());
