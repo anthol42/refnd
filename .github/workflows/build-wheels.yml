@@ -51,7 +51,7 @@ jobs:
             -DVCPKG_TARGET_TRIPLET=x64-windows `
             -DCMAKE_BUILD_TYPE=Release `
             -DRDK_BUILD_CONTRIB=OFF `
-            -DRDK_BUILD_PUBCHEM_SHAPE=OFF `
+            -DRDK_BUILD_PUBCHEMSHAPE_SUPPORT=OFF `
             -DEIGEN3_INCLUDE_DIR=C:\eigen-install\include\eigen3
           cmake --build C:\rdkit\build --config Release -j 4
           cmake --install C:\rdkit\build --config Release
@@ -86,7 +86,7 @@ jobs:
             ./b2 install --prefix=/usr/local -j$(nproc) link=shared \
               --with-serialization --with-regex --with-iostreams \
               --with-system --with-filesystem --with-thread \
-              --with-date_time --with-random
+              --with-date_time --with-random --with-program_options
 
             # RDKit from source
             git clone --depth 1 --branch Release_2024_09_6 https://github.com/rdkit/rdkit.git /tmp/rdkit
@@ -96,7 +96,8 @@ jobs:
               -DRDK_BUILD_CONTRIB=OFF \
               -DCMAKE_INSTALL_PREFIX=/usr/local \
               -DCMAKE_BUILD_TYPE=Release \
-              -DCMAKE_PREFIX_PATH=/usr/local
+              -DCMAKE_PREFIX_PATH=/usr/local \
+              -DBoost_NO_BOOST_CMAKE=ON
             cmake --build /tmp/rdkit/build -j$(nproc)
             cmake --install /tmp/rdkit/build
 
