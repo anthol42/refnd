@@ -1,15 +1,16 @@
-use std::collections::BTreeMap;
-use std::path::Path;
-use clap::Args;
-use refnd::kernels::proteins::parasail::{
-    BundledMatrix, GlobalIdentityMode, LocalIdentityMode, CoverageMode, VectorizationStrategy,
-    GlobalAlignerBuilder, LocalAlignerBuilder, AlignerMatrix, AlignerConfigTrait, ProteinKernel,
-};
-use refnd::kernels::molecules::tanimoto::Tanimoto;
-use refnd::utils::{BitFingerprint, read_molecule_file, read_fasta, FingerprintType};
-use refnd::core::Distance;
 use super::utils::bounded_integer;
 use crate::cli::display;
+use clap::Args;
+use refnd::core::Distance;
+use refnd::kernels::molecules::tanimoto::Tanimoto;
+use refnd::kernels::proteins::parasail::{
+    AlignerConfigTrait, AlignerMatrix, BundledMatrix, CoverageMode, GlobalAlignerBuilder,
+    GlobalIdentityMode, LocalAlignerBuilder, LocalIdentityMode, ProteinKernel,
+    VectorizationStrategy,
+};
+use refnd::utils::{BitFingerprint, FingerprintType, read_fasta, read_molecule_file};
+use std::collections::BTreeMap;
+use std::path::Path;
 
 #[derive(Args)]
 #[command(next_help_heading = "Kernel Options")]
@@ -55,22 +56,40 @@ pub struct ProteinKernelArgs {
 #[derive(Args)]
 #[command(next_help_heading = "Kernel Options")]
 pub struct MoleculeKernelArgs {
-    /// Fingerprint type (Morgan, Rdk, or Pattern)
+    /// Fingerprint type (Morgan or MACCS)
     #[arg(long, default_value = "morgan", value_name = "TYPE")]
     pub fingerprint: FingerprintType,
 }
 
 pub enum KernelParams {
-    Protein { global: bool, matrix: String, gap_open: i32, gap_extend: i32,
-              vectorization: String, identity_mode: String,
-              min_coverage: Option<f32>, cov_mode: Option<String> },
-    Molecule { fingerprint: String },
+    Protein {
+        global: bool,
+        matrix: String,
+        gap_open: i32,
+        gap_extend: i32,
+        vectorization: String,
+        identity_mode: String,
+        min_coverage: Option<f32>,
+        cov_mode: Option<String>,
+    },
+    Molecule {
+        fingerprint: String,
+    },
 }
 
 impl KernelParams {
     pub fn to_map(&self) -> BTreeMap<String, String> {
         match self {
-            KernelParams::Protein { global, matrix, gap_open, gap_extend, vectorization, identity_mode, min_coverage, cov_mode } => {
+            KernelParams::Protein {
+                global,
+                matrix,
+                gap_open,
+                gap_extend,
+                vectorization,
+                identity_mode,
+                min_coverage,
+                cov_mode,
+            } => {
                 let mut map = BTreeMap::new();
                 map.insert("global".to_string(), global.to_string());
                 map.insert("matrix".to_string(), matrix.clone());
@@ -125,8 +144,16 @@ impl KernelDispatch for ProteinKernelArgs {
             gap_extend: self.gap_extend,
             vectorization: format!("{:?}", self.vectorization),
             identity_mode,
-            min_coverage: if self.global { None } else { Some(self.min_coverage) },
-            cov_mode: if self.global { None } else { Some(format!("{:?}", self.cov_mode)) },
+            min_coverage: if self.global {
+                None
+            } else {
+                Some(self.min_coverage)
+            },
+            cov_mode: if self.global {
+                None
+            } else {
+                Some(format!("{:?}", self.cov_mode))
+            },
         }
     }
 
@@ -183,7 +210,10 @@ impl KernelDispatch for MoleculeKernelArgs {
     fn load(&self, input: &Path) -> (Vec<String>, Vec<BitFingerprint>) {
         let entries = match read_molecule_file(input, &self.fingerprint) {
             Ok(e) => e,
-            Err(e) => { display::error(&e); std::process::exit(1); }
+            Err(e) => {
+                display::error(&e);
+                std::process::exit(1);
+            }
         };
         if entries.is_empty() {
             display::error("No molecules loaded");
