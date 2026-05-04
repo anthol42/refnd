@@ -1,15 +1,42 @@
 use pyo3::prelude::*;
 use pyo3::exceptions::PyIOError;
 use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pyfunction, gen_stub_pymethods};
+use pyo3_stub_gen::{PyStubType, TypeInfo};
 use refnd_core::utils::read_fasta as core_read_fasta;
 use std::path::Path;
 use fixedbitset::FixedBitSet;
 use numpy::{IntoPyArray, PyArray1};
 use refnd_core::utils::{BitFingerprint as CoreBitFP, RealFingerprint as CoreRealFP};
+use std::collections::{HashMap, HashSet};
+
+/// Newtype so `PyArray1<bool>` gets a stub type — `pyo3_stub_gen` doesn't implement
+/// `NumPyScalar` for `bool`, so we bypass it with a local wrapper.
+pub struct BoolArray<'py>(Bound<'py, PyArray1<bool>>);
+
+impl PyStubType for BoolArray<'_> {
+    fn type_output() -> TypeInfo {
+        TypeInfo {
+            name: "numpy.typing.NDArray[numpy.bool_]".into(),
+            source_module: None,
+            import: HashSet::from(["numpy".into(), "numpy.typing".into()]),
+            type_refs: HashMap::new(),
+        }
+    }
+}
+
+impl<'py> IntoPyObject<'py> for BoolArray<'py> {
+    type Target = PyArray1<bool>;
+    type Output = Bound<'py, PyArray1<bool>>;
+    type Error = std::convert::Infallible;
+
+    fn into_pyobject(self, _py: Python<'py>) -> Result<Self::Output, Self::Error> {
+        Ok(self.0)
+    }
+}
 
 // ── BitFingerprint ────────────────────────────────────────────────────────────
 
-/// Dense binary fingerprint backed by a packed bitset.
+/// Dense binary fingerprint backed by a dense bitset.
 ///
 /// Each bit represents the presence or absence of a structural feature.
 /// The primary source is an RDKit ``ExplicitBitVect`` (from ``GetFingerprint``),
@@ -20,7 +47,7 @@ use refnd_core::utils::{BitFingerprint as CoreBitFP, RealFingerprint as CoreReal
 /// Example::
 ///
 ///     from rdkit.Chem import rdFingerprintGenerator, MolFromSmiles
-///     from refnd.kernels.molecules import BitFingerprint, TanimotoBit
+///     from refnd.utils import BitFingerprint
 ///
 ///     mfpgen = rdFingerprintGenerator.GetMorganGenerator(fpSize=1024, radius=2)
 ///     mol = MolFromSmiles("c1ccccc1")
@@ -93,12 +120,12 @@ impl BitFingerprint {
             .collect()
     }
 
-    /// Export as a numpy uint8 array (0 or 1 per bit).
-    pub fn to_np<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<u8>> {
-        let data: Vec<u8> = (0..self.inner.bits.len())
-            .map(|i| self.inner.bits.contains(i) as u8)
+    /// Export as a numpy bool array.
+    pub fn to_np<'py>(&self, py: Python<'py>) -> BoolArray<'py> {
+        let data: Vec<bool> = (0..self.inner.bits.len())
+            .map(|i| self.inner.bits.contains(i))
             .collect();
-        data.into_pyarray(py)
+        BoolArray(data.into_pyarray(py))
     }
 
     pub fn __len__(&self) -> usize { self.inner.bits.len() }
@@ -182,7 +209,7 @@ impl RealFingerprint {
             )));
         }
         let length = length as usize;
-        let nonzero: std::collections::HashMap<usize, i64> =
+        let nonzero: HashMap<usize, i64> =
             fp.call_method0("GetNonzeroElements")?.extract()?;
         let mut data = vec![0.0f32; length];
         for (idx, count) in nonzero {

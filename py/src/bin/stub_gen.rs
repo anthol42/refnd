@@ -32,11 +32,6 @@ fn patch_utils_stubs() {
             "def to_rdkit(self) -> typing.Any:\n        r\"\"\"\n        Export as an RDKit ``ExplicitBitVect``.",
             "def to_rdkit(self) -> ExplicitBitVect:\n        r\"\"\"\n        Export as an RDKit ``ExplicitBitVect``.",
         )
-        // ── BitFingerprint.to_np: uint8 → bool_ ──────────────────────────────
-        .replace(
-            "def to_np(self) -> numpy.typing.NDArray[numpy.uint8]:",
-            "def to_np(self) -> numpy.typing.NDArray[numpy.bool_]:",
-        )
         // ── RealFingerprint constructor ───────────────────────────────────────
         .replace(
             "def __new__(cls, fp: typing.Any) -> RealFingerprint:",
