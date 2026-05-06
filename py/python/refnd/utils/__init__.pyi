@@ -15,7 +15,7 @@ __all__ = [
 @typing.final
 class BitFingerprint:
     r"""
-    Dense binary fingerprint backed by a packed bitset.
+    Dense binary fingerprint backed by a dense bitset.
     
     Each bit represents the presence or absence of a structural feature.
     The primary source is an RDKit ``ExplicitBitVect`` (from ``GetFingerprint``),
@@ -26,7 +26,7 @@ class BitFingerprint:
     Example::
     
         from rdkit.Chem import rdFingerprintGenerator, MolFromSmiles
-        from refnd.kernels.molecules import BitFingerprint, TanimotoBit
+        from refnd.utils import BitFingerprint
     
         mfpgen = rdFingerprintGenerator.GetMorganGenerator(fpSize=1024, radius=2)
         mol = MolFromSmiles("c1ccccc1")
@@ -61,7 +61,7 @@ class BitFingerprint:
         """
     def to_np(self) -> numpy.typing.NDArray[numpy.bool_]:
         r"""
-        Export as a numpy uint8 array (0 or 1 per bit).
+        Export as a numpy bool array.
         """
     def __len__(self) -> builtins.int: ...
     def count(self) -> builtins.int:
