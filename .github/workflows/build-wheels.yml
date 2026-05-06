@@ -29,12 +29,12 @@ jobs:
 
       - name: Generate stubs
         run: cargo run -p py-refnd --bin stub_gen
-        working-directory: refnd
+        working-directory: py
 
       - name: Build wheels
         uses: pypa/cibuildwheel@v3.3
         with:
-          package-dir: refnd
+          package-dir: py
         env:
           CIBW_MANYLINUX_X86_64_IMAGE: manylinux_2_28
           CIBW_BUILD: "cp310-* cp311-* cp312-* cp313-* cp314-*"
@@ -80,16 +80,16 @@ jobs:
 
       - name: Generate stubs
         run: cargo run -p py-refnd --bin stub_gen
-        working-directory: refnd
+        working-directory: py
 
       - name: Build sdist
         run: pipx run build --sdist
-        working-directory: refnd
+        working-directory: py
 
       - uses: actions/upload-artifact@v4
         with:
           name: sdist
-          path: refnd/dist/*.tar.gz
+          path: py/dist/*.tar.gz
 
   upload_pypi:
     needs: [build_wheels, build_sdist]
