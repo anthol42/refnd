@@ -59,7 +59,7 @@ jobs:
           CIBW_ENVIRONMENT_WINDOWS: 'LIBCLANG_PATH="C:\\Program Files\\LLVM\\bin" PATH="C:\\Program Files\\LLVM\\bin;$PATH"'
 
           # Tests
-          CIBW_TEST_REQUIRES: "pytest"
+          CIBW_TEST_REQUIRES: "pytest numpy rdkit"
           CIBW_TEST_COMMAND: "pytest {project}/pytests -v"
 
           CIBW_BUILD_VERBOSITY: 3
