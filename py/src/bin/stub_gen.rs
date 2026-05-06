@@ -1,19 +1,23 @@
 use pyo3_stub_gen::Result;
+use std::path::Path;
+
+const ROOT: &str = env!("CARGO_MANIFEST_DIR");
 
 fn main() -> Result<()> {
-    let stub = refnd::stub_info()?;
-    stub.generate()?;
-    std::fs::write(
-        "python/refnd/__init__.py",
-        "from .refnd import *\nfrom .refnd import core\nfrom .refnd import kernels\nfrom .refnd import utils\n",
-    )?;
+    let stub = refnd::stub_info()
+        .map_err(|e| anyhow::anyhow!("stub_info() failed (ROOT={}): {}", ROOT, e))?;
+    stub.generate()
+        .map_err(|e| anyhow::anyhow!("stub.generate() failed: {}", e))?;
+    let init_py = Path::new(ROOT).join("python/refnd/__init__.py");
+    std::fs::write(&init_py, "from .refnd import *\nfrom .refnd import core\nfrom .refnd import kernels\nfrom .refnd import utils\n")
+        .map_err(|e| anyhow::anyhow!("failed to write {}: {}", init_py.display(), e))?;
     patch_utils_stubs();
     Ok(())
 }
 
 fn patch_utils_stubs() {
-    let path = "python/refnd/utils/__init__.pyi";
-    let src = std::fs::read_to_string(path).expect("utils stub not found");
+    let path = Path::new(ROOT).join("python/refnd/utils/__init__.pyi");
+    let src = std::fs::read_to_string(&path).expect("utils stub not found");
 
     let src = src
         // ── imports ──────────────────────────────────────────────────────────
@@ -53,5 +57,5 @@ fn patch_utils_stubs() {
             "def from_np(arr: numpy.typing.NDArray[numpy.float32]) -> RealFingerprint:",
         );
 
-    std::fs::write(path, src).expect("failed to write patched utils stub");
+    std::fs::write(&path, src).expect("failed to write patched utils stub");
 }
