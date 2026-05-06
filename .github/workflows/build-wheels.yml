@@ -28,7 +28,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Generate stubs
-        run: cargo run --bin stub_gen
+        run: cargo run -p py-refnd --bin stub_gen
         working-directory: refnd
 
       - name: Build wheels
@@ -79,7 +79,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Generate stubs
-        run: cargo run --bin stub_gen
+        run: cargo run -p py-refnd --bin stub_gen
         working-directory: refnd
 
       - name: Build sdist
