@@ -60,7 +60,7 @@ jobs:
 
           # Tests
           CIBW_TEST_REQUIRES: "pytest"
-          CIBW_TEST_COMMAND: "pytest {project}/refnd/pytests -v"
+          CIBW_TEST_COMMAND: "pytest {project}/pytests -v"
 
           CIBW_BUILD_VERBOSITY: 3
 
