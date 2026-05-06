@@ -792,8 +792,7 @@ dependencies = [
 [[package]]
 name = "libparasail-sys"
 version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4efca43b808a2d9db44a3292a4741f57597d5b11376a43b05563b709b1e646c7"
+source = "git+https://github.com/anthol42/libparasail-sys?branch=main#e9b1043cf6ba459d3e5e440e31df1819a0cce660"
 dependencies = [
  "bindgen",
  "cmake",
@@ -2410,12 +2409,3 @@ name = "zmij"
 version = "1.0.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b8848ee67ecc8aedbaf3e4122217aff892639231befc6a1b58d29fff4c2cabaa"
-
-[[patch.unused]]
-name = "libparasail-sys"
-version = "0.1.12"
-source = "git+https://github.com/anthol42/libparasail-sys?branch=main#a5dc3d03dedbdcda324a35ec2ed69d7cd42cada6"
-
-[[patch.unused]]
-name = "rdkit-sys"
-version = "0.4.12"

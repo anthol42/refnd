@@ -3,6 +3,5 @@ members = ["refnd", "py"]
 resolver = "2"
 
 [patch.crates-io]
-rdkit-sys = { path = "rdkit-sys-patched" }
 libparasail-sys = { git = "https://github.com/anthol42/libparasail-sys", branch = "main" }
 

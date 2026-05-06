@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-15, macos-15-intel, windows-latest]
+        os: [ubuntu-latest, macos-14, macos-15-intel, windows-latest]
 
     steps:
       - uses: actions/checkout@v4
@@ -24,105 +24,43 @@ jobs:
           New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" -Name "LongPathsEnabled" -Value 1 -PropertyType DWORD -Force
         shell: pwsh
 
-      - name: Cache vcpkg packages (Windows)
-        if: matrix.os == 'windows-latest'
-        uses: actions/cache@v4
-        with:
-          path: C:\vcpkg\packages
-          key: vcpkg-rdkit-boost-${{ hashFiles('Cargo.lock') }}
-          restore-keys: vcpkg-rdkit-boost-
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
 
-      - name: Build RDKit from source (Windows)
-        if: matrix.os == 'windows-latest'
-        shell: pwsh
-        run: |
-          vcpkg install boost-serialization:x64-windows boost-regex:x64-windows boost-iostreams:x64-windows boost-filesystem:x64-windows boost-system:x64-windows boost-date-time:x64-windows boost-random:x64-windows boost-thread:x64-windows boost-format:x64-windows boost-graph:x64-windows freetype:x64-windows
-          # Eigen 3.4.0 from source (vcpkg eigen3 is too old for RDKit)
-          Invoke-WebRequest -Uri https://gitlab.com/libeigen/eigen/-/archive/3.4.0/eigen-3.4.0.tar.gz -OutFile C:\eigen.tar.gz
-          tar xf C:\eigen.tar.gz -C C:\
-          cmake -S C:\eigen-3.4.0 -B C:\eigen-build -A x64 -DCMAKE_INSTALL_PREFIX=C:\eigen-install
-          cmake --install C:\eigen-build
-          git clone --depth 1 --branch Release_2024_09_6 https://github.com/rdkit/rdkit.git C:\rdkit
-          cmake -S C:\rdkit -B C:\rdkit\build -A x64 `
-            -DRDK_BUILD_PYTHON_WRAPPERS=OFF `
-            -DRDK_BUILD_CPP_TESTS=OFF `
-            -DRDK_INSTALL_STATIC_LIBS=OFF `
-            -DRDK_INSTALL_INTREE=OFF `
-            -DCMAKE_INSTALL_PREFIX=C:\rdkit-install `
-            -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake `
-            -DVCPKG_TARGET_TRIPLET=x64-windows `
-            -DCMAKE_BUILD_TYPE=Release `
-            -DEIGEN3_INCLUDE_DIR=C:\eigen-install\include\eigen3
-          cmake --build C:\rdkit\build --config Release -j 4
-          cmake --install C:\rdkit\build --config Release
+      - name: Generate stubs
+        run: cargo run --bin stub_gen
+        working-directory: refnd
 
       - name: Build wheels
         uses: pypa/cibuildwheel@v3.3
         with:
-          package-dir: py
+          package-dir: refnd
         env:
           CIBW_MANYLINUX_X86_64_IMAGE: manylinux_2_28
-          CIBW_BUILD: "cp313-*"
+          CIBW_BUILD: "cp310-* cp311-* cp312-* cp313-* cp314-*"
           CIBW_SKIP: "*-win32 *-manylinux_i686 *-musllinux_*"
 
-          # Linux: build Boost from source (system has 1.66, RDKit needs 1.70+), then build RDKit
-          CIBW_BEFORE_ALL_LINUX: |
-            set -ex
-            dnf install -y epel-release
-            dnf install -y clang llvm-devel cmake python3-devel sqlite-devel git wget \
-              freetype-devel cairo-devel
-
-            # Eigen 3.4.0 from source (dnf eigen3-devel is too old for RDKit)
-            wget -q https://gitlab.com/libeigen/eigen/-/archive/3.4.0/eigen-3.4.0.tar.gz -O /tmp/eigen.tar.gz
-            tar xf /tmp/eigen.tar.gz -C /tmp
-            cmake -S /tmp/eigen-3.4.0 -B /tmp/eigen-build -DCMAKE_INSTALL_PREFIX=/usr/local
-            cmake --install /tmp/eigen-build
-
-            # Boost 1.85 from source (1.82 has a __float128 redefinition bug with GCC 14)
-            wget -q https://archives.boost.io/release/1.85.0/source/boost_1_85_0.tar.gz -O /tmp/boost.tar.gz
-            tar xf /tmp/boost.tar.gz -C /tmp
-            cd /tmp/boost_1_85_0
-            ./bootstrap.sh --prefix=/usr/local
-            ./b2 install --prefix=/usr/local -j$(nproc) link=shared \
-              --with-serialization --with-regex --with-iostreams \
-              --with-system --with-filesystem --with-thread \
-              --with-date_time --with-random --with-program_options
-
-            # RDKit from source
-            git clone --depth 1 --branch Release_2024_09_6 https://github.com/rdkit/rdkit.git /tmp/rdkit
-            cmake -S /tmp/rdkit -B /tmp/rdkit/build \
-              -DRDK_BUILD_PYTHON_WRAPPERS=OFF \
-              -DRDK_BUILD_CPP_TESTS=OFF \
-              -DRDK_INSTALL_STATIC_LIBS=OFF \
-              -DRDK_INSTALL_INTREE=OFF \
-              -DCMAKE_INSTALL_PREFIX=/usr/local \
-              -DCMAKE_BUILD_TYPE=Release \
-              -DBOOST_ROOT=/usr/local \
-              -DBoost_NO_SYSTEM_PATHS=ON
-            cmake --build /tmp/rdkit/build -j$(nproc)
-            cmake --install /tmp/rdkit/build
-
+          # Linux: install clang/llvm and rust
+          CIBW_BEFORE_ALL_LINUX: >
+            dnf install -y clang llvm-devel cmake &&
             curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable -y
 
-          # macOS: install llvm (for libclang), rdkit, and rust
+          # macOS: install llvm (for libclang) and rust
           CIBW_BEFORE_ALL_MACOS: >
-            brew install llvm rdkit &&
+            brew install llvm &&
             curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable -y
 
-          # Windows: rdkit built from source in a separate step above
+          # Windows: install llvm and ensure rust is ready
           CIBW_BEFORE_ALL_WINDOWS: "choco install llvm -y && rustup default stable"
 
           # Environment variables
-          CIBW_ENVIRONMENT_LINUX: "PATH=$HOME/.cargo/bin:$PATH RDBASE=/usr/local LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH"
-          CIBW_ENVIRONMENT_MACOS: "PATH=$HOME/.cargo/bin:$PATH LIBCLANG_PATH=$(brew --prefix llvm)/lib MACOSX_DEPLOYMENT_TARGET=15.0"
-          CIBW_ENVIRONMENT_WINDOWS: 'LIBCLANG_PATH="C:\\Program Files\\LLVM\\bin" PATH="C:\\Program Files\\LLVM\\bin;C:\\rdkit-install\\bin;$PATH" RDKIT_DIR="C:\\rdkit-install"'
-          CIBW_REPAIR_COMMAND_WINDOWS: "delvewheel repair -w {dest_dir} {wheel}"
-
-          CIBW_BEFORE_BUILD_WINDOWS: "pip install delvewheel"
+          CIBW_ENVIRONMENT_LINUX: "PATH=$HOME/.cargo/bin:$PATH"
+          CIBW_ENVIRONMENT_MACOS: "PATH=$HOME/.cargo/bin:$PATH LIBCLANG_PATH=$(brew --prefix llvm)/lib MACOSX_DEPLOYMENT_TARGET=10.14"          
+          CIBW_ENVIRONMENT_WINDOWS: 'LIBCLANG_PATH="C:\\Program Files\\LLVM\\bin" PATH="C:\\Program Files\\LLVM\\bin;$PATH"'
 
           # Tests
-          CIBW_TEST_REQUIRES: "pytest rdkit"
-          CIBW_TEST_COMMAND: "pytest {project}/pytests -v"
+          CIBW_TEST_REQUIRES: "pytest"
+          CIBW_TEST_COMMAND: "pytest {project}/refnd/pytests -v"
 
           CIBW_BUILD_VERBOSITY: 3
 
@@ -140,14 +78,18 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Generate stubs
+        run: cargo run --bin stub_gen
+        working-directory: refnd
+
       - name: Build sdist
         run: pipx run build --sdist
-        working-directory: py
+        working-directory: refnd
 
       - uses: actions/upload-artifact@v4
         with:
           name: sdist
-          path: py/dist/*.tar.gz
+          path: refnd/dist/*.tar.gz
 
   upload_pypi:
     needs: [build_wheels, build_sdist]
