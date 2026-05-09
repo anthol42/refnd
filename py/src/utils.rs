@@ -8,6 +8,7 @@ use fixedbitset::FixedBitSet;
 use numpy::{IntoPyArray, PyArray1};
 use refnd_core::utils::{BitFingerprint as CoreBitFP, RealFingerprint as CoreRealFP};
 use std::collections::{HashMap, HashSet};
+use refnd_core::core::largest_cluster as largest_cluster_core;
 
 /// Newtype so `PyArray1<bool>` gets a stub type — `pyo3_stub_gen` doesn't implement
 /// `NumPyScalar` for `bool`, so we bypass it with a local wrapper.
@@ -316,4 +317,21 @@ impl<'a, 'py> FromPyObject<'a, 'py> for RealFingerprint {
 #[pyfunction]
 pub fn read_fasta(path: &str) -> PyResult<Vec<(String, String)>> {
     core_read_fasta(Path::new(path)).map_err(|e| PyIOError::new_err(e))
+}
+
+/// Return the ID and size of the largest cluster.
+///
+/// Convenience helper — iterates over a cluster-label vector and finds the
+/// most populous label.
+///
+/// Args:
+///     clusters: A list of cluster IDs (e.g. from ``connected_components`` or
+///               ``find_communities``).
+///
+/// Returns:
+///     A tuple ``(cluster_id, size)`` for the largest cluster.
+#[gen_stub_pyfunction(module = "refnd.utils")]
+#[pyfunction]
+pub fn largest_cluster(clusters: Vec<usize>) -> (usize, usize) {
+    largest_cluster_core(&clusters)
 }

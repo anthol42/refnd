@@ -216,8 +216,7 @@ impl From<ScoringMatrix> for BundledMatrix {
 ///
 /// - ``Short`` (8-bit), ``Half`` (16-bit), ``Full`` (32-bit), ``Long`` (64-bit):
 ///   fixed-width integers — lower width is faster but can overflow on long sequences.
-/// - ``Sat`` (default): 8-bit saturating arithmetic; silently clamps on overflow
-///   instead of wrapping. Safe for typical protein lengths and the recommended default.
+/// - ``Sat`` (default): 8-bit saturating arithmetic; If it saturates, silently restart with 16-bit.
 #[gen_stub_pyclass_enum]
 #[pyclass(eq, eq_int, from_py_object, module = "refnd.kernels.protein.sequence")]
 #[derive(Clone, Copy, PartialEq)]
@@ -266,6 +265,7 @@ impl From<DatatypeWidth> for CoreDatatypeWidth {
 ///
 ///     aligner = GlobalAligner(gap_open=11, gap_extend=1)
 ///     score = aligner.call("MKTAYIAK", "MKTAYIAKQR")
+///     score = aligner("MKTAYIAK", "MKTAYIAKQR") # Alternative
 ///     # score in [0.0, 1.0]
 #[gen_stub_pyclass]
 #[pyclass(module = "refnd.kernels.protein.sequence")]
@@ -350,6 +350,7 @@ impl GlobalAligner {
 ///
 ///     aligner = LocalAligner(min_coverage=0.5, cov_mode=CoverageMode.Query)
 ///     score = aligner.call("ACDEFGHIKLM", "CDEFGHI")
+///     score = aligner("ACDEFGHIKLM", "CDEFGHI") # Alternative
 #[gen_stub_pyclass]
 #[pyclass(module = "refnd.kernels.protein.sequence")]
 pub struct LocalAligner {

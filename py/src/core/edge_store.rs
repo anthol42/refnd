@@ -6,14 +6,15 @@ use super::leiden::CsrGraph;
 
 /// A compact, flat list of weighted directed edges between integer node IDs.
 ///
-/// ``EdgeStore`` is the central data carrier in py-refnd: it is produced by
+/// ``EdgeStore`` is the central data carrier in refnd: it is produced by
 /// ``exact_edges`` and ``HNSWState.edges``, consumed by ``CsrGraph``, and can be
 /// persisted to disk for later reuse.
 ///
 /// Each edge is a triple ``(src, dst, weight)`` where ``src`` and ``dst`` are
 /// zero-based node indices in ``[0, node_count)`` and ``weight`` is a ``float32``
 /// similarity score (higher = more similar, unless the graph is built with
-/// ``is_weight_distance=True``).
+/// ``is_weight_distance=True``, in such case it's a real distance ``[0, ∞)`` that will be converted
+/// to a similarity score).
 ///
 /// Example::
 ///
@@ -59,27 +60,39 @@ impl EdgeStore {
     /// Args:
     ///     use_weight: If ``True``, edge weights are used for graph operations (e.g. strength).
     ///                 If ``False``, all edges are treated as unweighted (weight = 1.0).
-    ///                 Defaults to ``False``.
+    ///     is_weight_distance: If ``True``, edges weights are normalized to have a maximal bound of
+    ///                         1 using this formula: ``1.0 / (1.0 + w)`` since the Leiden algorithm works on
+    ///                         similarity graphs.
     ///
     /// Returns:
     ///     A ``CsrGraph`` backed by this edge list.
-    #[pyo3(signature = (use_weight = false))]
-    fn graph(&self, use_weight: bool) -> CsrGraph {
-        CsrGraph { inner: self.inner.graph(use_weight) }
+    #[pyo3(signature = (weighted = true, is_weight_distance=true))]
+    fn graph(&self, weighted: bool, is_weight_distance: bool) -> CsrGraph {
+        CsrGraph { inner: self.inner.graph(weighted, is_weight_distance) }
     }
 
-    /// Serialize this EdgeStore to disk.
+    /// Serialize this EdgeStore to disk. It supports two file formats: ``text`` with
+    /// ``.edgelist`` extension or ``binary`` with ``.edgestr`` extension. Binary is usually 2x
+    /// more space efficient at the cost of not being human-readable.
     ///
     /// Args:
     ///     path: Destination file path.
     ///
     /// Raises:
     ///     IOError: On any I/O failure.
+    /// Example::
+    ///
+    ///     from refnd.core import EdgeStore
+    ///
+    ///     store = EdgeStore(node_count=3, edges=[(0, 1, 0.9), (1, 2, 0.7)])
+    ///     store.save("my/path/myedges.edgelist") # Text format
+    ///     store.save("my/path/myedges.edgestr")  # Bin format
     fn save(&self, path: &str) -> PyResult<()> {
         self.inner.save(path).map_err(|e| PyIOError::new_err(e.to_string()))
     }
 
-    /// Load an EdgeStore that was previously saved with ``EdgeStore.save``.
+    /// Load an EdgeStore that was previously saved with ``EdgeStore.save``. It infers the format
+    /// from the extension of the path, ``.edgelist`` or ``.edgestr``.
     ///
     /// Args:
     ///     path: Path to the file produced by ``save``.

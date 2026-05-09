@@ -7,7 +7,10 @@ use super::{STAT_SNAPSHOT, STAT_ADD_EDGE_LO, STAT_ADD_EDGE_HI, STAT_SET_NEIGHBOU
 use crate::core::Distance;
 
 impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
-    pub fn build(&self, pb: Option<&ProgressBar>) {
+    pub fn build(&mut self, pb: Option<&ProgressBar>) -> Result<(), &'static str> {
+        if self.has_been_built {
+            return Err("Index has already been built. Construct a new HNSWState to build again.");
+        }
         let n = self.data.len();
 
         let mut order: Vec<usize> = (0..n).collect();
@@ -77,5 +80,7 @@ impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
             STAT_SET_NEIGHBOURHOOD.report("set_neighbourhood  (write) ");
             STAT_DASHMAP.report("proximity_edges    (insert)");
         }
+        self.has_been_built = true;
+        Ok(())
     }
 }

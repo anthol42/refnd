@@ -300,6 +300,7 @@ pub struct HNSWState<T: Sync, D: Distance<T>> {
     dist_cache: ShardedCache,
     /// All pairs whose distance is below config.proximity_threshold
     proximity_edges: DashMap<(usize, usize), f32, FxBuildHasher>,
+    pub has_been_built: bool,
 }
 
 impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
@@ -316,6 +317,7 @@ impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
             data,
             config,
             distance,
+            has_been_built: false,
         }
     }
 
@@ -362,11 +364,17 @@ impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
             .collect()
     }
 
-    pub fn get_layer(&self, layer_idx: usize) -> Vec<Vec<usize>> {
-        self.hgraph.layers[layer_idx]
+    pub fn get_layer(&self, layer_idx: usize) -> Result<Vec<Vec<usize>>, String> {
+        if layer_idx >= self.hgraph.layers.len() {
+            return Err(format!(
+                "layer index {} out of range: index has {} layers (0..{})",
+                layer_idx, self.hgraph.layers.len(), self.hgraph.layers.len().saturating_sub(1)
+            ));
+        }
+        Ok(self.hgraph.layers[layer_idx]
             .iter()
             .map(|node| node.read().clone())
-            .collect()
+            .collect())
     }
 
     pub fn config(&self) -> &HNSWConfig {
@@ -385,6 +393,7 @@ impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
             proximity_edges: self.proximity_edges.iter()
                 .map(|e| (*e.key(), *e.value()))
                 .collect(),
+            has_been_built: self.has_been_built,
         }
     }
 
@@ -456,6 +465,7 @@ impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
             dist_cache,
             proximity_edges,
             config: index.config,
+            has_been_built: index.has_been_built,
         })
     }
 }

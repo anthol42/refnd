@@ -6,12 +6,12 @@
   border: none;
   padding: 0.25rem;
   cursor: pointer;
-  color: var(--color-foreground-muted);
-  transition: color 0.15s ease;
+  color: var(--color-foreground-primary);
+  transition: color 0.3s, opacity 0.3s;
 }
 
 .copy-md-icon:hover {
-  color: var(--color-foreground-primary);
+  color: var(--color-link);
 }
 
 .copy-md-icon svg {

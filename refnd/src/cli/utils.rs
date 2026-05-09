@@ -119,8 +119,11 @@ where
     } else {
         display::section("Building HNSW");
         let pb = display::logfacto_progress_bar(data.len(), "Building HNSW");
-        let hnsw = HNSWState::new(data, kernel, config);
-        hnsw.build(Some(&pb));
+        let mut hnsw = HNSWState::new(data, kernel, config);
+        hnsw.build(Some(&pb)).unwrap_or_else(|e| {
+            display::error(&format!("Index is not built: {e}"));
+            std::process::exit(1);
+        });
         pb.finish();
         let sp = display::spinner("Extracting proximity edges…");
         let edges = hnsw.edges();
@@ -218,8 +221,11 @@ pub fn protein_get_edges(
             }
             _ => {
                 let pb = display::logfacto_progress_bar(n, "Building HNSW");
-                let h = HNSWState::new(data, kernel, config);
-                h.build(Some(&pb));
+                let mut h = HNSWState::new(data, kernel, config);
+                h.build(Some(&pb)).unwrap_or_else(|e| {
+                    display::error(&format!("Index is not built: {e}"));
+                    std::process::exit(1);
+                });
                 pb.finish();
                 h
             }
@@ -310,8 +316,11 @@ pub fn build_hnsw<T: Sync, D: Distance<T>>(
         }
         _ => {
             let pb = display::logfacto_progress_bar(n, "Building HNSW");
-            let h = HNSWState::new(data, kernel, config);
-            h.build(Some(&pb));
+            let mut h = HNSWState::new(data, kernel, config);
+            h.build(Some(&pb)).unwrap_or_else(|e| {
+                display::error(&format!("Index is not built: {e}"));
+                std::process::exit(1);
+            });
             pb.finish();
             h
         }

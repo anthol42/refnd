@@ -36,41 +36,37 @@ macro_rules! call_generic {
 /// Compute all pairs of data points whose similarity exceeds a threshold (exact, brute-force).
 ///
 /// Evaluates every unordered pair ``(i, j)`` with ``i < j`` and records an edge
-/// when ``kernel(data[i], data[j]) >= threshold``. This is O(n²) in the number
-/// of data points; prefer ``HNSWState`` for large datasets.
+/// when ``kernel(data[i], data[j]) <= proximity_threshold``. This is O(n²) in the number
+/// of data points; prefer the approximate``HNSWState`` for large datasets.
 ///
 /// Extra positional and keyword arguments are forwarded to the kernel constructor.
-/// For ``KernelVariant.ProteinGlobal`` and ``ProteinLocal`` no extra args are
-/// needed (all parameters have defaults).
 ///
 /// Args:
 ///     variant: Which kernel to use (``KernelVariant.ProteinGlobal`` or
 ///              ``KernelVariant.ProteinLocal``).
 ///     data: Sequence of data items (e.g. ``list[str]`` for protein sequences).
-///     threshold: Minimum similarity score for an edge to be recorded.
-///                In ``[0.0, 1.0]`` for identity-based kernels.
+///     proximity_threshold: Maximum distance for an edge to be recorded.
 ///     threads: Number of parallel threads. ``0`` uses all available cores.
 ///     progress: Show a progress bar. Defaults to ``True``.
 ///
 /// Returns:
-///     An ``EdgeStore`` containing all edges whose weight ≥ ``threshold``.
+///     An ``EdgeStore`` containing all edges whose distance ≤ ``proximity_threshold``.
 ///
 /// Example::
 ///
-///     from refnd.core import exact_edges
-///     from refnd.kernels import KernelVariant
+///     from refnd import KernelVariant, exact_edges
 ///
 ///     seqs = ["MKTAYIAK", "MKTAYIAKQR", "ACDEFGHIKLM"]
-///     store = exact_edges(KernelVariant.ProteinGlobal, seqs, threshold=0.5)
+///     store = exact_edges(KernelVariant.ProteinGlobal, seqs, proximity_threshold=0.5)
 ///     print(len(store))   # number of similar pairs
 #[gen_stub_pyfunction(module = "refnd.core")]
 #[pyfunction]
-#[pyo3(signature = (variant, data, threshold, threads = 0, progress = true, *args, **kwargs))]
+#[pyo3(signature = (variant, data, proximity_threshold = 0.5, threads = 0, progress = true, *args, **kwargs))]
 pub fn exact_edges(
     py: Python,
     variant: KernelVariant,
     data: Py<PyAny>,
-    threshold: f32,
+    proximity_threshold: f32,
     threads: usize,
     progress: bool,
     args: &Bound<'_, PyTuple>,
@@ -86,13 +82,13 @@ pub fn exact_edges(
     };
     let edges = match variant {
         KernelVariant::ProteinGlobal => {call_generic!(exact_edges_core;
-            py, String, GlobalAligner, args, kwargs; data; threshold, threads, pb.as_ref())}
+            py, String, GlobalAligner, args, kwargs; data; proximity_threshold, threads, pb.as_ref())}
         KernelVariant::ProteinLocal => {call_generic!(exact_edges_core;
-            py, String, LocalAligner, args, kwargs; data; threshold, threads, pb.as_ref())}
+            py, String, LocalAligner, args, kwargs; data; proximity_threshold, threads, pb.as_ref())}
         KernelVariant::TanimotoBit => {call_generic!(exact_edges_core;
-            py, BitFingerprint, TanimotoBit, args, kwargs; data; threshold, threads, pb.as_ref())}
+            py, BitFingerprint, TanimotoBit, args, kwargs; data; proximity_threshold, threads, pb.as_ref())}
         KernelVariant::TanimotoReal => {call_generic!(exact_edges_core;
-            py, RealFingerprint, TanimotoReal, args, kwargs; data; threshold, threads, pb.as_ref())}
+            py, RealFingerprint, TanimotoReal, args, kwargs; data; proximity_threshold, threads, pb.as_ref())}
     };
     if let Some(pb) = pb { pb.finish(); }
     Ok(EdgeStore::new(n, edges))
@@ -101,36 +97,35 @@ pub fn exact_edges(
 /// Find the k nearest neighbors of each query in a reference set (exact, brute-force).
 ///
 /// For every query item, scores it against every reference item using the
-/// chosen kernel and returns the top-k references sorted by descending
-/// similarity. Complexity is O(n_queries × n_references); prefer
-/// ``HNSWState.search`` for approximate nearest neighbors at scale.
+/// chosen kernel and returns the top-k references sorted by ascending
+/// distance. Complexity is O(n_queries × n_references); prefer
+/// ``HNSWState.search`` for approximate nearest neighbors with large datasets.
 ///
 /// Extra positional and keyword arguments are forwarded to the kernel constructor.
 ///
 /// Args:
-///     variant: Which kernel to use (``KernelVariant.ProteinGlobal`` or
-///              ``KernelVariant.ProteinLocal``).
+///     variant: Which kernel to use (e.g. ``KernelVariant.ProteinGlobal`` or
+///              ``KernelVariant.TanimotoBit``).
 ///     queries: Sequence of query items.
-///     references: Sequence of reference items to search over.
-///     k: Number of nearest neighbors to return per query.
+///     references: Sequence of reference items to search over. List of items of the same type of the selected kernel variant.
+///     k: Number of nearest neighbors to return per query. List of items of the same type of the selected kernel variant.
 ///     threads: Number of parallel threads. ``0`` uses all available cores.
 ///     progress: Show a progress bar. Defaults to ``True``.
 ///
 /// Returns:
 ///     A list of length ``len(queries)``. Each element is a list of up to ``k``
-///     tuples ``(reference_index, similarity_score)`` sorted by descending score.
+///     tuples ``(reference_index, similarity_score)`` sorted by ascending distance.
 ///
 /// Example::
 ///
-///     from refnd.core import exact_nearest_neighbors
-///     from refnd.kernels import KernelVariant
+///     from refnd import KernelVariant, exact_nearest_neighbors
 ///
 ///     queries = ["MKTAYIAK"]
 ///     refs    = ["MKTAYIAKQR", "ACDEFGHIKLM", "MKTAYIAKQRQ"]
 ///     results = exact_nearest_neighbors(
 ///         KernelVariant.ProteinGlobal, queries, refs, k=2
 ///     )
-///     # results[0] -> [(2, 0.93), (0, 0.85)]
+///     # results[0] -> [(0, 0.20), (2, 0.27)]
 #[gen_stub_pyfunction(module = "refnd.core")]
 #[pyfunction]
 #[pyo3(signature = (variant, queries, references, k, threads = 0, progress = true, *args, **kwargs))]

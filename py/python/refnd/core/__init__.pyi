@@ -17,23 +17,23 @@ __all__ = [
     "exact_edges",
     "exact_nearest_neighbors",
     "find_communities",
-    "largest_component",
     "partition",
 ]
 
 @typing.final
 class CsrGraph:
     r"""
-    Compressed Sparse Row graph built from an ``EdgeStore``.
+    Compressed Sparse Row graph built from an ``EdgeStore``. A CSR graph is compact, and highly
+    efficient for traversal, exploiting cache structure and maximizing cache hits. However, it is
+    immutable, so adding a new node or edge require building the full graph again.
     
-    ``CsrGraph`` is an immutable adjacency structure. It is passed to graph
-    algorithms such as ``find_communities``, ``connected_components``, and
-    ``partition``. Build it from an ``EdgeStore`` either directly or via
-    ``EdgeStore.graph()``.
+    ``CsrGraph`` is an immutable adjacency structure. Because of its property of being very
+    efficient for traversal, it is used by graph algorithms such as ``partition`` and
+    ``connected_components``.
     
     Properties:
-        n: Number of nodes.
-        m: Sum of all edge weights (or total edge count when ``use_weight=False``).
+        - ``n``: Number of nodes.
+        - ``m``: Sum of all edge weights (or total edge count when ``use_weight=False``).
     
     Example::
     
@@ -46,17 +46,22 @@ class CsrGraph:
         print(g.strength(1))     # 1.7
     """
     @property
-    def n(self) -> builtins.int: ...
+    def n(self) -> builtins.int:
+        r"""
+        Number of nodes
+        """
     @property
-    def m(self) -> builtins.float: ...
-    def __new__(cls, edges: EdgeStore, use_weight: builtins.bool = False, is_weight_distance: builtins.bool = True) -> CsrGraph:
+    def m(self) -> builtins.float:
+        r"""
+        Total weight (each edge counted once)
+        """
+    def __new__(cls, edges: EdgeStore, use_weight: builtins.bool = True, is_weight_distance: builtins.bool = True) -> CsrGraph:
         r"""
         Build a CsrGraph from an EdgeStore.
         
         Args:
             edges: The edge store to build the graph from.
-            use_weight: If ``True``, edge weights influence graph operations.
-                        Defaults to ``False`` (unweighted).
+            use_weight: If ``True``, edge weights are used for graph operations.
             is_weight_distance: If ``True`` (default), raw weights are treated as
                                 distances and converted to similarities internally
                                 (``similarity = 1 - distance``). Set to ``False``
@@ -84,14 +89,15 @@ class EdgeStore:
     r"""
     A compact, flat list of weighted directed edges between integer node IDs.
     
-    ``EdgeStore`` is the central data carrier in py-refnd: it is produced by
+    ``EdgeStore`` is the central data carrier in refnd: it is produced by
     ``exact_edges`` and ``HNSWState.edges``, consumed by ``CsrGraph``, and can be
     persisted to disk for later reuse.
     
     Each edge is a triple ``(src, dst, weight)`` where ``src`` and ``dst`` are
     zero-based node indices in ``[0, node_count)`` and ``weight`` is a ``float32``
     similarity score (higher = more similar, unless the graph is built with
-    ``is_weight_distance=True``).
+    ``is_weight_distance=True``, in such case it's a real distance ``[0, ∞)`` that will be converted
+    to a similarity score).
     
     Example::
     
@@ -119,32 +125,44 @@ class EdgeStore:
         r"""
         Return the total number of nodes this store was created with.
         """
-    def graph(self, use_weight: builtins.bool = False) -> CsrGraph:
+    def graph(self, weighted: builtins.bool = True, is_weight_distance: builtins.bool = True) -> CsrGraph:
         r"""
         Build a ``CsrGraph`` from this edge store.
         
         Args:
             use_weight: If ``True``, edge weights are used for graph operations (e.g. strength).
                         If ``False``, all edges are treated as unweighted (weight = 1.0).
-                        Defaults to ``False``.
+            is_weight_distance: If ``True``, edges weights are normalized to have a maximal bound of
+                                1 using this formula: ``1.0 / (1.0 + w)`` since the Leiden algorithm works on
+                                similarity graphs.
         
         Returns:
             A ``CsrGraph`` backed by this edge list.
         """
     def save(self, path: builtins.str) -> None:
         r"""
-        Serialize this EdgeStore to disk.
+        Serialize this EdgeStore to disk. It supports two file formats: ``text`` with
+        ``.edgelist`` extension or ``binary`` with ``.edgestr`` extension. Binary is usually 2x
+        more space efficient at the cost of not being human-readable.
         
         Args:
             path: Destination file path.
         
         Raises:
             IOError: On any I/O failure.
+        Example::
+        
+            from refnd.core import EdgeStore
+        
+            store = EdgeStore(node_count=3, edges=[(0, 1, 0.9), (1, 2, 0.7)])
+            store.save("my/path/myedges.edgelist") # Text format
+            store.save("my/path/myedges.edgestr")  # Bin format
         """
     @staticmethod
     def load(path: builtins.str) -> EdgeStore:
         r"""
-        Load an EdgeStore that was previously saved with ``EdgeStore.save``.
+        Load an EdgeStore that was previously saved with ``EdgeStore.save``. It infers the format
+        from the extension of the path, ``.edgelist`` or ``.edgestr``.
         
         Args:
             path: Path to the file produced by ``save``.
@@ -170,28 +188,31 @@ class HNSWConfig:
     r"""
     Configuration for the HNSW approximate nearest-neighbour index.
     
-    All parameters have sensible defaults; in most cases you only need to
-    adjust ``m``, ``ef_construction``, and ``proximity_threshold``.
+    All parameters have sensible defaults; in most cases you only need to ``ef_construction``, and
+    ``proximity_threshold``.
     
     **Parameters:**
     
+    - ``proximity_threshold`` *(float)* — Distance threshold under which a connection is established in the proximity graph.
+    - ``ef_construction`` *(int)* — Candidate list size during build. Default ``64``.
     - ``m`` *(int)* — Bidirectional links per node at layers > 0.
-      Higher = better recall, more memory, slower build. Typical: 8–64. Default ``16``.
+      Higher = better recall, more memory, slower build. Typical: 8–64.
     - ``m_max`` *(int)* — Maximum connections per node at layers > 0. Usually equal to ``m``.
     - ``m_max0`` *(int)* — Maximum connections at layer 0. Usually ``2 * m``.
-    - ``m_l`` *(float)* — Level generation factor. Default ``0.36 ≈ 1 / ln(m)``.
-    - ``ef_init`` *(int)* — Candidate list size during initial-layer insertion.
-    - ``ef_construction`` *(int)* — Candidate list size during build. Default ``128``.
-    - ``extend_candidates`` *(bool)* — Extend the candidate set beyond ``ef_construction``.
-    - ``keep_pruned_connections`` *(bool)* — Retain discarded candidates to fill up to ``m`` connections.
-    - ``cache_capacity`` *(int)* — Maximum cached kernel scores. Default ``2_000_000``.
-    - ``cache_shards`` *(int)* — Cache shards (reduces lock contention).
-    - ``proximity_threshold`` *(float)* — Similarity threshold for ``threshold_based_neighbourhood``.
+    - ``m_l`` *(float)* — Level generation factor. Usually ``0.36 ≈ 1 / ln(m)``.
+    - ``ef_init`` *(int)* — Candidate list size during initial-layer insertion. Almost always 1 for
+      a greedy search.
+    - ``extend_candidates`` *(bool)* — Use neighbors of neighbors as candidates, making search more exhaustive.
+    - ``keep_pruned_connections`` *(bool)* — Retain discarded candidates to fill up to ``m`` connections when not enough connections are found.
+    - ``cache_capacity`` *(int)* — Maximum cached kernel scores. Increasing it increase the memory
+      footprint, but also cache hits, which can improve runtime performances for computationally expensive kernels.
+    - ``cache_shards`` *(int)* — Number of cache shards (reduces lock contention).
     - ``n_threads`` *(int)* — Threads used during build. ``0`` = all available cores.
-    - ``shuffle`` *(bool)* — Shuffle insertion order before building.
+    - ``shuffle`` *(bool)* — Shuffle insertion order before building. Can create a less biased
+      graph, but reduces cache hits, which increases runtime.
     - ``use_heuristic`` *(bool)* — Use the heuristic neighbour-selection from the paper (recommended).
-    - ``strict_ef`` *(bool)* — Enforce result set size equals exactly ``ef`` during search.
-    - ``threshold_based_neighbourhood`` *(bool)* — Replace fixed ``m`` neighbourhood with threshold-based.
+    - ``strict_ef`` *(bool)* — If ``True``, enforces the result set size to exactly ``ef`` during search. Empirically, setting this to ``False`` can improve runtime performance, as it allows halving ``ef_construction`` without sacrificing accuracy.
+    - ``threshold_based_neighbourhood`` *(bool)* — Select a minimum of ``m`` neighbors like the classic algorithm, but doesn't bound the neighbourhood size as all candidates that are closer than the threshold are kept.
     """
     @property
     def m(self) -> builtins.int: ...
@@ -225,7 +246,7 @@ class HNSWConfig:
     def strict_ef(self) -> builtins.bool: ...
     @property
     def threshold_based_neighbourhood(self) -> builtins.bool: ...
-    def __new__(cls, m: builtins.int = 16, m_max: builtins.int = 16, m_max0: builtins.int = 32, m_l: builtins.float = 0.36, ef_init: builtins.int = 1, ef_construction: builtins.int = 128, extend_candidates: builtins.bool = False, keep_pruned_connections: builtins.bool = True, cache_capacity: builtins.int = 2000000, cache_shards: builtins.int = 64, proximity_threshold: builtins.float = 0.5, n_threads: builtins.int = 0, shuffle: builtins.bool = False, use_heuristic: builtins.bool = True, strict_ef: builtins.bool = False, threshold_based_neighbourhood: builtins.bool = False) -> HNSWConfig:
+    def __new__(cls, proximity_threshold: builtins.float = 0.5, ef_construction: builtins.int = 64, m: builtins.int = 16, m_max: builtins.int = 16, m_max0: builtins.int = 32, m_l: builtins.float = 0.36, ef_init: builtins.int = 1, extend_candidates: builtins.bool = False, keep_pruned_connections: builtins.bool = True, cache_capacity: builtins.int = 2000000, cache_shards: builtins.int = 64, n_threads: builtins.int = 0, shuffle: builtins.bool = False, use_heuristic: builtins.bool = True, strict_ef: builtins.bool = False, threshold_based_neighbourhood: builtins.bool = False) -> HNSWConfig:
         r"""
         Create an HNSWConfig. See class docstring for parameter descriptions.
         """
@@ -247,7 +268,7 @@ class HNSWIndex:
     
     Properties:
         dataset_size (int): Number of items indexed.
-        layers (list): Nested list ``layers[layer][node] = [neighbor_ids]``.
+        layers (list): Nested multi-layer adjacency list ``layers[layer][node] = [neighbor_ids]``.
         entry_point (tuple | None): ``(layer, node_id)`` of the global entry point, or ``None`` if empty.
         max_layers (int): Number of layers in the hierarchy.
         proximity_edges (list): List of ``((src, dst), score)`` for proximity-threshold edges.
@@ -267,10 +288,10 @@ class HNSWIndex:
     def config(self) -> HNSWConfig: ...
     def save(self, path: builtins.str) -> None:
         r"""
-        Persist this index to disk.
+        Save the object to a binary representation (e.g. *.hnsw* file).
         
         Args:
-            path: Destination file path.
+            path: Destination file path (recommended with a .hnsw extension)
         
         Raises:
             RuntimeError: On serialisation or I/O failure.
@@ -295,7 +316,9 @@ class HNSWIndex:
 @typing.final
 class HNSWState:
     r"""
-    Hierarchical Navigable Small World (HNSW) approximate nearest-neighbour index.
+    Stateful Hierarchical Navigable Small World (HNSW) approximate nearest-neighbour index. This
+    class is used to build and search in the index, whereas ``HNSWIndex`` is a read-only *internal*
+    representation of the index used for saving / loading / structure exploration.
     
     ``HNSWState`` wraps the dataset and the graph index together. The typical
     workflow is:
@@ -305,8 +328,16 @@ class HNSWState:
     3. Call ``search()`` to query, or ``edges()`` to extract the proximity graph
        for downstream clustering / splitting.
     
-    HNSW parameters (``m``, ``ef_construction``, …) are the same as ``HNSWConfig``
+    HNSW parameters (``proximity_threshold``, ``ef_construction``, …) are the same as ``HNSWConfig``
     and can be passed directly to the constructor as keyword arguments.
+    
+    Args:
+        variant: Kernel to use (e.g.  ``KernelVariant.ProteinGlobal``, ``KernelVariant.ProteinLocal``, ``KernelVariant.TanimotoBit``, *etc*).
+        data: The dataset — a list of items matching the kernel type (e.g. ``list[str]`` or ``list[np.ndarray]``).
+        proximity_threshold, ef_construction, m, m_max, m_max0, m_l, ef_init, extend_candidates,
+            keep_pruned_connections, cache_capacity, cache_shards,
+            n_threads, shuffle, use_heuristic, strict_ef,
+            threshold_based_neighbourhood: See ``HNSWConfig`` for descriptions.
     
     Properties:
         config (HNSWConfig): The config in use.
@@ -314,44 +345,46 @@ class HNSWState:
     
     Example::
     
-        from refnd.core import HNSWState
-        from refnd.kernels import KernelVariant
+        from refnd import HNSWState, KernelVariant
     
         seqs = ["MKTAYIAK", "MKTAYIAKQR", "ACDEFGHIKLM", "MKTAYIAKQRQIS"]
-        state = HNSWState(KernelVariant.ProteinGlobal, seqs, m=8, ef_construction=64)
+        state = HNSWState(KernelVariant.ProteinGlobal, seqs, proximity_threshold=0.3, ef_construction=64)
         state.build()
         results = state.search(["MKTAYIAK"], k=2)
         # results[0] -> [(0, 1.0), (1, 0.88)]
     
         store = state.edges()        # EdgeStore for graph-based splitting
-        state.save("index.bin")
-        state2 = HNSWState.load(KernelVariant.ProteinGlobal, "index.bin", seqs)
+        state.save("index.hnsw")
+        state2 = HNSWState.load(KernelVariant.ProteinGlobal, "index.hnsw", seqs)
     """
     @property
-    def config(self) -> HNSWConfig: ...
-    @property
-    def index(self) -> HNSWIndex: ...
-    def __new__(cls, variant: kernels.KernelVariant, data: typing.Any, *args: typing.Any, m: builtins.int = 16, m_max: builtins.int = 16, m_max0: builtins.int = 32, m_l: builtins.float = 0.36, ef_init: builtins.int = 1, ef_construction: builtins.int = 128, extend_candidates: builtins.bool = False, keep_pruned_connections: builtins.bool = True, cache_capacity: builtins.int = 2000000, cache_shards: builtins.int = 64, proximity_threshold: builtins.float = 0.5, n_threads: builtins.int = 0, shuffle: builtins.bool = False, use_heuristic: builtins.bool = True, strict_ef: builtins.bool = False, threshold_based_neighbourhood: builtins.bool = False, **kwargs: typing.Any) -> HNSWState:
+    def is_built(self) -> builtins.bool:
         r"""
-        Construct an HNSWState.
-        
-        Args:
-            variant: Kernel to use (``KernelVariant.ProteinGlobal`` or ``KernelVariant.ProteinLocal``).
-            data: The dataset — a list of items matching the kernel type (e.g. ``list[str]``).
-            m, m_max, m_max0, m_l, ef_init, ef_construction, extend_candidates,
-                keep_pruned_connections, cache_capacity, cache_shards,
-                proximity_threshold, n_threads, shuffle, use_heuristic, strict_ef,
-                threshold_based_neighbourhood: See ``HNSWConfig`` for descriptions.
+        Whether ``build`` has been called on this index.
         """
+    @property
+    def config(self) -> HNSWConfig:
+        r"""
+        Config used to initiate this object.
+        """
+    @property
+    def index(self) -> HNSWIndex:
+        r"""
+        HNSWIndex snapshot.
+        """
+    def __new__(cls, variant: kernels.KernelVariant, data: typing.Any, *args: typing.Any, proximity_threshold: builtins.float = 0.5, ef_construction: builtins.int = 64, m: builtins.int = 16, m_max: builtins.int = 16, m_max0: builtins.int = 32, m_l: builtins.float = 0.36, ef_init: builtins.int = 1, extend_candidates: builtins.bool = False, keep_pruned_connections: builtins.bool = True, cache_capacity: builtins.int = 2000000, cache_shards: builtins.int = 64, n_threads: builtins.int = 0, shuffle: builtins.bool = False, use_heuristic: builtins.bool = True, strict_ef: builtins.bool = False, threshold_based_neighbourhood: builtins.bool = False, **kwargs: typing.Any) -> HNSWState: ...
     def build(self, progress: builtins.bool = True) -> None:
         r"""
         Build the HNSW index by inserting all data items.
         
         Must be called before ``search`` or ``edges``. Calling ``build`` a second
-        time re-inserts all items into the existing graph (avoid this).
+        time raises a ``RuntimeError``; construct a new ``HNSWState`` instead.
         
         Args:
             progress: Display a progress bar. Defaults to ``True``.
+        
+        Raises:
+            RuntimeError: If the index has already been built.
         """
     def search(self, queries: typing.Any, k: builtins.int = 1, ef: builtins.int = 64, threads: builtins.int = 0, progress: builtins.bool = True) -> builtins.list[builtins.list[tuple[builtins.int, builtins.float]]]:
         r"""
@@ -373,14 +406,16 @@ class HNSWState:
         Returns:
             A list of length ``len(queries)``. Each element is a sorted list of
             up to ``k`` tuples ``(dataset_index, similarity_score)``.
+        
+        Raises:
+            RuntimeError: If ``build`` has not been called yet.
         """
     def edges(self) -> EdgeStore:
         r"""
         Extract the proximity graph as an ``EdgeStore``.
         
-        Returns all edges formed during ``build`` (the HNSW layer-0 neighbourhood
-        graph). Use this with ``CsrGraph`` and ``find_communities`` / ``partition``
-        to perform graph-based dataset splitting.
+        Returns all edges found during ``build``. All distance measurements below the
+        ``proximity_threshold``.
         
         Returns:
             An ``EdgeStore`` with ``node_count = dataset_size``.
@@ -394,11 +429,14 @@ class HNSWState:
         
         Returns:
             A list of length ``dataset_size`` where element ``i`` is the list of
-            neighbour IDs of node ``i`` at this layer.
+            neighbour IDs of node ``i`` at this layer. Node IDs are their index in the original dataset.
+        
+        Raises:
+            IndexError: If ``layer_idx`` is out of range.
         """
     def save(self, path: builtins.str) -> None:
         r"""
-        Serialize the full state (index + config) to disk.
+        Serialize the full state (index + config) to a binary file.
         
         The saved file can be loaded back with ``HNSWState.load``. The original
         data must be provided again at load time (it is not embedded in the file).
@@ -412,7 +450,7 @@ class HNSWState:
     @staticmethod
     def load(variant: kernels.KernelVariant, path: builtins.str, data: typing.Any, *args: typing.Any, **kwargs: typing.Any) -> HNSWState:
         r"""
-        Load an HNSWState saved with ``HNSWState.save``.
+        Load an HNSWState form a binary file saved with ``HNSWState.save``.
         
         Args:
             variant: Must match the kernel used during the original build.
@@ -420,7 +458,7 @@ class HNSWState:
             data: The original dataset (required to re-attach the kernel).
         
         Returns:
-            The restored ``HNSWState``, ready to call ``search`` or ``edges``.
+            The restored ``HNSWState``, ready to call ``search`` or ``edges`` if the index was built.
         
         Raises:
             RuntimeError: If the file cannot be read or the format is invalid.
@@ -432,58 +470,61 @@ class LeidenObjective(enum.Enum):
     Objective function used by the Leiden community-detection algorithm.
     
     - ``Modularity`` — Maximise Newman-Girvan modularity. Good default for most graphs.
-    - ``CPM`` — Constant Potts Model. Finds communities of a fixed internal density
-      controlled by the ``gamma`` resolution parameter.
+    - ``CPM`` — Constant Potts Model. Finds communities of a fixed internal density.
     """
     Modularity = ...
     CPM = ...
 
 def connected_components(graph: CsrGraph) -> builtins.list[builtins.int]:
     r"""
-    Compute the connected components of an unweighted graph.
+    Finds the connected components of a graph.
     
     Runs a standard BFS/union-find over the graph and assigns each node to
-    its component. Use the result with ``largest_component`` or ``partition``.
+    its component.
     
     Args:
-        graph: The graph to analyse.
+        graph: The graph to find components.
     
     Returns:
         A list of length ``graph.n`` where element ``i`` is the component ID of
         node ``i``. IDs are arbitrary non-negative integers.
+    
+    Example::
+    
+        from refnd.core import EdgeStore, connected_components
+    
+        store = EdgeStore(6, [(0,1,0.9),(1,2,0.8),(3,4,0.7),(4,5,0.6)])
+        g = store.graph()
+        clusters = connected_components(g) # [0, 0, 0, 1, 1, 1]
     """
 
-def exact_edges(variant: kernels.KernelVariant, data: typing.Any, threshold: builtins.float, threads: builtins.int = 0, progress: builtins.bool = True, *args: typing.Any, **kwargs: typing.Any) -> EdgeStore:
+def exact_edges(variant: kernels.KernelVariant, data: typing.Any, proximity_threshold: builtins.float = 0.5, threads: builtins.int = 0, progress: builtins.bool = True, *args: typing.Any, **kwargs: typing.Any) -> EdgeStore:
     r"""
     Compute all pairs of data points whose similarity exceeds a threshold (exact, brute-force).
     
     Evaluates every unordered pair ``(i, j)`` with ``i < j`` and records an edge
-    when ``kernel(data[i], data[j]) >= threshold``. This is O(n²) in the number
-    of data points; prefer ``HNSWState`` for large datasets.
+    when ``kernel(data[i], data[j]) <= proximity_threshold``. This is O(n²) in the number
+    of data points; prefer the approximate``HNSWState`` for large datasets.
     
     Extra positional and keyword arguments are forwarded to the kernel constructor.
-    For ``KernelVariant.ProteinGlobal`` and ``ProteinLocal`` no extra args are
-    needed (all parameters have defaults).
     
     Args:
         variant: Which kernel to use (``KernelVariant.ProteinGlobal`` or
                  ``KernelVariant.ProteinLocal``).
         data: Sequence of data items (e.g. ``list[str]`` for protein sequences).
-        threshold: Minimum similarity score for an edge to be recorded.
-                   In ``[0.0, 1.0]`` for identity-based kernels.
+        proximity_threshold: Maximum distance for an edge to be recorded.
         threads: Number of parallel threads. ``0`` uses all available cores.
         progress: Show a progress bar. Defaults to ``True``.
     
     Returns:
-        An ``EdgeStore`` containing all edges whose weight ≥ ``threshold``.
+        An ``EdgeStore`` containing all edges whose distance ≤ ``proximity_threshold``.
     
     Example::
     
-        from refnd.core import exact_edges
-        from refnd.kernels import KernelVariant
+        from refnd import KernelVariant, exact_edges
     
         seqs = ["MKTAYIAK", "MKTAYIAKQR", "ACDEFGHIKLM"]
-        store = exact_edges(KernelVariant.ProteinGlobal, seqs, threshold=0.5)
+        store = exact_edges(KernelVariant.ProteinGlobal, seqs, proximity_threshold=0.5)
         print(len(store))   # number of similar pairs
     """
 
@@ -492,45 +533,44 @@ def exact_nearest_neighbors(variant: kernels.KernelVariant, queries: typing.Any,
     Find the k nearest neighbors of each query in a reference set (exact, brute-force).
     
     For every query item, scores it against every reference item using the
-    chosen kernel and returns the top-k references sorted by descending
-    similarity. Complexity is O(n_queries × n_references); prefer
-    ``HNSWState.search`` for approximate nearest neighbors at scale.
+    chosen kernel and returns the top-k references sorted by ascending
+    distance. Complexity is O(n_queries × n_references); prefer
+    ``HNSWState.search`` for approximate nearest neighbors with large datasets.
     
     Extra positional and keyword arguments are forwarded to the kernel constructor.
     
     Args:
-        variant: Which kernel to use (``KernelVariant.ProteinGlobal`` or
-                 ``KernelVariant.ProteinLocal``).
+        variant: Which kernel to use (e.g. ``KernelVariant.ProteinGlobal`` or
+                 ``KernelVariant.TanimotoBit``).
         queries: Sequence of query items.
-        references: Sequence of reference items to search over.
-        k: Number of nearest neighbors to return per query.
+        references: Sequence of reference items to search over. List of items of the same type of the selected kernel variant.
+        k: Number of nearest neighbors to return per query. List of items of the same type of the selected kernel variant.
         threads: Number of parallel threads. ``0`` uses all available cores.
         progress: Show a progress bar. Defaults to ``True``.
     
     Returns:
         A list of length ``len(queries)``. Each element is a list of up to ``k``
-        tuples ``(reference_index, similarity_score)`` sorted by descending score.
+        tuples ``(reference_index, similarity_score)`` sorted by ascending distance.
     
     Example::
     
-        from refnd.core import exact_nearest_neighbors
-        from refnd.kernels import KernelVariant
+        from refnd import KernelVariant, exact_nearest_neighbors
     
         queries = ["MKTAYIAK"]
         refs    = ["MKTAYIAKQR", "ACDEFGHIKLM", "MKTAYIAKQRQ"]
         results = exact_nearest_neighbors(
             KernelVariant.ProteinGlobal, queries, refs, k=2
         )
-        # results[0] -> [(2, 0.93), (0, 0.85)]
+        # results[0] -> [(0, 0.20), (2, 0.27)]
     """
 
-def find_communities(graph: CsrGraph, gamma: builtins.float = 1.0, beta: builtins.float = 0.01, n_iterations: builtins.int = 10, objective: LeidenObjective = LeidenObjective.Modularity) -> builtins.list[builtins.int]:
+def find_communities(graph: CsrGraph, gamma: builtins.float = 1.0, beta: builtins.float = 0.01, n_iterations: builtins.int = 2, objective: LeidenObjective = LeidenObjective.Modularity) -> builtins.list[builtins.int]:
     r"""
     Detect communities in a graph with the Leiden algorithm.
     
     The Leiden algorithm is an improvement over Louvain that guarantees
     well-connected communities. Use the returned cluster labels with
-    ``partition`` to produce train/test splits that respect community boundaries.
+    ``partition`` to produce train/test splits that consider community boundaries.
     
     Args:
         graph: The graph to partition into communities.
@@ -540,7 +580,7 @@ def find_communities(graph: CsrGraph, gamma: builtins.float = 1.0, beta: builtin
         beta: Randomness parameter controlling the refinement phase.
               Smaller values yield more deterministic results. Default ``0.01``.
         n_iterations: Number of optimisation passes. More iterations improve
-                      quality at the cost of runtime. Default ``10``.
+                      quality at the cost of runtime.
         objective: ``LeidenObjective.Modularity`` (default) or ``LeidenObjective.CPM``.
     
     Returns:
@@ -553,36 +593,20 @@ def find_communities(graph: CsrGraph, gamma: builtins.float = 1.0, beta: builtin
     
         store = EdgeStore(4, [(0,1,0.9),(1,2,0.8),(2,3,0.6)])
         g = CsrGraph(store, use_weight=True, is_weight_distance=False)
-        labels = find_communities(g, gamma=1.0, n_iterations=20)
-        # e.g. [0, 0, 1, 1]
+        clusters = find_communities(g, gamma=1.0, n_iterations=20) # e.g. [0, 1, 2, 3]
     """
 
-def largest_component(clusters: typing.Sequence[builtins.int]) -> tuple[builtins.int, builtins.int]:
+def partition(clusters: typing.Sequence[builtins.int], graph: CsrGraph, test_ratio: builtins.float = 0.2, seed: typing.Optional[builtins.int] = None, post_filtering: builtins.bool = False) -> tuple[builtins.list[builtins.int], builtins.list[builtins.int]]:
     r"""
-    Return the ID and size of the largest cluster.
-    
-    Convenience helper — iterates over a cluster-label vector and finds the
-    most populous label.
-    
-    Args:
-        clusters: A list of cluster IDs (e.g. from ``connected_components`` or
-                  ``find_communities``).
-    
-    Returns:
-        A tuple ``(cluster_id, size)`` for the largest cluster.
-    """
-
-def partition(clusters: typing.Sequence[builtins.int], graph: CsrGraph, test_ratio: builtins.float = 0.20000000298023224, seed: typing.Optional[builtins.int] = None, post_filtering: builtins.bool = False) -> tuple[builtins.list[builtins.int], builtins.list[builtins.int]]:
-    r"""
-    Split a clustered dataset into train and test index sets.
+    Split a clustered dataset into train and test index sets along clusters
     
     Clusters are kept intact — no cluster is split across train and test.
-    The function greedily assigns whole clusters to the test set until
-    ``test_ratio`` is reached, then assigns the rest to train.
+    The function greedily and randomly assigns whole clusters to the test set until the test size
+    is larger than ``test_ratio``, then assigns the rest to train.
     
     This is the key function for leakage-free dataset splitting: run
-    ``find_communities`` (or your own clustering), then call ``partition`` to
-    obtain indices you can use to slice your data arrays.
+    ``find_communities``, ``connected_components``, or your own clustering, then call ``partition``
+    to obtain indices you can use to slice your data arrays.
     
     Args:
         clusters: A list of cluster IDs, one per data point (as returned by
@@ -595,9 +619,11 @@ def partition(clusters: typing.Sequence[builtins.int], graph: CsrGraph, test_rat
                     are indivisible. Defaults to ``0.2``.
         seed: Optional integer seed for reproducible cluster shuffling.
               Pass ``None`` for a random assignment.
-        post_filtering: If ``True``, remove test nodes that share an edge with
-                        any train node (stricter leakage prevention at the
-                        cost of a smaller test set).
+        post_filtering: If ``True``, remove train nodes that share an edge with
+                        any test node (stricter leakage prevention at the
+                        cost of a smaller train set). Use only when clusters are found from
+                        communities (``find_communities``). It won't have any effect when used with
+                        ``connected_components`` as this prevents inter-cluster connections.
     
     Returns:
         A tuple ``(train_indices, test_indices)`` of zero-based data-point indices.
@@ -614,7 +640,7 @@ def partition(clusters: typing.Sequence[builtins.int], graph: CsrGraph, test_rat
     
         store = EdgeStore(6, [(0,1,0.9),(1,2,0.8),(3,4,0.7),(4,5,0.6)])
         g = CsrGraph(store, use_weight=True, is_weight_distance=False)
-        labels = find_communities(g)
-        train_idx, test_idx = partition(labels, g, test_ratio=0.3, seed=42)
+        clusters = find_communities(g) # or connected_components(g)
+        train_idx, test_idx = partition(clusters, g, test_ratio=0.3, seed=42)
     """
 

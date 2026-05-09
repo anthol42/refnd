@@ -11,13 +11,16 @@ thread_local! {
 
 impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
 
-    pub fn parallel_search(&self, queries: &[T], k: usize, ef: usize, threads: usize, pb: Option<&ProgressBar>) -> Vec<Vec<(usize, f32)>> {
+    pub fn parallel_search(&self, queries: &[T], k: usize, ef: usize, threads: usize, pb: Option<&ProgressBar>) -> Result<Vec<Vec<(usize, f32)>>, &'static str> {
+        if !self.has_been_built {
+            return Err("Index has not been built yet. Call build() before search().");
+        }
         let num_threads = if threads == 0 { rayon::current_num_threads() } else { threads };
         let pool = rayon::ThreadPoolBuilder::new()
             .num_threads(num_threads)
             .build()
             .expect("failed to build rayon thread pool");
-        pool.install(|| {
+        Ok(pool.install(|| {
             queries
                 .par_iter()
                 .map(|seq| {
@@ -34,7 +37,7 @@ impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
                     })
                 })
                 .collect()
-        })
+        }))
     }
 
     /// Algorithm 5: K-NN-SEARCH

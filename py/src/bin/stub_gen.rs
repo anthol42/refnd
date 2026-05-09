@@ -9,7 +9,13 @@ fn main() -> Result<()> {
     stub.generate()
         .map_err(|e| anyhow::anyhow!("stub.generate() failed: {}", e))?;
     let init_py = Path::new(ROOT).join("python/refnd/__init__.py");
-    std::fs::write(&init_py, "from .refnd import *\nfrom .refnd import core\nfrom .refnd import kernels\nfrom .refnd import utils\n")
+    std::fs::write(&init_py, "from .refnd import *\n\
+    from .refnd import core\n\
+    from .refnd import kernels\n\
+    from .refnd import utils\n\
+    from refnd.kernels import KernelVariant\n\
+    from refnd.core import (HNSWState, LeidenObjective, find_communities, connected_components, \n\
+            partition, exact_edges, exact_nearest_neighbors)\n")
         .map_err(|e| anyhow::anyhow!("failed to write {}: {}", init_py.display(), e))?;
     patch_utils_stubs();
     Ok(())

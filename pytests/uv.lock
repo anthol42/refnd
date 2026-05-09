@@ -165,8 +165,8 @@ source = { editable = "../py" }
 
 [package.metadata.requires-dev]
 docs = [
-    { name = "furo", specifier = ">=2025.12.19" },
-    { name = "myst-parser", specifier = ">=5.0.0" },
-    { name = "sphinx", specifier = ">=9.1.0" },
-    { name = "sphinx-autodoc-typehints", specifier = ">=3.10.2" },
+    { name = "furo", specifier = ">=2024.8.6" },
+    { name = "myst-parser", specifier = ">=3.0.1" },
+    { name = "sphinx", specifier = ">=7.4.7" },
+    { name = "sphinx-autodoc-typehints", specifier = ">=2.5.0" },
 ]

@@ -1,4 +1,4 @@
-# py-proto
+# Refnd Python
 
 ## Build Package
 1. Generate stubs
@@ -10,8 +10,9 @@ cargo run --bin stub_gen
 uv build
 ```
 ## Build Docs
+After generating stubs, run this command:
 ```bash
-cd proto/py-proto
-uv run sphinx-build docs/source docs/build/html
+cd py
+uv run --group docs maturin develop && rm -rf docs/build && uv run --group docs sphinx-build docs/source docs/build/html
 open docs/build/html/index.html
 ```

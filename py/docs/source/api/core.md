@@ -23,21 +23,15 @@
    :members:
 ```
 
-## Community detection
+## Graph algorithms
 
 ```{eval-rst}
 .. autoclass:: refnd.core.LeidenObjective
    :members:
 
 .. autofunction:: refnd.core.find_communities
-```
 
-## Graph algorithms
-
-```{eval-rst}
 .. autofunction:: refnd.core.connected_components
-
-.. autofunction:: refnd.core.largest_component
 
 .. autofunction:: refnd.core.partition
 ```

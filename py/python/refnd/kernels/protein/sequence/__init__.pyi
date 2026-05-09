@@ -41,6 +41,7 @@ class GlobalAligner:
     
         aligner = GlobalAligner(gap_open=11, gap_extend=1)
         score = aligner.call("MKTAYIAK", "MKTAYIAKQR")
+        score = aligner("MKTAYIAK", "MKTAYIAKQR") # Alternative
         # score in [0.0, 1.0]
     """
     def __new__(cls, gap_open: builtins.int = 11, gap_extend: builtins.int = 1, matrix: ScoringMatrix = ScoringMatrix.Blosum62, identity_mode: GlobalIdentityMode = GlobalIdentityMode.MaxLength, vectorization: VectorizationStrategy = VectorizationStrategy.Scan, width: DatatypeWidth = DatatypeWidth.Sat) -> GlobalAligner: ...
@@ -86,6 +87,7 @@ class LocalAligner:
     
         aligner = LocalAligner(min_coverage=0.5, cov_mode=CoverageMode.Query)
         score = aligner.call("ACDEFGHIKLM", "CDEFGHI")
+        score = aligner("ACDEFGHIKLM", "CDEFGHI") # Alternative
     """
     def __new__(cls, gap_open: builtins.int = 11, gap_extend: builtins.int = 1, min_coverage: builtins.float = 0.800000011920929, cov_mode: CoverageMode = CoverageMode.BothQueryTarget, matrix: ScoringMatrix = ScoringMatrix.Blosum62, identity_mode: LocalIdentityMode = LocalIdentityMode.AlignmentLength, vectorization: VectorizationStrategy = VectorizationStrategy.Striped, width: DatatypeWidth = DatatypeWidth.Sat) -> LocalAligner: ...
     def call(self, ref_sample: builtins.str, query: builtins.str) -> builtins.float:
@@ -128,8 +130,7 @@ class DatatypeWidth(enum.Enum):
     
     - ``Short`` (8-bit), ``Half`` (16-bit), ``Full`` (32-bit), ``Long`` (64-bit):
       fixed-width integers — lower width is faster but can overflow on long sequences.
-    - ``Sat`` (default): 8-bit saturating arithmetic; silently clamps on overflow
-      instead of wrapping. Safe for typical protein lengths and the recommended default.
+    - ``Sat`` (default): 8-bit saturating arithmetic; If it saturates, silently restart with 16-bit.
     """
     Short = ...
     Half = ...

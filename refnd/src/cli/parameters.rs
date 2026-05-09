@@ -28,7 +28,7 @@ pub struct HnswArgs{
     pub ef_init: usize,
 
     /// Dynamic candidate list size during index construction
-    #[arg(long, default_value_t = 128, value_name = "INT")]
+    #[arg(long, default_value_t = 64, value_name = "INT")]
     pub ef_construction: usize,
 
     /// Extend neighbour candidates with their neighbours during selection

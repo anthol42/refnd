@@ -114,8 +114,11 @@ where
     K: refnd::core::Distance<D> + Clone + Send + Sync + 'static,
 {
     let pb = display::logfacto_progress_bar(data.len(), "Building HNSW");
-    let hnsw = HNSWState::new(data, kernel, config);
-    hnsw.build(Some(&pb));
+    let mut hnsw = HNSWState::new(data, kernel, config);
+    hnsw.build(Some(&pb)).unwrap_or_else(|e| {
+        display::error(&format!("Index is not built: {e}"));
+        std::process::exit(1);
+    });
     pb.finish();
     hnsw.save(out)
 }

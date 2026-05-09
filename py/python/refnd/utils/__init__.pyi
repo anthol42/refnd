@@ -9,6 +9,7 @@ from rdkit.DataStructs.cDataStructs import ExplicitBitVect, UIntSparseIntVect
 __all__ = [
     "BitFingerprint",
     "RealFingerprint",
+    "largest_cluster",
     "read_fasta",
 ]
 
@@ -128,6 +129,21 @@ class RealFingerprint:
         r"""
         Squared Euclidean norm of the feature vector (``||x||²``).
         """
+
+def largest_cluster(clusters: typing.Sequence[builtins.int]) -> tuple[builtins.int, builtins.int]:
+    r"""
+    Return the ID and size of the largest cluster.
+    
+    Convenience helper — iterates over a cluster-label vector and finds the
+    most populous label.
+    
+    Args:
+        clusters: A list of cluster IDs (e.g. from ``connected_components`` or
+                  ``find_communities``).
+    
+    Returns:
+        A tuple ``(cluster_id, size)`` for the largest cluster.
+    """
 
 def read_fasta(path: builtins.str) -> builtins.list[tuple[builtins.str, builtins.str]]:
     r"""

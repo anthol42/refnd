@@ -1,17 +1,9 @@
+from refnd import KernelVariant, exact_nearest_neighbors
 
-
-def main():
-    import refnd
-    print(dir(py_proto))
-    from py_proto import kernels
-    print(dir(kernels))
-    from refnd.kernels import protein
-    print(dir(protein))
-    from refnd.kernels.protein import sequence
-    print(dir(sequence))
-    from refnd.kernels.protein.sequence import LocalAligner, GlobalAligner
-    print(LocalAligner(), GlobalAligner())
-
-
-if __name__ == "__main__":
-    main()
+queries = ["MKTAYIAK"]
+refs    = ["MKTAYIAKQR", "ACDEFGHIKLM", "MKTAYIAKQRQ"]
+results = exact_nearest_neighbors(
+    KernelVariant.ProteinGlobal, queries, refs, k=2
+)
+print(results[0]) # [(0, 0.20), (2, 0.27)]
+# results[0] -> [(2, 0.93), (0, 0.85)]

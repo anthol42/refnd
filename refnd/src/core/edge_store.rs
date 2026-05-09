@@ -47,8 +47,8 @@ impl EdgeStore {
 
     /// Build a [`CsrGraph`] from the stored edges. Edges are assumed distances and converted to 
     /// similarities using the 1 / (1+w) formula
-    pub fn graph(&self, use_weight: bool) -> CsrGraph {
-        CsrGraph::new(self.node_count, &self.edges(), use_weight, true)
+    pub fn graph(&self, use_weight: bool, is_weight_distance: bool) -> CsrGraph {
+        CsrGraph::new(self.node_count, &self.edges(), use_weight, is_weight_distance)
     }
 
     /// Persist to `path`.

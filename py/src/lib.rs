@@ -55,14 +55,12 @@ mod refnd {
         use crate::core::functional::partition;
         #[pymodule_export]
         use crate::core::functional::connected_components;
-        #[pymodule_export]
-        use crate::core::functional::largest_component;
     }
 
     #[pymodule]
     mod utils {
         #[pymodule_export]
-        use crate::utils::{BitFingerprint, RealFingerprint, read_fasta};
+        use crate::utils::{BitFingerprint, RealFingerprint, read_fasta, largest_cluster};
     }
 
     #[pymodule]
