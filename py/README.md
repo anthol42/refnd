@@ -12,7 +12,6 @@ uv build
 ## Build Docs
 After generating stubs, run this command:
 ```bash
-cd py
 uv run --group docs maturin develop && rm -rf docs/build && uv run --group docs sphinx-build docs/source docs/build/html
 open docs/build/html/index.html
 ```
