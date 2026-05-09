@@ -14,7 +14,7 @@ use super::leiden::CsrGraph;
 /// is larger than ``test_ratio``, then assigns the rest to train.
 ///
 /// This is the key function for leakage-free dataset splitting: run
-/// ``find_communities``, ``connected_components``, or your own clustering, then call ``partition``
+/// ``find_communities``, ``find_components``, or your own clustering, then call ``partition``
 /// to obtain indices you can use to slice your data arrays.
 ///
 /// Args:
@@ -79,13 +79,13 @@ pub fn partition(
 ///
 /// Example::
 ///
-///     from refnd.core import EdgeStore, connected_components
+///     from refnd.core import EdgeStore, find_components
 ///
 ///     store = EdgeStore(6, [(0,1,0.9),(1,2,0.8),(3,4,0.7),(4,5,0.6)])
 ///     g = store.graph()
-///     clusters = connected_components(g) # [0, 0, 0, 1, 1, 1]
+///     clusters = find_components(g) # [0, 0, 0, 1, 1, 1]
 #[gen_stub_pyfunction(module = "refnd.core")]
 #[pyfunction]
-pub fn connected_components(graph: &CsrGraph) -> Vec<usize> {
+pub fn find_components(graph: &CsrGraph) -> Vec<usize> {
     find_connected_components(&graph.inner)
 }

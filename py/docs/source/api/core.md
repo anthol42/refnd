@@ -31,7 +31,7 @@
 
 .. autofunction:: refnd.core.find_communities
 
-.. autofunction:: refnd.core.connected_components
+.. autofunction:: refnd.core.find_components
 
 .. autofunction:: refnd.core.partition
 ```

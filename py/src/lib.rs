@@ -54,7 +54,7 @@ mod refnd {
         #[pymodule_export]
         use crate::core::functional::partition;
         #[pymodule_export]
-        use crate::core::functional::connected_components;
+        use crate::core::functional::find_components;
     }
 
     #[pymodule]

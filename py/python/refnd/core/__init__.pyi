@@ -13,10 +13,10 @@ __all__ = [
     "HNSWIndex",
     "HNSWState",
     "LeidenObjective",
-    "connected_components",
     "exact_edges",
     "exact_nearest_neighbors",
     "find_communities",
+    "find_components",
     "partition",
 ]
 
@@ -475,29 +475,6 @@ class LeidenObjective(enum.Enum):
     Modularity = ...
     CPM = ...
 
-def connected_components(graph: CsrGraph) -> builtins.list[builtins.int]:
-    r"""
-    Finds the connected components of a graph.
-    
-    Runs a standard BFS/union-find over the graph and assigns each node to
-    its component.
-    
-    Args:
-        graph: The graph to find components.
-    
-    Returns:
-        A list of length ``graph.n`` where element ``i`` is the component ID of
-        node ``i``. IDs are arbitrary non-negative integers.
-    
-    Example::
-    
-        from refnd.core import EdgeStore, connected_components
-    
-        store = EdgeStore(6, [(0,1,0.9),(1,2,0.8),(3,4,0.7),(4,5,0.6)])
-        g = store.graph()
-        clusters = connected_components(g) # [0, 0, 0, 1, 1, 1]
-    """
-
 def exact_edges(variant: kernels.KernelVariant, data: typing.Any, proximity_threshold: builtins.float = 0.5, threads: builtins.int = 0, progress: builtins.bool = True, *args: typing.Any, **kwargs: typing.Any) -> EdgeStore:
     r"""
     Compute all pairs of data points whose similarity exceeds a threshold (exact, brute-force).
@@ -596,6 +573,29 @@ def find_communities(graph: CsrGraph, gamma: builtins.float = 1.0, beta: builtin
         clusters = find_communities(g, gamma=1.0, n_iterations=20) # e.g. [0, 1, 2, 3]
     """
 
+def find_components(graph: CsrGraph) -> builtins.list[builtins.int]:
+    r"""
+    Finds the connected components of a graph.
+    
+    Runs a standard BFS/union-find over the graph and assigns each node to
+    its component.
+    
+    Args:
+        graph: The graph to find components.
+    
+    Returns:
+        A list of length ``graph.n`` where element ``i`` is the component ID of
+        node ``i``. IDs are arbitrary non-negative integers.
+    
+    Example::
+    
+        from refnd.core import EdgeStore, find_components
+    
+        store = EdgeStore(6, [(0,1,0.9),(1,2,0.8),(3,4,0.7),(4,5,0.6)])
+        g = store.graph()
+        clusters = find_components(g) # [0, 0, 0, 1, 1, 1]
+    """
+
 def partition(clusters: typing.Sequence[builtins.int], graph: CsrGraph, test_ratio: builtins.float = 0.2, seed: typing.Optional[builtins.int] = None, post_filtering: builtins.bool = False) -> tuple[builtins.list[builtins.int], builtins.list[builtins.int]]:
     r"""
     Split a clustered dataset into train and test index sets along clusters
@@ -605,7 +605,7 @@ def partition(clusters: typing.Sequence[builtins.int], graph: CsrGraph, test_rat
     is larger than ``test_ratio``, then assigns the rest to train.
     
     This is the key function for leakage-free dataset splitting: run
-    ``find_communities``, ``connected_components``, or your own clustering, then call ``partition``
+    ``find_communities``, ``find_components``, or your own clustering, then call ``partition``
     to obtain indices you can use to slice your data arrays.
     
     Args:

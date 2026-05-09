@@ -14,9 +14,24 @@ fn main() -> Result<()> {
     from .refnd import kernels\n\
     from .refnd import utils\n\
     from refnd.kernels import KernelVariant\n\
-    from refnd.core import (HNSWState, LeidenObjective, find_communities, connected_components, \n\
+    from refnd.core import (HNSWState, LeidenObjective, find_communities, find_components, \n\
             partition, exact_edges, exact_nearest_neighbors)\n")
         .map_err(|e| anyhow::anyhow!("failed to write {}: {}", init_py.display(), e))?;
+
+    let init_pyi = Path::new(ROOT).join("python/refnd/__init__.pyi");
+    let existing = std::fs::read_to_string(&init_pyi)
+        .map_err(|e| anyhow::anyhow!("failed to read {}: {}", init_pyi.display(), e))?;
+    let reexports = "\
+from .kernels import KernelVariant as KernelVariant\n\
+from .core import HNSWState as HNSWState\n\
+from .core import LeidenObjective as LeidenObjective\n\
+from .core import find_communities as find_communities\n\
+from .core import find_components as find_components\n\
+from .core import partition as partition\n\
+from .core import exact_edges as exact_edges\n\
+from .core import exact_nearest_neighbors as exact_nearest_neighbors\n";
+    std::fs::write(&init_pyi, format!("{existing}{reexports}"))
+        .map_err(|e| anyhow::anyhow!("failed to write {}: {}", init_pyi.display(), e))?;
     patch_utils_stubs();
     Ok(())
 }
