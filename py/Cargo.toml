@@ -12,6 +12,7 @@ crate-type = ["cdylib", "rlib"]
 pyo3 = { version = "0.28.3"}
 pyo3-stub-gen = "0.22.1"
 refnd-core = { package = "refnd", path = "../refnd" }
+libfoldseek-sys = { path = "../libfoldseek-sys" }
 indicatif = "0.17"
 fixedbitset = "0.5"
 numpy = "0.28"

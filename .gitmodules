@@ -1,0 +1,3 @@
+[submodule "libfoldseek-sys/foldseek"]
+	path = libfoldseek-sys/foldseek
+	url = https://github.com/steineggerlab/foldseek.git

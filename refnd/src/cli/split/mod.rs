@@ -3,7 +3,7 @@ use clap::{Args, Subcommand, ValueHint};
 use refnd::core::{leiden::CsrGraph, partition_dataset};
 use super::{
     display,
-    kernel_parameters::{KernelDispatch, ProteinKernelArgs, MoleculeKernelArgs},
+    kernel_parameters::{KernelDispatch, ProteinKernelArgs, MoleculeKernelArgs, StructureKernelArgs},
     parameters::{build_hnsw_config, hnsw_params, leiden_params, HnswArgs, LeidenArgs},
     utils::{check_dir_exists, check_file_exists, get_edges, protein_get_edges, detect_clusters},
 };
@@ -65,6 +65,8 @@ pub enum SplitKernel {
     Protein(SplitProteinArgs),
     /// Small molecules from a SDF file or directory
     Molecule(SplitMoleculeArgs),
+    /// Protein 3D structures from a directory of PDB/mmCIF files (via FoldSeek)
+    Structure(SplitStructureArgs),
 }
 
 #[derive(Args)]
@@ -77,6 +79,12 @@ pub struct SplitProteinArgs {
 pub struct SplitMoleculeArgs {
     #[command(flatten)]
     pub kernel: MoleculeKernelArgs,
+}
+
+#[derive(Args)]
+pub struct SplitStructureArgs {
+    #[command(flatten)]
+    pub kernel: StructureKernelArgs,
 }
 
 // ── Run ───────────────────────────────────────────────────────────────────────
@@ -97,6 +105,18 @@ impl SplitArgs {
 
         display::section("Loading data");
         let (labels, train_ids, test_ids) = match self.kernel {
+            SplitKernel::Structure(a) => {
+                display::parameter_panel("Kernel Configuration", &a.kernel.kernel_params().to_map());
+                let sp = display::spinner("Reading structures…");
+                let (labels, data) = a.kernel.load(&self.input);
+                display::finish_success(&sp, format!("Loaded {} structures", display::fmt_num(data.len())));
+                let edges = get_edges(data, a.kernel.build_kernel(), config, self.exact,
+                    self.threads, self.edgestore.as_deref());
+                let (train_ids, test_ids) = run_partition(
+                    labels.len(), edges, &self.leiden, self.test_ratio, self.post_filtering,
+                );
+                (labels, train_ids, test_ids)
+            }
             SplitKernel::Protein(a) => {
                 display::parameter_panel("Kernel Configuration", &a.kernel.kernel_params().to_map());
                 let sp = display::spinner("Reading FASTA…");

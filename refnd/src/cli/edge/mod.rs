@@ -3,7 +3,7 @@ use clap::{Args, Subcommand, ValueHint};
 use refnd::core::{hnsw::HNSWIndex, EdgeStore};
 use super::{
     display,
-    kernel_parameters::{KernelDispatch, ProteinKernelArgs, MoleculeKernelArgs},
+    kernel_parameters::{KernelDispatch, ProteinKernelArgs, MoleculeKernelArgs, StructureKernelArgs},
     parameters::{build_hnsw_config, hnsw_params, HnswArgs},
     utils::{check_file_exists, build_edges, get_edges},
 };
@@ -46,6 +46,8 @@ pub enum EdgeKernel {
     Protein(EdgeProteinArgs),
     /// Small molecules from a SDF file or directory, or an HNSW index file
     Molecule(EdgeMoleculeArgs),
+    /// Protein 3D structures from a directory of PDB/mmCIF files (via FoldSeek)
+    Structure(EdgeStructureArgs),
 }
 
 #[derive(Args)]
@@ -58,6 +60,12 @@ pub struct EdgeProteinArgs {
 pub struct EdgeMoleculeArgs {
     #[command(flatten)]
     pub kernel: MoleculeKernelArgs,
+}
+
+#[derive(Args)]
+pub struct EdgeStructureArgs {
+    #[command(flatten)]
+    pub kernel: StructureKernelArgs,
 }
 
 // ── Run ───────────────────────────────────────────────────────────────────────
@@ -99,6 +107,15 @@ impl EdgeArgs {
         if !self.exact { display::parameter_panel("HNSW Configuration", &hnsw_params(&self.hnsw)); }
 
         let (n, edges) = match self.kernel {
+            EdgeKernel::Structure(a) => {
+                display::parameter_panel("Kernel Configuration", &a.kernel.kernel_params().to_map());
+                let sp = display::spinner("Reading structures…");
+                let (_, data) = a.kernel.load(&self.input);
+                let n = data.len();
+                display::finish_success(&sp, format!("Loaded {} structures", display::fmt_num(n)));
+                let edges = get_edges(data, a.kernel.build_kernel(), config, self.exact, self.threads, None);
+                (n, edges)
+            }
             EdgeKernel::Protein(a) => {
                 display::parameter_panel("Kernel Configuration", &a.kernel.kernel_params().to_map());
                 display::section("Loading FASTA");

@@ -8,9 +8,10 @@ use refnd::kernels::proteins::parasail::{
     GlobalIdentityMode, LocalAlignerBuilder, LocalIdentityMode, ProteinKernel,
     VectorizationStrategy,
 };
-use refnd::utils::{BitFingerprint, FingerprintType, read_fasta, read_molecule_file};
+use refnd::kernels::proteins::foldseek::{FoldseekKernel, StructureData};
+use refnd::utils::{BitFingerprint, FingerprintType, read_fasta, read_molecule_file, read_structure_dir};
 use std::collections::BTreeMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 #[derive(Args)]
 #[command(next_help_heading = "Kernel Options")]
@@ -75,6 +76,11 @@ pub enum KernelParams {
     Molecule {
         fingerprint: String,
     },
+    Structure {
+        min_coverage: f32,
+        cov_mode: String,
+        identity_mode: String,
+    },
 }
 
 impl KernelParams {
@@ -112,6 +118,13 @@ impl KernelParams {
             KernelParams::Molecule { fingerprint } => {
                 let mut map = BTreeMap::new();
                 map.insert("fingerprint".to_string(), fingerprint.clone());
+                map
+            }
+            KernelParams::Structure { min_coverage, cov_mode, identity_mode } => {
+                let mut map = BTreeMap::new();
+                map.insert("min_coverage".to_string(), min_coverage.to_string());
+                map.insert("cov_mode".to_string(), cov_mode.clone());
+                map.insert("identity_mode".to_string(), identity_mode.clone());
                 map
             }
         }
@@ -217,6 +230,55 @@ impl KernelDispatch for MoleculeKernelArgs {
         };
         if entries.is_empty() {
             display::error("No molecules loaded");
+            std::process::exit(1);
+        }
+        entries.into_iter().unzip()
+    }
+}
+
+#[derive(Args)]
+#[command(next_help_heading = "Kernel Options")]
+pub struct StructureKernelArgs {
+    /// Minimum fraction of the shorter sequence covered by the alignment
+    #[arg(long, default_value_t = 0.3, value_name = "FLOAT")]
+    pub min_coverage: f32,
+
+    /// Coverage mode (mirrors mmseqs2 --cov-mode)
+    #[arg(long, default_value = "shorter-seq", value_name = "MODE")]
+    pub cov_mode: CoverageMode,
+
+    /// Identity normalisation: how the match count is divided to produce identity
+    #[arg(long, default_value = "alignment-length", value_name = "MODE")]
+    pub identity_mode: LocalIdentityMode,
+}
+
+impl KernelDispatch for StructureKernelArgs {
+    type Data = StructureData;
+    type Kernel = FoldseekKernel;
+
+    fn kernel_params(&self) -> KernelParams {
+        KernelParams::Structure {
+            min_coverage: self.min_coverage,
+            cov_mode: format!("{:?}", self.cov_mode),
+            identity_mode: format!("{:?}", self.identity_mode),
+        }
+    }
+
+    fn build_kernel(&self) -> FoldseekKernel {
+        FoldseekKernel::new(self.min_coverage, self.cov_mode, self.identity_mode)
+    }
+
+    fn load(&self, input: &Path) -> (Vec<String>, Vec<StructureData>) {
+        if !input.is_dir() {
+            display::error(&format!(
+                "'{}' is not a directory — structure kernel expects a directory of PDB/mmCIF files",
+                input.display()
+            ));
+            std::process::exit(1);
+        }
+        let entries = read_structure_dir(input);
+        if entries.is_empty() {
+            display::error(&format!("No PDB/mmCIF files found in '{}'", input.display()));
             std::process::exit(1);
         }
         entries.into_iter().unzip()

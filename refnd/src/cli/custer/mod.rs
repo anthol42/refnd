@@ -3,7 +3,7 @@ use clap::{Args, Subcommand, ValueHint};
 use refnd::core::leiden::CsrGraph;
 use super::{
     display,
-    kernel_parameters::{KernelDispatch, ProteinKernelArgs, MoleculeKernelArgs},
+    kernel_parameters::{KernelDispatch, ProteinKernelArgs, MoleculeKernelArgs, StructureKernelArgs},
     parameters::{build_hnsw_config, hnsw_params, leiden_params, HnswArgs, LeidenArgs},
     utils::{check_file_exists, get_edges, protein_get_edges, detect_clusters},
 };
@@ -57,6 +57,8 @@ pub enum ClusterKernel {
     Protein(ClusterProteinArgs),
     /// Small molecules from a SDF file or directory
     Molecule(ClusterMoleculeArgs),
+    /// Protein 3D structures from a directory of PDB/mmCIF files (via FoldSeek)
+    Structure(ClusterStructureArgs),
 }
 
 #[derive(Args)]
@@ -69,6 +71,12 @@ pub struct ClusterProteinArgs {
 pub struct ClusterMoleculeArgs {
     #[command(flatten)]
     pub kernel: MoleculeKernelArgs,
+}
+
+#[derive(Args)]
+pub struct ClusterStructureArgs {
+    #[command(flatten)]
+    pub kernel: StructureKernelArgs,
 }
 
 // ── Run ───────────────────────────────────────────────────────────────────────
@@ -88,6 +96,15 @@ impl ClusterArgs {
 
         display::section("Loading data");
         let (n, edges) = match self.kernel {
+            ClusterKernel::Structure(a) => {
+                display::parameter_panel("Kernel Configuration", &a.kernel.kernel_params().to_map());
+                let sp = display::spinner("Reading structures…");
+                let (labels, data) = a.kernel.load(&self.input);
+                display::finish_success(&sp, format!("Loaded {} structures", display::fmt_num(data.len())));
+                let edges = get_edges(data, a.kernel.build_kernel(), config, self.exact,
+                    self.threads, self.edgestore.as_deref());
+                (labels.len(), edges)
+            }
             ClusterKernel::Protein(a) => {
                 display::parameter_panel("Kernel Configuration", &a.kernel.kernel_params().to_map());
                 let sp = display::spinner("Reading FASTA…");

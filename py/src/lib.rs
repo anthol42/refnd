@@ -21,9 +21,11 @@ mod refnd {
         let kernels = m.getattr("kernels")?;
         let protein = kernels.getattr("protein")?;
         let sequence = protein.getattr("sequence")?;
+        let foldseek = protein.getattr("foldseek")?;
         modules.set_item("refnd.kernels", &kernels)?;
         modules.set_item("refnd.kernels.protein", &protein)?;
         modules.set_item("refnd.kernels.protein.sequence", &sequence)?;
+        modules.set_item("refnd.kernels.protein.foldseek", &foldseek)?;
         let molecules = kernels.getattr("molecules")?;
         modules.set_item("refnd.kernels.molecules", &molecules)?;
         Ok(())
@@ -83,12 +85,17 @@ mod refnd {
 
             #[pymodule]
             mod sequence {
-
                 #[pymodule_export]
                 use crate::kernels::protein::sequence::{
                     GlobalAligner, LocalAligner, ScoringMatrix, GlobalIdentityMode,
-                    VectorizationStrategy, DatatypeWidth, CoverageMode, LocalIdentityMode
+                    VectorizationStrategy, DatatypeWidth, CoverageMode, LocalIdentityMode,
                 };
+            }
+
+            #[pymodule]
+            mod foldseek {
+                #[pymodule_export]
+                use crate::kernels::protein::foldseek::{FoldseekKernel, StructureData, load_structures};
             }
         }
     }

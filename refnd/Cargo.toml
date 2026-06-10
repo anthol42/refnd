@@ -27,3 +27,5 @@ ndarray = "0.17.2"
 molprint-core = "0.1.0"
 molprint-fp = "0.1.0"
 molprint-io = "0.1.0"
+pdbtbx = "0.12"
+libfoldseek-sys = { path = "../libfoldseek-sys" }
