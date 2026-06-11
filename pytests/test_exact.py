@@ -11,7 +11,7 @@ DATA = [
 
 
 def test_exact_edges():
-    edges = exact_edges(KernelVariant.ProteinGlobal, DATA, 0.5)
+    edges = exact_edges(KernelVariant.AlignmentGlobal, DATA, 0.5)
     edges_no_w = [(i, j) for i, j, w in edges]
     assert edges_no_w == [
         (0, 1),
@@ -23,7 +23,7 @@ def test_exact_edges():
 
 
 def test_exact_nearest_neighbors():
-    knn = exact_nearest_neighbors(KernelVariant.ProteinGlobal, DATA[-2:], DATA[:-2], 2)
+    knn = exact_nearest_neighbors(KernelVariant.AlignmentGlobal, DATA[-2:], DATA[:-2], 2)
     knn = [[i for i, d in neighbors] for neighbors in knn]
     assert knn == [[0, 2], [0, 2]]
 

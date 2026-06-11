@@ -12,7 +12,7 @@ use refnd::core::{
     leiden::{CsrGraph, find_communities},
     connected_components::{find_connected_components, largest_cluster},
 };
-use refnd::kernels::proteins::parasail::ProteinKernel;
+use refnd::kernels::alignments::parasail::ProteinKernel;
 use super::parameters::LeidenArgs;
 
 /// Check if the path exists, check if it's a file. If not, prints an error using display and
@@ -292,7 +292,7 @@ pub fn write_knn_results(writer: &mut impl Write, results: &[Vec<(usize, f32)>])
 
 // ── Build HNSW for KNN search (no edge extraction, returns the state) ─────────
 
-/// Build HNSW from `ref_data` for knn search. Handles index save/load for proteins.
+/// Build HNSW from `ref_data` for knn search. Handles index save/load.
 pub fn build_hnsw<T: Sync, D: Distance<T>>(
     data: Vec<T>,
     kernel: D,

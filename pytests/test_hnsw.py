@@ -16,7 +16,7 @@ QUERIES = [
 
 
 def test_global():
-    index = HNSWState(KernelVariant.ProteinGlobal, DATA)
+    index = HNSWState(KernelVariant.AlignmentGlobal, DATA)
     index.build(progress=True)
     results = index.search(QUERIES, k=3, ef=10, progress=True)
     assert len(results) == 2
@@ -28,7 +28,7 @@ def test_global():
 
 
 def test_local():
-    index = HNSWState(KernelVariant.ProteinLocal, DATA)
+    index = HNSWState(KernelVariant.AlignmentLocal, DATA)
     index.build(progress=False)
     results = index.search(QUERIES, k=2, ef=10)
     assert len(results) == 2

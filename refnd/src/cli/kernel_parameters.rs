@@ -3,7 +3,7 @@ use crate::cli::display;
 use clap::Args;
 use refnd::core::Distance;
 use refnd::kernels::molecules::tanimoto::Tanimoto;
-use refnd::kernels::proteins::parasail::{
+use refnd::kernels::alignments::parasail::{
     AlignerConfigTrait, AlignerMatrix, BundledMatrix, CoverageMode, GlobalAlignerBuilder,
     GlobalIdentityMode, LocalAlignerBuilder, LocalIdentityMode, ProteinKernel,
     VectorizationStrategy,

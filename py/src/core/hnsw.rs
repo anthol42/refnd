@@ -2,14 +2,14 @@ use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyTuple};
 use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pymethods};
 use refnd_core::core::hnsw::{HNSWState as HNSWStateCore, HNSWIndex as HNSWIndexCore, HNSWConfig as HNSWConfigCore};
-use refnd_core::kernels::proteins::parasail::{GlobalAligner, LocalAligner};
+use refnd_core::kernels::alignments::parasail::{GlobalAligner, LocalAligner};
 use refnd_core::kernels::molecules::tanimoto::Tanimoto;
 use super::edge_store::EdgeStore;
 use super::_utils::{logfacto_progress_bar, linear_progress_bar};
 use super::super::utils::{BitFingerprint, RealFingerprint};
 use super::super::kernels::{
     KernelVariant,
-    protein::sequence::{
+    alignments::{
         GlobalAligner as _GlobalAligner,
         LocalAligner as _LocalAligner,
     },
@@ -199,8 +199,8 @@ impl HNSWIndex {
 }
 
 enum HNSWType {
-    ProteinGlobal(HNSWStateCore<String, GlobalAligner>),
-    ProteinLocal(HNSWStateCore<String, LocalAligner>),
+    AlignmentGlobal(HNSWStateCore<String, GlobalAligner>),
+    AlignmentLocal(HNSWStateCore<String, LocalAligner>),
     TanimotoBit(HNSWStateCore<BitFingerprint, Tanimoto>),
     TanimotoReal(HNSWStateCore<RealFingerprint, Tanimoto>),
 }
@@ -277,14 +277,14 @@ macro_rules! hnsw_dispatch {
 ///     from refnd.kernels import KernelVariant
 ///
 ///     seqs = ["MKTAYIAK", "MKTAYIAKQR", "ACDEFGHIKLM", "MKTAYIAKQRQIS"]
-///     state = HNSWState(KernelVariant.ProteinGlobal, seqs, m=8, ef_construction=64)
+///     state = HNSWState(KernelVariant.AlignmentGlobal, seqs, m=8, ef_construction=64)
 ///     state.build()
 ///     results = state.search(["MKTAYIAK"], k=2)
 ///     # results[0] -> [(0, 1.0), (1, 0.88)]
 ///
 ///     store = state.edges()        # EdgeStore for graph-based splitting
 ///     state.save("index.bin")
-///     state2 = HNSWState.load(KernelVariant.ProteinGlobal, "index.bin", seqs)
+///     state2 = HNSWState.load(KernelVariant.AlignmentGlobal, "index.bin", seqs)
 #[gen_stub_pyclass]
 #[pyclass(module = "refnd.core")]
 pub struct HNSWState {
@@ -299,7 +299,7 @@ impl HNSWState {
     /// Construct an HNSWState.
     ///
     /// Args:
-    ///     variant: Kernel to use (``KernelVariant.ProteinGlobal`` or ``KernelVariant.ProteinLocal``).
+    ///     variant: Kernel to use (ex: ``KernelVariant.AlignmentGlobal`` or ``KernelVariant.AlignmentLocal``).
     ///     data: The dataset — a list of items matching the kernel type (e.g. ``list[str]``).
     ///     m, m_max, m_max0, m_l, ef_init, ef_construction, extend_candidates,
     ///         keep_pruned_connections, cache_capacity, cache_shards,
@@ -362,8 +362,8 @@ impl HNSWState {
         let config_py = HNSWConfig { inner: config.clone() };
         let inner = hnsw_new!(
             HNSWStateCore::new; py, variant, data, config, args, kwargs;
-            ProteinGlobal:_GlobalAligner,
-            ProteinLocal:_LocalAligner,
+            AlignmentGlobal:_GlobalAligner,
+            AlignmentLocal:_LocalAligner,
             TanimotoBit:_TanimotoBit,
             TanimotoReal:_TanimotoReal
         );
@@ -382,8 +382,8 @@ impl HNSWState {
         let pb = if progress { Some(logfacto_progress_bar(self.n, "Building index")) } else { None };
         hnsw_dispatch!(
             self.inner, build(pb.as_ref());
-            ProteinGlobal:_GlobalAligner,
-            ProteinLocal:_LocalAligner,
+            AlignmentGlobal:_GlobalAligner,
+            AlignmentLocal:_LocalAligner,
             TanimotoBit:_TanimotoBit,
             TanimotoReal:_TanimotoReal
         );
@@ -426,8 +426,8 @@ impl HNSWState {
         // to rustc's type inference when `extract`'s output type must flow from
         // the arm's `inner: &HNSWState<T, _>`.
         let res = match &self.inner {
-            HNSWType::ProteinGlobal(inner) => inner.parallel_search(queries.extract::<Vec<_>>(py)?.as_slice(), k, ef, threads, pb.as_ref()),
-            HNSWType::ProteinLocal(inner)  => inner.parallel_search(queries.extract::<Vec<_>>(py)?.as_slice(), k, ef, threads, pb.as_ref()),
+            HNSWType::AlignmentGlobal(inner) => inner.parallel_search(queries.extract::<Vec<_>>(py)?.as_slice(), k, ef, threads, pb.as_ref()),
+            HNSWType::AlignmentLocal(inner)  => inner.parallel_search(queries.extract::<Vec<_>>(py)?.as_slice(), k, ef, threads, pb.as_ref()),
             HNSWType::TanimotoBit(inner)  => inner.parallel_search(queries.extract::<Vec<_>>(py)?.as_slice(), k, ef, threads, pb.as_ref()),
             HNSWType::TanimotoReal(inner)  => inner.parallel_search(queries.extract::<Vec<_>>(py)?.as_slice(), k, ef, threads, pb.as_ref()),
 
@@ -448,8 +448,8 @@ impl HNSWState {
     pub fn edges(&self) -> EdgeStore {
         let edges = hnsw_dispatch!(
             self.inner, edges();
-            ProteinGlobal:_GlobalAligner,
-            ProteinLocal:_LocalAligner,
+            AlignmentGlobal:_GlobalAligner,
+            AlignmentLocal:_LocalAligner,
             TanimotoBit:_TanimotoBit,
             TanimotoReal:_TanimotoReal
         );
@@ -467,8 +467,8 @@ impl HNSWState {
     pub fn get_layer(&self, layer_idx: usize) -> Vec<Vec<usize>> {
         hnsw_dispatch!(
             self.inner, get_layer(layer_idx);
-            ProteinGlobal:_GlobalAligner,
-            ProteinLocal:_LocalAligner,
+            AlignmentGlobal:_GlobalAligner,
+            AlignmentLocal:_LocalAligner,
             TanimotoBit:_TanimotoBit,
             TanimotoReal:_TanimotoReal
         )
@@ -487,8 +487,8 @@ impl HNSWState {
     pub fn save(&self, path: String) -> PyResult<()> {
         hnsw_dispatch!(
             self.inner, save(&path);
-            ProteinGlobal:_GlobalAligner,
-            ProteinLocal:_LocalAligner,
+            AlignmentGlobal:_GlobalAligner,
+            AlignmentLocal:_LocalAligner,
             TanimotoBit:_TanimotoBit,
             TanimotoReal:_TanimotoReal
         )
@@ -520,16 +520,16 @@ impl HNSWState {
         let n = data.bind(py).len()?;
         let inner = hnsw_load!(
             py, variant, path, data, None::<HNSWConfigCore>, args, kwargs;
-            ProteinGlobal:_GlobalAligner,
-            ProteinLocal:_LocalAligner,
+            AlignmentGlobal:_GlobalAligner,
+            AlignmentLocal:_LocalAligner,
             TanimotoBit:_TanimotoBit,
             TanimotoReal:_TanimotoReal
         );
         let config = HNSWConfig {
             inner: hnsw_dispatch!(
                 inner, config();
-                ProteinGlobal:_GlobalAligner,
-                ProteinLocal:_LocalAligner,
+                AlignmentGlobal:_GlobalAligner,
+                AlignmentLocal:_LocalAligner,
                 TanimotoBit:_TanimotoBit,
                 TanimotoReal:_TanimotoReal
             ).clone(),
@@ -547,8 +547,8 @@ impl HNSWState {
         HNSWIndex {
             inner: hnsw_dispatch!(
                 self.inner, index();
-                ProteinGlobal:_GlobalAligner,
-                ProteinLocal:_LocalAligner,
+                AlignmentGlobal:_GlobalAligner,
+                AlignmentLocal:_LocalAligner,
                 TanimotoBit:_TanimotoBit,
                 TanimotoReal:_TanimotoReal
             ),

@@ -139,7 +139,7 @@ dependencies = [
 requires-dist = [
     { name = "pytest", specifier = ">=9.0.3" },
     { name = "rdkit", specifier = ">=2026.3.1" },
-    { name = "refnd", editable = "../py" },
+    { name = "refnd", directory = "../py" },
 ]
 
 [[package]]
@@ -159,14 +159,14 @@ wheels = [
 
 [[package]]
 name = "refnd"
-source = { editable = "../py" }
+source = { directory = "../py" }
 
 [package.metadata]
 
 [package.metadata.requires-dev]
 docs = [
-    { name = "furo", specifier = ">=2025.12.19" },
-    { name = "myst-parser", specifier = ">=5.0.0" },
-    { name = "sphinx", specifier = ">=9.1.0" },
-    { name = "sphinx-autodoc-typehints", specifier = ">=3.10.2" },
+    { name = "furo", marker = "python_full_version >= '3.12'", specifier = ">=2025.12.19" },
+    { name = "myst-parser", marker = "python_full_version >= '3.12'", specifier = ">=5.0.0" },
+    { name = "sphinx", marker = "python_full_version >= '3.12'", specifier = ">=9.1.0" },
+    { name = "sphinx-autodoc-typehints", marker = "python_full_version >= '3.12'", specifier = ">=3.10.2" },
 ]

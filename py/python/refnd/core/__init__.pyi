@@ -318,14 +318,14 @@ class HNSWState:
         from refnd.kernels import KernelVariant
     
         seqs = ["MKTAYIAK", "MKTAYIAKQR", "ACDEFGHIKLM", "MKTAYIAKQRQIS"]
-        state = HNSWState(KernelVariant.ProteinGlobal, seqs, m=8, ef_construction=64)
+        state = HNSWState(KernelVariant.AlignmentGlobal, seqs, m=8, ef_construction=64)
         state.build()
         results = state.search(["MKTAYIAK"], k=2)
         # results[0] -> [(0, 1.0), (1, 0.88)]
     
         store = state.edges()        # EdgeStore for graph-based splitting
         state.save("index.bin")
-        state2 = HNSWState.load(KernelVariant.ProteinGlobal, "index.bin", seqs)
+        state2 = HNSWState.load(KernelVariant.AlignmentGlobal, "index.bin", seqs)
     """
     @property
     def config(self) -> HNSWConfig: ...
@@ -336,7 +336,7 @@ class HNSWState:
         Construct an HNSWState.
         
         Args:
-            variant: Kernel to use (``KernelVariant.ProteinGlobal`` or ``KernelVariant.ProteinLocal``).
+            variant: Kernel to use (ex: ``KernelVariant.AlignmentGlobal`` or ``KernelVariant.AlignmentLocal``).
             data: The dataset — a list of items matching the kernel type (e.g. ``list[str]``).
             m, m_max, m_max0, m_l, ef_init, ef_construction, extend_candidates,
                 keep_pruned_connections, cache_capacity, cache_shards,
@@ -462,13 +462,13 @@ def exact_edges(variant: kernels.KernelVariant, data: typing.Any, threshold: bui
     of data points; prefer ``HNSWState`` for large datasets.
     
     Extra positional and keyword arguments are forwarded to the kernel constructor.
-    For ``KernelVariant.ProteinGlobal`` and ``ProteinLocal`` no extra args are
+    For ``KernelVariant.AlignmentGlobal`` and ``AlignmentLocal`` no extra args are
     needed (all parameters have defaults).
     
     Args:
-        variant: Which kernel to use (``KernelVariant.ProteinGlobal`` or
-                 ``KernelVariant.ProteinLocal``).
-        data: Sequence of data items (e.g. ``list[str]`` for protein sequences).
+        variant: Which kernel to use (``KernelVariant.AlignmentGlobal`` or
+                 ``KernelVariant.AlignmentLocal``).
+        data: Sequence of data items (e.g. ``list[str]`` for alignments sequences).
         threshold: Minimum similarity score for an edge to be recorded.
                    In ``[0.0, 1.0]`` for identity-based kernels.
         threads: Number of parallel threads. ``0`` uses all available cores.
@@ -483,7 +483,7 @@ def exact_edges(variant: kernels.KernelVariant, data: typing.Any, threshold: bui
         from refnd.kernels import KernelVariant
     
         seqs = ["MKTAYIAK", "MKTAYIAKQR", "ACDEFGHIKLM"]
-        store = exact_edges(KernelVariant.ProteinGlobal, seqs, threshold=0.5)
+        store = exact_edges(KernelVariant.AlignmentGlobal, seqs, threshold=0.5)
         print(len(store))   # number of similar pairs
     """
 
@@ -499,8 +499,8 @@ def exact_nearest_neighbors(variant: kernels.KernelVariant, queries: typing.Any,
     Extra positional and keyword arguments are forwarded to the kernel constructor.
     
     Args:
-        variant: Which kernel to use (``KernelVariant.ProteinGlobal`` or
-                 ``KernelVariant.ProteinLocal``).
+        variant: Which kernel to use (``KernelVariant.AlignmentGlobal`` or
+                 ``KernelVariant.AlignmentsLocal``).
         queries: Sequence of query items.
         references: Sequence of reference items to search over.
         k: Number of nearest neighbors to return per query.
@@ -519,7 +519,7 @@ def exact_nearest_neighbors(variant: kernels.KernelVariant, queries: typing.Any,
         queries = ["MKTAYIAK"]
         refs    = ["MKTAYIAKQR", "ACDEFGHIKLM", "MKTAYIAKQRQ"]
         results = exact_nearest_neighbors(
-            KernelVariant.ProteinGlobal, queries, refs, k=2
+            KernelVariant.AlignmentGlobal, queries, refs, k=2
         )
         # results[0] -> [(2, 0.93), (0, 0.85)]
     """

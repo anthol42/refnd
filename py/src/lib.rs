@@ -19,11 +19,9 @@ mod refnd {
         let utils = m.getattr("utils")?;
         modules.set_item("refnd.utils", &utils)?;
         let kernels = m.getattr("kernels")?;
-        let protein = kernels.getattr("protein")?;
-        let sequence = protein.getattr("sequence")?;
+        let alignments = kernels.getattr("alignments")?;
         modules.set_item("refnd.kernels", &kernels)?;
-        modules.set_item("refnd.kernels.protein", &protein)?;
-        modules.set_item("refnd.kernels.protein.sequence", &sequence)?;
+        modules.set_item("refnd.kernels.alignments", &alignments)?;
         let molecules = kernels.getattr("molecules")?;
         modules.set_item("refnd.kernels.molecules", &molecules)?;
         Ok(())
@@ -78,18 +76,13 @@ mod refnd {
         }
 
         #[pymodule]
-        mod protein {
-            use pyo3::prelude::*;
+        mod alignments {
 
-            #[pymodule]
-            mod sequence {
-
-                #[pymodule_export]
-                use crate::kernels::protein::sequence::{
-                    GlobalAligner, LocalAligner, ScoringMatrix, GlobalIdentityMode,
-                    VectorizationStrategy, DatatypeWidth, CoverageMode, LocalIdentityMode
-                };
-            }
+            #[pymodule_export]
+            use crate::kernels::alignments::{
+                GlobalAligner, LocalAligner, ScoringMatrix, GlobalIdentityMode,
+                VectorizationStrategy, DatatypeWidth, CoverageMode, LocalIdentityMode
+            };
         }
     }
 }

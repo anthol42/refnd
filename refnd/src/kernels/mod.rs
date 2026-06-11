@@ -1,2 +1,2 @@
 pub mod molecules;
-pub mod proteins;
+pub mod alignments;

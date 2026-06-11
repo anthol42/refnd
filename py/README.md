@@ -11,7 +11,6 @@ uv build
 ```
 ## Build Docs
 ```bash
-cd proto/py-proto
-uv run sphinx-build docs/source docs/build/html
+uv run --reinstall sphinx-build docs/source docs/build/html
 open docs/build/html/index.html
 ```

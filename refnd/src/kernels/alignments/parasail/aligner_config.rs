@@ -60,7 +60,12 @@ pub trait AlignerConfigTrait {
 
         match &cfg.matrix {
             AlignerMatrix::Bundled(m) => {
-                builder.matrix(Matrix::from(m.to_parasail_name()).expect("Invalid matrix name"));
+                match &m {
+                    BundledMatrix::Identity => {}
+                    _ => {
+                        builder.matrix(Matrix::from(m.to_parasail_name()).expect("Invalid matrix name"));
+                    }
+                }
             }
             AlignerMatrix::Custom(m) => {
                 builder.matrix(m.clone());

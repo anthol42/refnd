@@ -11,4 +11,4 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-refnd = { path = "../py", editable = true }
+refnd = { path = "../py" }

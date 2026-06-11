@@ -20,12 +20,12 @@ class GlobalAligner:
     r"""
     Needleman–Wunsch global sequence aligner returning a normalised identity score.
     
-    Wraps the parasail SIMD alignment library. The identity score is computed as
+    Wraps the parasail SIMD alignments library. The identity score is computed as
     the number of identical aligned positions divided by the denominator selected
     by ``identity_mode``.
     
     ``GlobalAligner`` is used as a kernel in ``HNSWState``, ``exact_edges``, and
-    ``exact_nearest_neighbors`` via ``KernelVariant.ProteinGlobal``.
+    ``exact_nearest_neighbors`` via ``KernelVariant.AlignmentGlobal``.
     
     Args:
         gap_open: Affine gap-open penalty (positive integer, subtracted). Default ``11``.
@@ -37,7 +37,7 @@ class GlobalAligner:
     
     Example::
     
-        from refnd.kernels.protein.sequence import GlobalAligner
+        from refnd.kernels.alignments import GlobalAligner
     
         aligner = GlobalAligner(gap_open=11, gap_extend=1)
         score = aligner.call("MKTAYIAK", "MKTAYIAKQR")
@@ -46,11 +46,11 @@ class GlobalAligner:
     def __new__(cls, gap_open: builtins.int = 11, gap_extend: builtins.int = 1, matrix: ScoringMatrix = ScoringMatrix.Blosum62, identity_mode: GlobalIdentityMode = GlobalIdentityMode.MaxLength, vectorization: VectorizationStrategy = VectorizationStrategy.Scan, width: DatatypeWidth = DatatypeWidth.Sat) -> GlobalAligner: ...
     def call(self, ref_sample: builtins.str, query: builtins.str) -> builtins.float:
         r"""
-        Compute the global alignment identity between two sequences.
+        Compute the global alignments identity between two sequences.
         
         Args:
-            ref_sample: Reference protein sequence (single-letter amino acid codes).
-            query: Query protein sequence.
+            ref_sample: Reference alignments sequence (single-letter amino acid codes).
+            query: Query alignments sequence.
         
         Returns:
             Identity score in ``[0.0, 1.0]``.
@@ -63,15 +63,15 @@ class LocalAligner:
     Smith–Waterman local sequence aligner returning a normalised identity score.
     
     Like ``GlobalAligner`` but aligns only the most similar sub-region of each
-    sequence. Pairs that do not meet the ``min_coverage`` criterion after alignment
+    sequence. Pairs that do not meet the ``min_coverage`` criterion after alignments
     receive a score of ``0.0``.
     
-    ``LocalAligner`` is used as a kernel via ``KernelVariant.ProteinLocal``.
+    ``LocalAligner`` is used as a kernel via ``KernelVariant.AlignmentLocal``.
     
     Args:
         gap_open: Affine gap-open penalty. Default ``11``.
         gap_extend: Affine gap-extend penalty. Default ``1``.
-        min_coverage: Minimum fraction of sequence covered by the local alignment
+        min_coverage: Minimum fraction of sequence covered by the local alignments
                       (per ``cov_mode``) for the pair to be accepted. Default ``0.8``.
         cov_mode: Which sequence(s) must meet ``min_coverage``. Default
                   ``CoverageMode.BothQueryTarget``.
@@ -82,7 +82,7 @@ class LocalAligner:
     
     Example::
     
-        from refnd.kernels.protein.sequence import LocalAligner, CoverageMode
+        from refnd.kernels.alignments import LocalAligner, CoverageMode
     
         aligner = LocalAligner(min_coverage=0.5, cov_mode=CoverageMode.Query)
         score = aligner.call("ACDEFGHIKLM", "CDEFGHI")
@@ -90,11 +90,11 @@ class LocalAligner:
     def __new__(cls, gap_open: builtins.int = 11, gap_extend: builtins.int = 1, min_coverage: builtins.float = 0.800000011920929, cov_mode: CoverageMode = CoverageMode.BothQueryTarget, matrix: ScoringMatrix = ScoringMatrix.Blosum62, identity_mode: LocalIdentityMode = LocalIdentityMode.AlignmentLength, vectorization: VectorizationStrategy = VectorizationStrategy.Striped, width: DatatypeWidth = DatatypeWidth.Sat) -> LocalAligner: ...
     def call(self, ref_sample: builtins.str, query: builtins.str) -> builtins.float:
         r"""
-        Compute the local alignment identity between two sequences.
+        Compute the local alignments identity between two sequences.
         
         Args:
-            ref_sample: Reference protein sequence (single-letter amino acid codes).
-            query: Query protein sequence.
+            ref_sample: Reference alignments sequence (single-letter amino acid codes).
+            query: Query alignments sequence.
         
         Returns:
             Identity score in ``[0.0, 1.0]``, or ``0.0`` if the coverage filter fails.
@@ -104,9 +104,9 @@ class LocalAligner:
 @typing.final
 class CoverageMode(enum.Enum):
     r"""
-    Coverage filter applied before accepting a local alignment as valid.
+    Coverage filter applied before accepting a local alignments as valid.
     
-    A pair is scored only when the alignment covers enough of the sequences
+    A pair is scored only when the alignments covers enough of the sequences
     as specified by the mode and ``min_coverage`` threshold:
     
     - ``BothQueryTarget`` (default): both query and target must meet ``min_coverage``.
@@ -124,12 +124,12 @@ class CoverageMode(enum.Enum):
 @typing.final
 class DatatypeWidth(enum.Enum):
     r"""
-    Integer precision used for alignment score accumulation.
+    Integer precision used for alignments score accumulation.
     
     - ``Short`` (8-bit), ``Half`` (16-bit), ``Full`` (32-bit), ``Long`` (64-bit):
       fixed-width integers — lower width is faster but can overflow on long sequences.
     - ``Sat`` (default): 8-bit saturating arithmetic; silently clamps on overflow
-      instead of wrapping. Safe for typical protein lengths and the recommended default.
+      instead of wrapping. Safe for typical alignments lengths and the recommended default.
     """
     Short = ...
     Half = ...
@@ -140,11 +140,11 @@ class DatatypeWidth(enum.Enum):
 @typing.final
 class GlobalIdentityMode(enum.Enum):
     r"""
-    Denominator used to normalise a global-alignment identity score.
+    Denominator used to normalise a global-alignments identity score.
     
     After counting identical aligned positions the raw count is divided by:
     
-    - ``AlignmentLength``: the total length of the alignment (including gaps).
+    - ``AlignmentLength``: the total length of the alignments (including gaps).
     - ``MaxSeqLength``: the length of the longer of the two sequences.
     - ``MinSeqLength``: the length of the shorter of the two sequences.
     - ``MaxLength`` (default): same as ``MaxSeqLength`` — recommended for RGP datasets.
@@ -157,9 +157,9 @@ class GlobalIdentityMode(enum.Enum):
 @typing.final
 class LocalIdentityMode(enum.Enum):
     r"""
-    Denominator used to normalise a local-alignment identity score.
+    Denominator used to normalise a local-alignments identity score.
     
-    - ``AlignmentLength`` (default): divide by the length of the local alignment.
+    - ``AlignmentLength`` (default): divide by the length of the local alignments.
     - ``MinSeqLength``: divide by the shorter sequence length.
     """
     AlignmentLength = ...
@@ -167,6 +167,7 @@ class LocalIdentityMode(enum.Enum):
 
 @typing.final
 class ScoringMatrix(enum.Enum):
+    Identity = ...
     Blosum30 = ...
     Blosum35 = ...
     Blosum40 = ...
@@ -237,10 +238,10 @@ class ScoringMatrix(enum.Enum):
 @typing.final
 class VectorizationStrategy(enum.Enum):
     r"""
-    SIMD vectorization layout used by the parasail alignment engine.
+    SIMD vectorization layout used by the parasail alignments engine.
     
     - ``Striped`` (default for local): interleaved layout, best for short sequences.
-    - ``Scan``: sequential scan layout, often faster for long sequences or global alignment.
+    - ``Scan``: sequential scan layout, often faster for long sequences or global alignments.
     - ``Diag``: diagonal layout; niche use-case, rarely needed.
     
     In practice the default per-aligner is a good choice; change only if profiling

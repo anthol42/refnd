@@ -3,18 +3,18 @@
 
 import enum
 import typing
+from . import alignments
 from . import molecules
-from . import protein
 __all__ = [
     "KernelVariant",
+    "alignments",
     "molecules",
-    "protein",
 ]
 
 @typing.final
 class KernelVariant(enum.Enum):
-    ProteinGlobal = ...
-    ProteinLocal = ...
+    AlignmentGlobal = ...
+    AlignmentLocal = ...
     TanimotoBit = ...
     TanimotoReal = ...
 
