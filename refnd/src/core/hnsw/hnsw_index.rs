@@ -20,6 +20,7 @@ pub struct HNSWIndex {
     pub max_layers: usize,
     /// All pairs `(i, j)` (with `i ≤ j`) whose distance is below `config.proximity_threshold`.
     pub proximity_edges: Vec<((usize, usize), f32)>,
+    pub has_been_built: bool,
 }
 
 impl fmt::Display for HNSWIndex {
@@ -50,6 +51,7 @@ impl fmt::Debug for HNSWIndex {
             f,
             "HNSWIndex(\n\
             \x20 dataset_size={},\n\
+            \x20 has_been_built={},\n\
             \x20 entry_point={},\n\
             \x20 max_layers={},\n\
             \x20 n_edges={},\n\
@@ -57,6 +59,7 @@ impl fmt::Debug for HNSWIndex {
             \x20 config={}\n\
             )",
             self.dataset_size,
+            self.has_been_built,
             entry_point,
             self.max_layers,
             self.proximity_edges.len(),

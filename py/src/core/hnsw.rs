@@ -18,28 +18,31 @@ use super::super::kernels::{
 
 /// Configuration for the HNSW approximate nearest-neighbour index.
 ///
-/// All parameters have sensible defaults; in most cases you only need to
-/// adjust ``m``, ``ef_construction``, and ``proximity_threshold``.
+/// All parameters have sensible defaults; in most cases you only need to ``ef_construction``, and
+/// ``proximity_threshold``.
 ///
 /// **Parameters:**
 ///
+/// - ``proximity_threshold`` *(float)* — Distance threshold under which a connection is established in the proximity graph.
+/// - ``ef_construction`` *(int)* — Candidate list size during build. Default ``64``.
 /// - ``m`` *(int)* — Bidirectional links per node at layers > 0.
-///   Higher = better recall, more memory, slower build. Typical: 8–64. Default ``16``.
+///   Higher = better recall, more memory, slower build. Typical: 8–64.
 /// - ``m_max`` *(int)* — Maximum connections per node at layers > 0. Usually equal to ``m``.
 /// - ``m_max0`` *(int)* — Maximum connections at layer 0. Usually ``2 * m``.
-/// - ``m_l`` *(float)* — Level generation factor. Default ``0.36 ≈ 1 / ln(m)``.
-/// - ``ef_init`` *(int)* — Candidate list size during initial-layer insertion.
-/// - ``ef_construction`` *(int)* — Candidate list size during build. Default ``128``.
-/// - ``extend_candidates`` *(bool)* — Extend the candidate set beyond ``ef_construction``.
-/// - ``keep_pruned_connections`` *(bool)* — Retain discarded candidates to fill up to ``m`` connections.
-/// - ``cache_capacity`` *(int)* — Maximum cached kernel scores. Default ``2_000_000``.
-/// - ``cache_shards`` *(int)* — Cache shards (reduces lock contention).
-/// - ``proximity_threshold`` *(float)* — Similarity threshold for ``threshold_based_neighbourhood``.
+/// - ``m_l`` *(float)* — Level generation factor. Usually ``0.36 ≈ 1 / ln(m)``.
+/// - ``ef_init`` *(int)* — Candidate list size during initial-layer insertion. Almost always 1 for
+///   a greedy search.
+/// - ``extend_candidates`` *(bool)* — Use neighbors of neighbors as candidates, making search more exhaustive.
+/// - ``keep_pruned_connections`` *(bool)* — Retain discarded candidates to fill up to ``m`` connections when not enough connections are found.
+/// - ``cache_capacity`` *(int)* — Maximum cached kernel scores. Increasing it increase the memory
+///   footprint, but also cache hits, which can improve runtime performances for computationally expensive kernels.
+/// - ``cache_shards`` *(int)* — Number of cache shards (reduces lock contention).
 /// - ``n_threads`` *(int)* — Threads used during build. ``0`` = all available cores.
-/// - ``shuffle`` *(bool)* — Shuffle insertion order before building.
+/// - ``shuffle`` *(bool)* — Shuffle insertion order before building. Can create a less biased
+///   graph, but reduces cache hits, which increases runtime.
 /// - ``use_heuristic`` *(bool)* — Use the heuristic neighbour-selection from the paper (recommended).
-/// - ``strict_ef`` *(bool)* — Enforce result set size equals exactly ``ef`` during search.
-/// - ``threshold_based_neighbourhood`` *(bool)* — Replace fixed ``m`` neighbourhood with threshold-based.
+/// - ``strict_ef`` *(bool)* — If ``True``, enforces the result set size to exactly ``ef`` during search. Empirically, setting this to ``False`` can improve runtime performance, as it allows halving ``ef_construction`` without sacrificing accuracy.
+/// - ``threshold_based_neighbourhood`` *(bool)* — Select a minimum of ``m`` neighbors like the classic algorithm, but doesn't bound the neighbourhood size as all candidates that are closer than the threshold are kept.
 #[gen_stub_pyclass]
 #[pyclass(module = "refnd.core", from_py_object)]
 #[derive(Clone)]
@@ -53,17 +56,17 @@ impl HNSWConfig {
     /// Create an HNSWConfig. See class docstring for parameter descriptions.
     #[new]
     #[pyo3(signature = (
+        proximity_threshold = 0.5,
+        ef_construction = 64,
         m = 16,
         m_max = 16,
         m_max0 = 32,
         m_l = 0.36,
         ef_init = 1,
-        ef_construction = 128,
         extend_candidates = false,
         keep_pruned_connections = true,
         cache_capacity = 2_000_000,
         cache_shards = 64,
-        proximity_threshold = 0.5,
         n_threads = 0,
         shuffle = false,
         use_heuristic = true,
@@ -72,11 +75,11 @@ impl HNSWConfig {
     ))]
     #[allow(clippy::too_many_arguments)]
     fn new(
+        proximity_threshold: f32, ef_construction: usize,
         m: usize, m_max: usize, m_max0: usize, m_l: f64,
-        ef_init: usize, ef_construction: usize,
+        ef_init: usize,
         extend_candidates: bool, keep_pruned_connections: bool,
-        cache_capacity: usize, cache_shards: usize,
-        proximity_threshold: f32, n_threads: usize,
+        cache_capacity: usize, cache_shards: usize, n_threads: usize,
         shuffle: bool, use_heuristic: bool,
         strict_ef: bool, threshold_based_neighbourhood: bool,
     ) -> Self {
@@ -144,7 +147,7 @@ impl HNSWConfig {
 ///
 /// Properties:
 ///     dataset_size (int): Number of items indexed.
-///     layers (list): Nested list ``layers[layer][node] = [neighbor_ids]``.
+///     layers (list): Nested multi-layer adjacency list ``layers[layer][node] = [neighbor_ids]``.
 ///     entry_point (tuple | None): ``(layer, node_id)`` of the global entry point, or ``None`` if empty.
 ///     max_layers (int): Number of layers in the hierarchy.
 ///     proximity_edges (list): List of ``((src, dst), score)`` for proximity-threshold edges.
@@ -165,10 +168,10 @@ impl HNSWIndex {
     #[getter] pub fn proximity_edges(&self) -> Vec<((usize, usize), f32)> { self.inner.proximity_edges.clone() }
     #[getter] pub fn config(&self) -> HNSWConfig { HNSWConfig { inner: self.inner.config.clone() } }
 
-    /// Persist this index to disk.
+    /// Save the object to a binary representation (e.g. *.hnsw* file).
     ///
     /// Args:
-    ///     path: Destination file path.
+    ///     path: Destination file path (recommended with a .hnsw extension)
     ///
     /// Raises:
     ///     RuntimeError: On serialisation or I/O failure.
@@ -254,7 +257,18 @@ macro_rules! hnsw_dispatch {
     };
 }
 
-/// Hierarchical Navigable Small World (HNSW) approximate nearest-neighbour index.
+macro_rules! hnsw_dispatch_mut {
+    ($inner:expr, $method:ident $args:tt;
+     $($variant:ident : $kernel:ty),+ $(,)?) => {
+        match &mut $inner {
+            $(HNSWType::$variant(inner) => inner.$method $args,)+
+        }
+    };
+}
+
+/// Stateful Hierarchical Navigable Small World (HNSW) approximate nearest-neighbour index. This
+/// class is used to build and search in the index, whereas ``HNSWIndex`` is a read-only *internal*
+/// representation of the index used for saving / loading / structure exploration.
 ///
 /// ``HNSWState`` wraps the dataset and the graph index together. The typical
 /// workflow is:
@@ -264,8 +278,16 @@ macro_rules! hnsw_dispatch {
 /// 3. Call ``search()`` to query, or ``edges()`` to extract the proximity graph
 ///    for downstream clustering / splitting.
 ///
-/// HNSW parameters (``m``, ``ef_construction``, …) are the same as ``HNSWConfig``
+/// HNSW parameters (``proximity_threshold``, ``ef_construction``, …) are the same as ``HNSWConfig``
 /// and can be passed directly to the constructor as keyword arguments.
+///
+/// Args:
+///     variant: Kernel to use (e.g.  ``KernelVariant.ProteinGlobal``, ``KernelVariant.ProteinLocal``, ``KernelVariant.TanimotoBit``, *etc*).
+///     data: The dataset — a list of items matching the kernel type (e.g. ``list[str]`` or ``list[np.ndarray]``).
+///     proximity_threshold, ef_construction, m, m_max, m_max0, m_l, ef_init, extend_candidates,
+///         keep_pruned_connections, cache_capacity, cache_shards,
+///         n_threads, shuffle, use_heuristic, strict_ef,
+///         threshold_based_neighbourhood: See ``HNSWConfig`` for descriptions.
 ///
 /// Properties:
 ///     config (HNSWConfig): The config in use.
@@ -273,18 +295,17 @@ macro_rules! hnsw_dispatch {
 ///
 /// Example::
 ///
-///     from refnd.core import HNSWState
-///     from refnd.kernels import KernelVariant
+///     from refnd import HNSWState, KernelVariant
 ///
 ///     seqs = ["MKTAYIAK", "MKTAYIAKQR", "ACDEFGHIKLM", "MKTAYIAKQRQIS"]
-///     state = HNSWState(KernelVariant.ProteinGlobal, seqs, m=8, ef_construction=64)
+///     state = HNSWState(KernelVariant.ProteinGlobal, seqs, proximity_threshold=0.3, ef_construction=64)
 ///     state.build()
 ///     results = state.search(["MKTAYIAK"], k=2)
 ///     # results[0] -> [(0, 1.0), (1, 0.88)]
 ///
 ///     store = state.edges()        # EdgeStore for graph-based splitting
-///     state.save("index.bin")
-///     state2 = HNSWState.load(KernelVariant.ProteinGlobal, "index.bin", seqs)
+///     state.save("index.hnsw")
+///     state2 = HNSWState.load(KernelVariant.ProteinGlobal, "index.hnsw", seqs)
 #[gen_stub_pyclass]
 #[pyclass(module = "refnd.core")]
 pub struct HNSWState {
@@ -296,30 +317,21 @@ pub struct HNSWState {
 #[gen_stub_pymethods]
 #[pymethods]
 impl HNSWState {
-    /// Construct an HNSWState.
-    ///
-    /// Args:
-    ///     variant: Kernel to use (``KernelVariant.ProteinGlobal`` or ``KernelVariant.ProteinLocal``).
-    ///     data: The dataset — a list of items matching the kernel type (e.g. ``list[str]``).
-    ///     m, m_max, m_max0, m_l, ef_init, ef_construction, extend_candidates,
-    ///         keep_pruned_connections, cache_capacity, cache_shards,
-    ///         proximity_threshold, n_threads, shuffle, use_heuristic, strict_ef,
-    ///         threshold_based_neighbourhood: See ``HNSWConfig`` for descriptions.
     #[new]
     #[pyo3(signature = (
         variant, data,
         *args,
+        proximity_threshold = 0.5,
+        ef_construction = 64,
         m = 16,
         m_max = 16,
         m_max0 = 32,
         m_l = 0.36,
         ef_init = 1,
-        ef_construction = 128,
         extend_candidates = false,
         keep_pruned_connections = true,
         cache_capacity = 2_000_000,
         cache_shards = 64,
-        proximity_threshold = 0.5,
         n_threads = 0,
         shuffle = false,
         use_heuristic = true,
@@ -333,17 +345,17 @@ impl HNSWState {
         data: Py<PyAny>,
         py: Python,
         args: &Bound<'_, PyTuple>,
+        proximity_threshold: f32,
+        ef_construction: usize,
         m: usize,
         m_max: usize,
         m_max0: usize,
         m_l: f64,
         ef_init: usize,
-        ef_construction: usize,
         extend_candidates: bool,
         keep_pruned_connections: bool,
         cache_capacity: usize,
         cache_shards: usize,
-        proximity_threshold: f32,
         n_threads: usize,
         shuffle: bool,
         use_heuristic: bool,
@@ -373,21 +385,25 @@ impl HNSWState {
     /// Build the HNSW index by inserting all data items.
     ///
     /// Must be called before ``search`` or ``edges``. Calling ``build`` a second
-    /// time re-inserts all items into the existing graph (avoid this).
+    /// time raises a ``RuntimeError``; construct a new ``HNSWState`` instead.
     ///
     /// Args:
     ///     progress: Display a progress bar. Defaults to ``True``.
+    ///
+    /// Raises:
+    ///     RuntimeError: If the index has already been built.
     #[pyo3(signature = (progress = true))]
-    pub fn build(&self, progress: bool) {
+    pub fn build(&mut self, progress: bool) -> PyResult<()> {
         let pb = if progress { Some(logfacto_progress_bar(self.n, "Building index")) } else { None };
-        hnsw_dispatch!(
+        hnsw_dispatch_mut!(
             self.inner, build(pb.as_ref());
             ProteinGlobal:_GlobalAligner,
             ProteinLocal:_LocalAligner,
             TanimotoBit:_TanimotoBit,
             TanimotoReal:_TanimotoReal
-        );
-        if let Some(pb) = pb {pb.finish()};
+        ).map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
+        if let Some(pb) = pb { pb.finish() };
+        Ok(())
     }
 
     /// Search the index for approximate nearest neighbours.
@@ -408,6 +424,9 @@ impl HNSWState {
     /// Returns:
     ///     A list of length ``len(queries)``. Each element is a sorted list of
     ///     up to ``k`` tuples ``(dataset_index, similarity_score)``.
+    ///
+    /// Raises:
+    ///     RuntimeError: If ``build`` has not been called yet.
     #[pyo3(signature = (queries, k = 1, ef = 64, threads = 0, progress = true))]
     pub fn search(
         &self,
@@ -428,20 +447,17 @@ impl HNSWState {
         let res = match &self.inner {
             HNSWType::ProteinGlobal(inner) => inner.parallel_search(queries.extract::<Vec<_>>(py)?.as_slice(), k, ef, threads, pb.as_ref()),
             HNSWType::ProteinLocal(inner)  => inner.parallel_search(queries.extract::<Vec<_>>(py)?.as_slice(), k, ef, threads, pb.as_ref()),
-            HNSWType::TanimotoBit(inner)  => inner.parallel_search(queries.extract::<Vec<_>>(py)?.as_slice(), k, ef, threads, pb.as_ref()),
+            HNSWType::TanimotoBit(inner)   => inner.parallel_search(queries.extract::<Vec<_>>(py)?.as_slice(), k, ef, threads, pb.as_ref()),
             HNSWType::TanimotoReal(inner)  => inner.parallel_search(queries.extract::<Vec<_>>(py)?.as_slice(), k, ef, threads, pb.as_ref()),
-
-
-        };
-        if let Some(pb) = pb {pb.finish()};
+        }.map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
+        if let Some(pb) = pb { pb.finish() };
         Ok(res)
     }
 
     /// Extract the proximity graph as an ``EdgeStore``.
     ///
-    /// Returns all edges formed during ``build`` (the HNSW layer-0 neighbourhood
-    /// graph). Use this with ``CsrGraph`` and ``find_communities`` / ``partition``
-    /// to perform graph-based dataset splitting.
+    /// Returns all edges found during ``build``. All distance measurements below the
+    /// ``proximity_threshold``.
     ///
     /// Returns:
     ///     An ``EdgeStore`` with ``node_count = dataset_size``.
@@ -463,18 +479,21 @@ impl HNSWState {
     ///
     /// Returns:
     ///     A list of length ``dataset_size`` where element ``i`` is the list of
-    ///     neighbour IDs of node ``i`` at this layer.
-    pub fn get_layer(&self, layer_idx: usize) -> Vec<Vec<usize>> {
+    ///     neighbour IDs of node ``i`` at this layer. Node IDs are their index in the original dataset.
+    ///
+    /// Raises:
+    ///     IndexError: If ``layer_idx`` is out of range.
+    pub fn get_layer(&self, layer_idx: usize) -> PyResult<Vec<Vec<usize>>> {
         hnsw_dispatch!(
             self.inner, get_layer(layer_idx);
             ProteinGlobal:_GlobalAligner,
             ProteinLocal:_LocalAligner,
             TanimotoBit:_TanimotoBit,
             TanimotoReal:_TanimotoReal
-        )
+        ).map_err(pyo3::exceptions::PyIndexError::new_err)
     }
 
-    /// Serialize the full state (index + config) to disk.
+    /// Serialize the full state (index + config) to a binary file.
     ///
     /// The saved file can be loaded back with ``HNSWState.load``. The original
     /// data must be provided again at load time (it is not embedded in the file).
@@ -495,7 +514,7 @@ impl HNSWState {
         .map_err(|e: Box<dyn std::error::Error>| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))
     }
 
-    /// Load an HNSWState saved with ``HNSWState.save``.
+    /// Load an HNSWState form a binary file saved with ``HNSWState.save``.
     ///
     /// Args:
     ///     variant: Must match the kernel used during the original build.
@@ -503,7 +522,7 @@ impl HNSWState {
     ///     data: The original dataset (required to re-attach the kernel).
     ///
     /// Returns:
-    ///     The restored ``HNSWState``, ready to call ``search`` or ``edges``.
+    ///     The restored ``HNSWState``, ready to call ``search`` or ``edges`` if the index was built.
     ///
     /// Raises:
     ///     RuntimeError: If the file cannot be read or the format is invalid.
@@ -537,11 +556,24 @@ impl HNSWState {
         Ok(HNSWState { inner, n, config })
     }
 
+    /// Whether ``build`` has been called on this index.
+    #[getter]
+    pub fn is_built(&self) -> bool {
+        match &self.inner {
+            HNSWType::ProteinGlobal(inner) => inner.has_been_built,
+            HNSWType::ProteinLocal(inner)  => inner.has_been_built,
+            HNSWType::TanimotoBit(inner)   => inner.has_been_built,
+            HNSWType::TanimotoReal(inner)  => inner.has_been_built,
+        }
+    }
+
+    /// Config used to initiate this object.
     #[getter]
     pub fn config(&self) -> HNSWConfig {
         self.config.clone()
     }
 
+    /// HNSWIndex snapshot.
     #[getter]
     pub fn index(&self) -> HNSWIndex {
         HNSWIndex {

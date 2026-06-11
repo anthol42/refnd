@@ -10,3 +10,11 @@ __all__ = [
     "utils",
 ]
 
+from .kernels import KernelVariant as KernelVariant
+from .core import HNSWState as HNSWState
+from .core import LeidenObjective as LeidenObjective
+from .core import find_communities as find_communities
+from .core import find_components as find_components
+from .core import partition as partition
+from .core import exact_edges as exact_edges
+from .core import exact_nearest_neighbors as exact_nearest_neighbors

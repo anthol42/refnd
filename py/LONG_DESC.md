@@ -24,16 +24,13 @@ To give an idea of what the library contains, we have these functions:
 - And more!
 
 ## Installation – Python
-Currently, we can only install from source. Run:
 ```shell
-pip install "git+https://github.com/anthol42/refnd.git#subdirectory=py"
+pip install refnd
 ```
 
-Pre-compiled releases to facilitate installation are coming soon!
-
-## Installation – Rust
+Build from source (latest version, potentially unstable)
 ```shell
-cargo add --git https://github.com/anthol42/refnd.git refnd
+pip install "git+https://github.com/anthol42/refnd.git#subdirectory=py"
 ```
 
 ## Example

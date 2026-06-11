@@ -148,7 +148,11 @@ fn find_knn<T: Sync, D: Distance<T>>(args: &KnnArgs, hnsw_config: &HNSWConfig, q
         let hnsw = build_hnsw(refs, kernel, hnsw_config.clone(), args.index.as_deref());
         display::section("Searching");
         let pb = display::linear_progress_bar(queries.len() as u64, "Searching");
-        let r = hnsw.parallel_search(&queries, args.k, args.ef, args.threads, Some(&pb));
+        let r = hnsw.parallel_search(&queries, args.k, args.ef, args.threads, Some(&pb))
+            .unwrap_or_else(|e| {
+                display::error(&format!("Index is not built: {e}"));
+                exit(1);
+            });
         pb.finish();
         r
     }
