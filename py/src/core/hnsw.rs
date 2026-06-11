@@ -3,6 +3,7 @@ use pyo3::types::{PyDict, PyTuple};
 use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pymethods};
 use refnd_core::core::hnsw::{HNSWState as HNSWStateCore, HNSWIndex as HNSWIndexCore, HNSWConfig as HNSWConfigCore};
 use refnd_core::kernels::alignments::parasail::{GlobalAligner, LocalAligner};
+use refnd_core::kernels::alignments::usalign::USAlignKernel as CoreUSAlignKernel;
 use refnd_core::kernels::molecules::tanimoto::Tanimoto;
 use super::edge_store::EdgeStore;
 use super::_utils::{logfacto_progress_bar, linear_progress_bar};
@@ -14,6 +15,7 @@ use super::super::kernels::{
         LocalAligner as _LocalAligner,
     },
     molecules::{TanimotoReal as _TanimotoReal, TanimotoBit as _TanimotoBit},
+    structures::{PdbStructure, USAlignKernel as _USAlignKernel},
 };
 
 /// Configuration for the HNSW approximate nearest-neighbour index.
@@ -206,6 +208,7 @@ enum HNSWType {
     AlignmentLocal(HNSWStateCore<String, LocalAligner>),
     TanimotoBit(HNSWStateCore<BitFingerprint, Tanimoto>),
     TanimotoReal(HNSWStateCore<RealFingerprint, Tanimoto>),
+    Structure(HNSWStateCore<PdbStructure, CoreUSAlignKernel>),
 }
 
 /// Expands a `HNSWState::new(data, kernel, config)` constructor for each KernelVariant.
@@ -377,7 +380,8 @@ impl HNSWState {
             AlignmentGlobal:_GlobalAligner,
             AlignmentLocal:_LocalAligner,
             TanimotoBit:_TanimotoBit,
-            TanimotoReal:_TanimotoReal
+            TanimotoReal:_TanimotoReal,
+            Structure:_USAlignKernel
         );
         Ok(HNSWState { inner, n, config: config_py })
     }
@@ -400,7 +404,8 @@ impl HNSWState {
             AlignmentGlobal:_GlobalAligner,
             AlignmentLocal:_LocalAligner,
             TanimotoBit:_TanimotoBit,
-            TanimotoReal:_TanimotoReal
+            TanimotoReal:_TanimotoReal,
+            Structure:_USAlignKernel
         ).map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
         if let Some(pb) = pb { pb.finish() };
         Ok(())
@@ -447,8 +452,9 @@ impl HNSWState {
         let res = match &self.inner {
             HNSWType::AlignmentGlobal(inner) => inner.parallel_search(queries.extract::<Vec<_>>(py)?.as_slice(), k, ef, threads, pb.as_ref()),
             HNSWType::AlignmentLocal(inner)  => inner.parallel_search(queries.extract::<Vec<_>>(py)?.as_slice(), k, ef, threads, pb.as_ref()),
-            HNSWType::TanimotoBit(inner)  => inner.parallel_search(queries.extract::<Vec<_>>(py)?.as_slice(), k, ef, threads, pb.as_ref()),
-            HNSWType::TanimotoReal(inner)  => inner.parallel_search(queries.extract::<Vec<_>>(py)?.as_slice(), k, ef, threads, pb.as_ref()),
+            HNSWType::TanimotoBit(inner)     => inner.parallel_search(queries.extract::<Vec<_>>(py)?.as_slice(), k, ef, threads, pb.as_ref()),
+            HNSWType::TanimotoReal(inner)    => inner.parallel_search(queries.extract::<Vec<_>>(py)?.as_slice(), k, ef, threads, pb.as_ref()),
+            HNSWType::Structure(inner)       => inner.parallel_search(queries.extract::<Vec<_>>(py)?.as_slice(), k, ef, threads, pb.as_ref()),
         }.map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
         if let Some(pb) = pb { pb.finish() };
         Ok(res)
@@ -467,7 +473,8 @@ impl HNSWState {
             AlignmentGlobal:_GlobalAligner,
             AlignmentLocal:_LocalAligner,
             TanimotoBit:_TanimotoBit,
-            TanimotoReal:_TanimotoReal
+            TanimotoReal:_TanimotoReal,
+            Structure:_USAlignKernel
         );
         EdgeStore::new(self.n, edges)
     }
@@ -489,7 +496,8 @@ impl HNSWState {
             AlignmentGlobal:_GlobalAligner,
             AlignmentLocal:_LocalAligner,
             TanimotoBit:_TanimotoBit,
-            TanimotoReal:_TanimotoReal
+            TanimotoReal:_TanimotoReal,
+            Structure:_USAlignKernel
         ).map_err(pyo3::exceptions::PyIndexError::new_err)
     }
 
@@ -509,7 +517,8 @@ impl HNSWState {
             AlignmentGlobal:_GlobalAligner,
             AlignmentLocal:_LocalAligner,
             TanimotoBit:_TanimotoBit,
-            TanimotoReal:_TanimotoReal
+            TanimotoReal:_TanimotoReal,
+            Structure:_USAlignKernel
         )
         .map_err(|e: Box<dyn std::error::Error>| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))
     }
@@ -542,7 +551,8 @@ impl HNSWState {
             AlignmentGlobal:_GlobalAligner,
             AlignmentLocal:_LocalAligner,
             TanimotoBit:_TanimotoBit,
-            TanimotoReal:_TanimotoReal
+            TanimotoReal:_TanimotoReal,
+            Structure:_USAlignKernel
         );
         let config = HNSWConfig {
             inner: hnsw_dispatch!(
@@ -550,7 +560,8 @@ impl HNSWState {
                 AlignmentGlobal:_GlobalAligner,
                 AlignmentLocal:_LocalAligner,
                 TanimotoBit:_TanimotoBit,
-                TanimotoReal:_TanimotoReal
+                TanimotoReal:_TanimotoReal,
+                Structure:_USAlignKernel
             ).clone(),
         };
         Ok(HNSWState { inner, n, config })
@@ -562,8 +573,9 @@ impl HNSWState {
         match &self.inner {
             HNSWType::AlignmentGlobal(inner) => inner.has_been_built,
             HNSWType::AlignmentLocal(inner)  => inner.has_been_built,
-            HNSWType::TanimotoBit(inner)   => inner.has_been_built,
-            HNSWType::TanimotoReal(inner)  => inner.has_been_built,
+            HNSWType::TanimotoBit(inner)     => inner.has_been_built,
+            HNSWType::TanimotoReal(inner)    => inner.has_been_built,
+            HNSWType::Structure(inner)       => inner.has_been_built,
         }
     }
 
@@ -582,7 +594,8 @@ impl HNSWState {
                 AlignmentGlobal:_GlobalAligner,
                 AlignmentLocal:_LocalAligner,
                 TanimotoBit:_TanimotoBit,
-                TanimotoReal:_TanimotoReal
+                TanimotoReal:_TanimotoReal,
+                Structure:_USAlignKernel
             ),
         }
     }

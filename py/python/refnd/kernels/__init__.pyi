@@ -5,10 +5,12 @@ import enum
 import typing
 from . import alignments
 from . import molecules
+from . import structures
 __all__ = [
     "KernelVariant",
     "alignments",
     "molecules",
+    "structures",
 ]
 
 @typing.final
@@ -17,4 +19,5 @@ class KernelVariant(enum.Enum):
     AlignmentLocal = ...
     TanimotoBit = ...
     TanimotoReal = ...
+    Structure = ...
 
