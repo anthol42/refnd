@@ -118,9 +118,8 @@ impl fmt::Display for HNSWConfig {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "HNSWConfig(m={}, m_max={}, m_max0={}, ef_c={}, threshold={}, kpc={})",
-            self.m, self.m_max, self.m_max0,
-            self.ef_construction, self.proximity_threshold, self.keep_pruned_connections,
+            "HNSWConfig(threshold={}, ef_c={})",
+            self.proximity_threshold, self.ef_construction,
         )
     }
 }
@@ -130,20 +129,18 @@ impl fmt::Debug for HNSWConfig {
         write!(
             f,
             "HNSWConfig(\n\
+            \x20 proximity_threshold={}, ef_construction={},\n\
             \x20 m={}, m_max={}, m_max0={}, m_l={},\n\
-            \x20 ef_init={}, ef_construction={},\n\
-            \x20 extend_candidates={}, keep_pruned_connections={},\n\
+            \x20 ef_init={}, extend_candidates={}, keep_pruned_connections={},\n\
             \x20 cache_capacity={}, cache_shards={},\n\
-            \x20 proximity_threshold={}, n_threads={},\n\
-            \x20 shuffle={}, use_heuristic={},\n\
+            \x20 n_threads={}, shuffle={}, use_heuristic={},\n\
             \x20 strict_ef={}, threshold_based_neighbourhood={}\n\
             )",
+            self.proximity_threshold, self.ef_construction,
             self.m, self.m_max, self.m_max0, self.m_l,
-            self.ef_init, self.ef_construction,
-            self.extend_candidates, self.keep_pruned_connections,
+            self.ef_init, self.extend_candidates, self.keep_pruned_connections,
             self.cache_capacity, self.cache_shards,
-            self.proximity_threshold, self.n_threads,
-            self.shuffle, self.use_heuristic,
+            self.n_threads, self.shuffle, self.use_heuristic,
             self.strict_ef, self.threshold_based_neighbourhood,
         )
     }

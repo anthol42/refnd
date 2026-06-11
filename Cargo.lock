@@ -1234,8 +1234,9 @@ dependencies = [
 
 [[package]]
 name = "py-refnd"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
+ "anyhow",
  "fixedbitset 0.5.7",
  "indicatif",
  "numpy",
@@ -1459,7 +1460,7 @@ dependencies = [
 
 [[package]]
 name = "refnd"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "bincode",
  "clap",

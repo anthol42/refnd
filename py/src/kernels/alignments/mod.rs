@@ -15,7 +15,7 @@ use refnd_core::kernels::alignments::parasail::{
 ///
 /// After counting identical aligned positions the raw count is divided by:
 ///
-/// - ``AlignmentLength``: the total length of the alignments (including gaps).
+/// - ``AlignmentLength``: the total length of the alignment (including gaps).
 /// - ``MaxSeqLength``: the length of the longer of the two sequences.
 /// - ``MinSeqLength``: the length of the shorter of the two sequences.
 /// - ``MaxLength`` (default): same as ``MaxSeqLength`` — recommended for RGP datasets.
@@ -40,9 +40,9 @@ impl From<GlobalIdentityMode> for CoreGlobalIdentityMode {
     }
 }
 
-/// Denominator used to normalise a local-alignments identity score.
+/// Denominator used to normalise a local-alignment identity score.
 ///
-/// - ``AlignmentLength`` (default): divide by the length of the local alignments.
+/// - ``AlignmentLength`` (default): divide by the length of the local alignment.
 /// - ``MinSeqLength``: divide by the shorter sequence length.
 #[gen_stub_pyclass_enum]
 #[pyclass(eq, eq_int, from_py_object, module = "refnd.kernels.alignments")]
@@ -61,9 +61,9 @@ impl From<LocalIdentityMode> for CoreLocalIdentityMode {
     }
 }
 
-/// Coverage filter applied before accepting a local alignments as valid.
+/// Coverage filter applied before accepting a local alignment as valid.
 ///
-/// A pair is scored only when the alignments covers enough of the sequences
+/// A pair is scored only when the alignment covers enough of the sequences
 /// as specified by the mode and ``min_coverage`` threshold:
 ///
 /// - ``BothQueryTarget`` (default): both query and target must meet ``min_coverage``.
@@ -94,10 +94,10 @@ impl From<CoverageMode> for CoreCoverageMode {
     }
 }
 
-/// SIMD vectorization layout used by the parasail alignments engine.
+/// SIMD vectorization layout used by the parasail alignment engine.
 ///
 /// - ``Striped`` (default for local): interleaved layout, best for short sequences.
-/// - ``Scan``: sequential scan layout, often faster for long sequences or global alignments.
+/// - ``Scan``: sequential scan layout, often faster for long sequences or global alignment.
 /// - ``Diag``: diagonal layout; niche use-case, rarely needed.
 ///
 /// In practice the default per-aligner is a good choice; change only if profiling
@@ -214,12 +214,11 @@ impl From<ScoringMatrix> for BundledMatrix {
         }
     }
 }
-/// Integer precision used for alignments score accumulation.
+/// Integer precision used for alignment score accumulation.
 ///
 /// - ``Short`` (8-bit), ``Half`` (16-bit), ``Full`` (32-bit), ``Long`` (64-bit):
 ///   fixed-width integers — lower width is faster but can overflow on long sequences.
-/// - ``Sat`` (default): 8-bit saturating arithmetic; silently clamps on overflow
-///   instead of wrapping. Safe for typical alignments lengths and the recommended default.
+/// - ``Sat`` (default): 8-bit saturating arithmetic; If it saturates, silently restart with 16-bit.
 #[gen_stub_pyclass_enum]
 #[pyclass(eq, eq_int, from_py_object, module = "refnd.kernels.alignments")]
 #[derive(Clone, Copy, PartialEq)]
@@ -247,7 +246,7 @@ impl From<DatatypeWidth> for CoreDatatypeWidth {
 
 /// Needleman–Wunsch global sequence aligner returning a normalised identity score.
 ///
-/// Wraps the parasail SIMD alignments library. The identity score is computed as
+/// Wraps the parasail SIMD alignment library. The identity score is computed as
 /// the number of identical aligned positions divided by the denominator selected
 /// by ``identity_mode``.
 ///
@@ -268,6 +267,7 @@ impl From<DatatypeWidth> for CoreDatatypeWidth {
 ///
 ///     aligner = GlobalAligner(gap_open=11, gap_extend=1)
 ///     score = aligner.call("MKTAYIAK", "MKTAYIAKQR")
+///     score = aligner("MKTAYIAK", "MKTAYIAKQR") # Alternative
 ///     # score in [0.0, 1.0]
 #[gen_stub_pyclass]
 #[pyclass(module = "refnd.kernels.alignments")]
@@ -307,11 +307,11 @@ impl GlobalAligner {
             inner
         }
     }
-    /// Compute the global alignments identity between two sequences.
+    /// Compute the global alignment identity between two sequences.
     ///
     /// Args:
-    ///     ref_sample: Reference alignments sequence (single-letter amino acid codes).
-    ///     query: Query alignments sequence.
+    ///     ref_sample: Reference sequence (single-letter amino acid codes or nucleotides).
+    ///     query: Query sequence.
     ///
     /// Returns:
     ///     Identity score in ``[0.0, 1.0]``.
@@ -329,7 +329,7 @@ impl GlobalAligner {
 /// Smith–Waterman local sequence aligner returning a normalised identity score.
 ///
 /// Like ``GlobalAligner`` but aligns only the most similar sub-region of each
-/// sequence. Pairs that do not meet the ``min_coverage`` criterion after alignments
+/// sequence. Pairs that do not meet the ``min_coverage`` criterion after alignment
 /// receive a score of ``0.0``.
 ///
 /// ``LocalAligner`` is used as a kernel via ``KernelVariant.AlignmentLocal``.
@@ -337,7 +337,7 @@ impl GlobalAligner {
 /// Args:
 ///     gap_open: Affine gap-open penalty. Default ``11``.
 ///     gap_extend: Affine gap-extend penalty. Default ``1``.
-///     min_coverage: Minimum fraction of sequence covered by the local alignments
+///     min_coverage: Minimum fraction of sequence covered by the local alignment
 ///                   (per ``cov_mode``) for the pair to be accepted. Default ``0.8``.
 ///     cov_mode: Which sequence(s) must meet ``min_coverage``. Default
 ///               ``CoverageMode.BothQueryTarget``.
@@ -352,6 +352,7 @@ impl GlobalAligner {
 ///
 ///     aligner = LocalAligner(min_coverage=0.5, cov_mode=CoverageMode.Query)
 ///     score = aligner.call("ACDEFGHIKLM", "CDEFGHI")
+///     score = aligner("ACDEFGHIKLM", "CDEFGHI") # Alternative
 #[gen_stub_pyclass]
 #[pyclass(module = "refnd.kernels.alignments")]
 pub struct LocalAligner {
@@ -397,7 +398,7 @@ impl LocalAligner {
             inner
         }
     }
-    /// Compute the local alignments identity between two sequences.
+    /// Compute the local alignment identity between two sequences.
     ///
     /// Args:
     ///     ref_sample: Reference alignments sequence (single-letter amino acid codes).

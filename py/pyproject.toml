@@ -1,16 +1,20 @@
 [build-system]
-requires = ["maturin>=1.11,<2.0"]
+requires = ["maturin>=1.11,<2.0", "hatchling"]
 build-backend = "maturin"
 
 [project]
 name = "refnd"
 requires-python = ">=3.10"
+readme = "LONG_DESC.md"
+description = "Sample Relation Finder; Efficient thresholded proximity graph computation; RGP toolkit."
 classifiers = [
     "Programming Language :: Rust",
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Python :: Implementation :: PyPy",
 ]
 dynamic = ["version"]
+
+[tool.hatch.build.hooks.custom]
 
 [tool.maturin]
 module-name = "refnd"

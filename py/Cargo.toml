@@ -1,6 +1,6 @@
 [package]
 name = "py-refnd"
-version = "0.1.0"
+version = "0.0.1"
 edition = "2024"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -15,3 +15,4 @@ refnd-core = { package = "refnd", path = "../refnd" }
 indicatif = "0.17"
 fixedbitset = "0.5"
 numpy = "0.28"
+anyhow = "1.0.102"

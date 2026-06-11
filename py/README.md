@@ -1,4 +1,4 @@
-# py-proto
+# Refnd Python
 
 ## Build Package
 1. Generate stubs
@@ -10,6 +10,7 @@ cargo run --bin stub_gen
 uv build
 ```
 ## Build Docs
+After generating stubs, run this command:
 ```bash
 uv run --reinstall sphinx-build docs/source docs/build/html
 open docs/build/html/index.html
