@@ -52,12 +52,15 @@ class USAlignKernel:
         k  = USAlignKernel()                  # default: NormMode.Min
         d  = k(s1, s2)                         # float in [0, 1]
     """
-    def __new__(cls, norm_mode: NormMode = NormMode.Min) -> USAlignKernel:
+    def __new__(cls, norm_mode: NormMode = NormMode.Min, fast: builtins.bool = False) -> USAlignKernel:
         r"""
         Create a USAlignKernel.
         
         Args:
             norm_mode: Which TM-score normalization to use. Defaults to ``NormMode.Min``.
+            fast: Use USalign's fast alignment mode (~3-5x faster, slight accuracy loss).
+                Recommended when building HNSW indexes where approximate distances suffice.
+                Defaults to ``False``.
         """
     def call(self, a: PdbStructure, b: PdbStructure) -> builtins.float:
         r"""

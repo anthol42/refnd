@@ -1262,6 +1262,7 @@ dependencies = [
  "numpy",
  "pyo3",
  "pyo3-stub-gen",
+ "rayon",
  "refnd",
 ]
 

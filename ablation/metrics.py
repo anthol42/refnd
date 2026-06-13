@@ -18,7 +18,6 @@ from refnd.core import (
     partition,
 )
 from refnd.kernels import KernelVariant
-from refnd.kernels.alignments import GlobalAligner
 
 if TYPE_CHECKING:
     from datasets import DatasetConfig
@@ -37,82 +36,34 @@ def _shuffle_sample(sample: Any, rng: np.random.Generator) -> Any:
     return BitFingerprint.from_np(arr)
 
 
-def _build_kernel(cfg: "DatasetConfig"):
-    """Return a callable kernel(a, b) -> distance."""
-    if cfg.modality == KernelVariant.AlignmentGlobal:
-        return GlobalAligner(**cfg.kernel_params)
-    if cfg.modality == KernelVariant.TanimotoBit:
-        from refnd.kernels.molecules import TanimotoBit as _TanimotoBit
-        return _TanimotoBit()
-    raise ValueError(f"Unsupported modality for null model: {cfg.modality}")
-
-
-# Module-level globals used by multiprocessing workers (avoids re-pickling per task).
-_null_model_data: list[Any] = []
-_null_model_cfg: Any = None
-
-
-def _null_model_init(data: list[Any], cfg: Any) -> None:
-    global _null_model_data, _null_model_cfg
-    _null_model_data = data
-    _null_model_cfg  = cfg
-
-
-def _null_model_worker(args: tuple[int, int, np.ndarray, np.ndarray]) -> int:
-    start, worker_seed, idx_a, idx_b = args
-    wrng      = np.random.default_rng(worker_seed)
-    kernel    = _build_kernel(_null_model_cfg)
-    threshold = _null_model_cfg.proximity_threshold
-    count = 0
-    for k in range(len(idx_a)):
-        a = _shuffle_sample(_null_model_data[idx_a[k]], wrng)
-        b = _shuffle_sample(_null_model_data[idx_b[k]], wrng)
-        if kernel(a, b) <= threshold:
-            count += 1
-    return count
-
 
 def null_model(
     data: list[Any],
     cfg: "DatasetConfig",
     n_samples: int = 10_000_000,
     seed: int = 42,
-    n_jobs: int | None = None,
 ) -> float:
     """Estimate P(distance <= threshold) under a permutation null model.
 
     Generates n_samples random pairs of element-shuffled samples, computes
-    their kernel distance in parallel across processes (bypasses GIL), and
-    returns the fraction that fall within the proximity threshold.
+    all distances in one parallelized zip_kernel call (Rust/rayon), and
+    returns the fraction within the proximity threshold.
     Used as gamma for CPM Leiden.
     """
-    import os
-    from multiprocessing import Pool
+    from refnd.kernels import zip_kernel
 
-    n_jobs = n_jobs or os.cpu_count() or 1
-    print(f"[dim]Started {n_jobs} worker processes...[/]")
-
-    rng = np.random.default_rng(seed)
+    rng   = np.random.default_rng(seed)
     idx_a = rng.integers(0, len(data), size=n_samples)
     idx_b = rng.integers(0, len(data), size=n_samples)
-    chunk_seeds = rng.integers(0, 2**31, size=n_jobs)
+    list_a = [_shuffle_sample(data[i], rng) for i in idx_a]
+    list_b = [_shuffle_sample(data[i], rng) for i in idx_b]
 
-    chunk_size = (n_samples + n_jobs - 1) // n_jobs
-    tasks = [
-        (i * chunk_size, int(chunk_seeds[i]),
-         idx_a[i * chunk_size: (i + 1) * chunk_size],
-         idx_b[i * chunk_size: (i + 1) * chunk_size])
-        for i in range(n_jobs)
-    ]
-
-    with Pool(
-        processes=n_jobs,
-        initializer=_null_model_init,
-        initargs=(data, cfg),
-    ) as pool:
-        counts = pool.map(_null_model_worker, tasks)
-
-    return sum(counts) / n_samples
+    scores = zip_kernel(
+        cfg.modality, list_a, list_b,
+        n_threads=0, progress=False,
+        **cfg.kernel_params,
+    )
+    return sum(1 for s in scores if s <= cfg.proximity_threshold) / n_samples
 
 
 def layer0_to_edge_store(adj: list[list[int]], n: int) -> EdgeStore:

@@ -89,5 +89,8 @@ mod refnd {
             #[pymodule_export]
             use crate::kernels::structures::{PdbStructure, USAlignKernel, NormMode};
         }
+
+        #[pymodule_export]
+        use crate::kernels::zip_kernel::zip_kernel;
     }
 }
