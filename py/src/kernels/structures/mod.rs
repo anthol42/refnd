@@ -6,6 +6,7 @@ use refnd_core::kernels::alignments::usalign::{
     NormMode as CoreNormMode,
     PdbStructure as CorePdbStructure,
 };
+use crate::utils::PdbStructure;
 
 // ── Distance<PdbStructure> bridge ─────────────────────────────────────────────
 
@@ -47,53 +48,18 @@ impl From<NormMode> for CoreNormMode {
     }
 }
 
-// ── PdbStructure ──────────────────────────────────────────────────────────────
-
-/// A protein structure loaded from a PDB file and held in memory.
-///
-/// The structure is parsed once on construction and the coordinate arrays are
-/// kept alive for the lifetime of the object. Cloning is cheap (reference-counted).
-///
-/// Example::
-///
-///     from refnd.kernels.structures import PdbStructure
-///     s = PdbStructure("1abc.pdb")
-#[gen_stub_pyclass]
-#[pyclass(module = "refnd.kernels.structures", from_py_object)]
-#[derive(Clone)]
-pub struct PdbStructure {
-    pub inner: CorePdbStructure,
-}
-
-#[gen_stub_pymethods]
-#[pymethods]
-impl PdbStructure {
-    /// Load a protein structure from a PDB file.
-    ///
-    /// Args:
-    ///     path: Path to the PDB file (standard format, not gzipped).
-    ///
-    /// Raises:
-    ///     RuntimeError: If the file cannot be opened or contains fewer than 3 residues.
-    #[new]
-    pub fn new(path: &str) -> PyResult<Self> {
-        CorePdbStructure::load(path)
-            .map(|inner| Self { inner })
-            .map_err(pyo3::exceptions::PyRuntimeError::new_err)
-    }
-}
-
 // ── USAlignKernel ─────────────────────────────────────────────────────────────
 
 /// Protein structure comparison kernel using USalign TM-score.
 ///
-/// Operates on pre-loaded ``PdbStructure`` objects.
+/// Operates on pre-loaded ``PdbStructure`` objects (from ``refnd.utils``).
 /// Returns ``1.0 - TM-score`` so that identical structures have distance 0
 /// and unrelated structures have distance approaching 1.
 ///
 /// Example::
 ///
-///     from refnd.kernels.structures import PdbStructure, USAlignKernel, NormMode
+///     from refnd.utils import PdbStructure
+///     from refnd.kernels.structures import USAlignKernel, NormMode
 ///
 ///     s1 = PdbStructure("1abc.pdb")
 ///     s2 = PdbStructure("1xyz.pdb")
@@ -114,9 +80,8 @@ impl USAlignKernel {
     ///     norm_mode: Which TM-score normalization to use. Defaults to ``NormMode.Min``.
     ///     fast: Use USalign's fast alignment mode (~3-5x faster, slight accuracy loss).
     ///         Recommended when building HNSW indexes where approximate distances suffice.
-    ///         Defaults to ``False``.
     #[new]
-    #[pyo3(signature = (norm_mode = NormMode::Min, fast = false))]
+    #[pyo3(signature = (norm_mode = NormMode::Min, fast = true))]
     pub fn new(norm_mode: NormMode, fast: bool) -> Self {
         Self { inner: CoreUSAlignKernel::new(norm_mode.into(), fast) }
     }

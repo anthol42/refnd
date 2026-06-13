@@ -15,8 +15,9 @@ use super::super::kernels::{
         LocalAligner as _LocalAligner,
     },
     molecules::{TanimotoReal as _TanimotoReal, TanimotoBit as _TanimotoBit},
-    structures::{PdbStructure, USAlignKernel as _USAlignKernel},
+    structures::USAlignKernel as _USAlignKernel,
 };
+use super::super::utils::PdbStructure;
 
 /// Configuration for the HNSW approximate nearest-neighbour index.
 ///

@@ -8,9 +8,9 @@ use crate::kernels::{
     KernelVariant,
     alignments::{GlobalAligner, LocalAligner},
     molecules::{TanimotoBit, TanimotoReal},
-    structures::{PdbStructure, USAlignKernel},
+    structures::USAlignKernel,
 };
-use crate::utils::{BitFingerprint, RealFingerprint};
+use crate::utils::{BitFingerprint, RealFingerprint, PdbStructure};
 use crate::core::_utils::linear_progress_bar;
 
 fn compute<T, K>(data1: Vec<T>, data2: Vec<T>, kernel: K, n_threads: usize, pb: Option<&ProgressBar>) -> Vec<f32>

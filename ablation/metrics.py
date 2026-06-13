@@ -18,7 +18,7 @@ from refnd.core import (
     partition,
 )
 from refnd.kernels import KernelVariant
-
+from tqdm import tqdm
 if TYPE_CHECKING:
     from datasets import DatasetConfig
 
@@ -29,11 +29,10 @@ def _shuffle_sample(sample: Any, rng: np.random.Generator) -> Any:
         chars = list(sample)
         rng.shuffle(chars)
         return "".join(chars)
-    # BitFingerprint: convert to bool array, shuffle bits, reconstruct
-    from refnd.utils import BitFingerprint
-    arr = sample.to_np()
-    rng.shuffle(arr)
-    return BitFingerprint.from_np(arr)
+    n   = len(sample)
+    arr = np.zeros(n, dtype=bool)
+    arr[rng.choice(n, size=sample.count(), replace=False)] = True
+    return arr
 
 
 
@@ -55,9 +54,11 @@ def null_model(
     rng   = np.random.default_rng(seed)
     idx_a = rng.integers(0, len(data), size=n_samples)
     idx_b = rng.integers(0, len(data), size=n_samples)
+    print("A")
     list_a = [_shuffle_sample(data[i], rng) for i in idx_a]
+    print("B")
     list_b = [_shuffle_sample(data[i], rng) for i in idx_b]
-
+    print("  [dim]Running kernel...[/]")
     scores = zip_kernel(
         cfg.modality, list_a, list_b,
         n_threads=0, progress=False,

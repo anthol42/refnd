@@ -60,7 +60,7 @@ mod refnd {
     #[pymodule]
     mod utils {
         #[pymodule_export]
-        use crate::utils::{BitFingerprint, RealFingerprint, read_fasta, largest_cluster};
+        use crate::utils::{BitFingerprint, RealFingerprint, PdbStructure, read_fasta, largest_cluster};
     }
 
     #[pymodule]
@@ -87,7 +87,7 @@ mod refnd {
         #[pymodule]
         mod structures {
             #[pymodule_export]
-            use crate::kernels::structures::{PdbStructure, USAlignKernel, NormMode};
+            use crate::kernels::structures::{USAlignKernel, NormMode};
         }
 
         #[pymodule_export]

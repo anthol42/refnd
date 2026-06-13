@@ -9,9 +9,9 @@ use crate::kernels::{
     KernelVariant,
     alignments::{GlobalAligner, LocalAligner},
     molecules::{TanimotoBit, TanimotoReal},
-    structures::{PdbStructure, USAlignKernel as _USAlignKernel},
+    structures::USAlignKernel as _USAlignKernel,
 };
-use crate::utils::{BitFingerprint, RealFingerprint};
+use crate::utils::{BitFingerprint, RealFingerprint, PdbStructure};
 use super::_utils::linear_progress_bar;
 use super::edge_store::EdgeStore;
 

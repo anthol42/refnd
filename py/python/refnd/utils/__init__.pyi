@@ -8,6 +8,7 @@ import typing
 from rdkit.DataStructs.cDataStructs import ExplicitBitVect, UIntSparseIntVect
 __all__ = [
     "BitFingerprint",
+    "PdbStructure",
     "RealFingerprint",
     "largest_cluster",
     "read_fasta",
@@ -68,6 +69,30 @@ class BitFingerprint:
     def count(self) -> builtins.int:
         r"""
         Number of on bits (popcount).
+        """
+
+@typing.final
+class PdbStructure:
+    r"""
+    A protein structure loaded from a PDB file and held in memory.
+    
+    The structure is parsed once on construction and the coordinate arrays are
+    kept alive for the lifetime of the object. Cloning is cheap (reference-counted).
+    
+    Example::
+    
+        from refnd.utils import PdbStructure
+        s = PdbStructure("1abc.pdb")
+    """
+    def __new__(cls, path: builtins.str) -> PdbStructure:
+        r"""
+        Load a protein structure from a PDB file.
+        
+        Args:
+            path: Path to the PDB file (standard format, not gzipped).
+        
+        Raises:
+            RuntimeError: If the file cannot be opened or contains fewer than 3 residues.
         """
 
 @typing.final
