@@ -11,10 +11,13 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-refnd = { path = "../py" }
+refnd = { path = "../py", editable = true }
 
 [dependency-groups]
 dev = [
-    "matplotlib>=3.11.0",
     "scipy>=1.17.1",
+    "maturin>=1.13.3",
+    "matplotlib>=3.10.9",
+    "seaborn>=0.13.2",
+    "requests>=2.34.2",
 ]

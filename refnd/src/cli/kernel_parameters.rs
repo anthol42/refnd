@@ -8,6 +8,7 @@ use refnd::kernels::alignments::parasail::{
     GlobalIdentityMode, LocalAlignerBuilder, LocalIdentityMode, ProteinKernel,
     VectorizationStrategy,
 };
+use refnd::kernels::alignments::usalign::{NormMode, PdbStructure, USAlignKernel};
 use refnd::utils::{BitFingerprint, FingerprintType, read_fasta, read_molecule_file};
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -75,6 +76,9 @@ pub enum KernelParams {
     Molecule {
         fingerprint: String,
     },
+    Structure {
+        norm_mode: String,
+    },
 }
 
 impl KernelParams {
@@ -112,6 +116,11 @@ impl KernelParams {
             KernelParams::Molecule { fingerprint } => {
                 let mut map = BTreeMap::new();
                 map.insert("fingerprint".to_string(), fingerprint.clone());
+                map
+            }
+            KernelParams::Structure { norm_mode } => {
+                let mut map = BTreeMap::new();
+                map.insert("norm_mode".to_string(), norm_mode.clone());
                 map
             }
         }
@@ -220,5 +229,81 @@ impl KernelDispatch for MoleculeKernelArgs {
             std::process::exit(1);
         }
         entries.into_iter().unzip()
+    }
+}
+
+// ── Structure kernel (USalign TM-score) ──────────────────────────────────────
+
+#[derive(Args)]
+#[command(next_help_heading = "Kernel Options")]
+pub struct StructureKernelArgs {
+    /// TM-score normalization: min(TM1,TM2), query length, or target length
+    #[arg(long, default_value = "min", value_name = "MODE")]
+    pub norm_mode: NormMode,
+
+    /// Use USalign fast mode (~3-5x faster, recommended for large datasets)
+    #[arg(long)]
+    pub fast: bool,
+}
+
+impl KernelDispatch for StructureKernelArgs {
+    type Data = PdbStructure;
+    type Kernel = USAlignKernel;
+
+    fn kernel_params(&self) -> KernelParams {
+        KernelParams::Structure {
+            norm_mode: format!("{:?}", self.norm_mode),
+        }
+    }
+
+    fn build_kernel(&self) -> USAlignKernel {
+        USAlignKernel::new(self.norm_mode, self.fast)
+    }
+
+    /// Accepts either a directory of `.pdb` files or a two-column TSV (id\tpath).
+    /// PDB files are parsed into memory upfront so each structure is loaded only once.
+    fn load(&self, input: &Path) -> (Vec<String>, Vec<PdbStructure>) {
+        // Collect (id, path) pairs from a directory or TSV.
+        let pairs: Vec<(String, String)> = if input.is_dir() {
+            let mut entries: Vec<_> = std::fs::read_dir(input)
+                .unwrap_or_else(|e| { display::error(&e.to_string()); std::process::exit(1) })
+                .filter_map(|e| e.ok())
+                .filter(|e| e.path().extension().map_or(false, |x| x.eq_ignore_ascii_case("pdb")))
+                .collect();
+            entries.sort_by_key(|e| e.path());
+            entries.iter().map(|e| {
+                let p = e.path();
+                let id = p.file_stem().unwrap().to_string_lossy().into_owned();
+                (id, p.to_string_lossy().into_owned())
+            }).collect()
+        } else {
+            let content = std::fs::read_to_string(input)
+                .unwrap_or_else(|e| { display::error(&e.to_string()); std::process::exit(1) });
+            content.lines()
+                .filter(|l| !l.trim().is_empty() && !l.starts_with('#'))
+                .map(|l| {
+                    let mut cols = l.splitn(2, '\t');
+                    let id   = cols.next().unwrap_or("").trim().to_owned();
+                    let path = cols.next().unwrap_or("").trim().to_owned();
+                    (id, path)
+                })
+                .collect()
+        };
+
+        if pairs.is_empty() {
+            display::error("No PDB entries found");
+            std::process::exit(1);
+        }
+
+        // Pre-load all structures
+        let mut ids = Vec::with_capacity(pairs.len());
+        let mut structs = Vec::with_capacity(pairs.len());
+        for (id, path) in pairs {
+            match PdbStructure::load(&path) {
+                Ok(s)  => { ids.push(id); structs.push(s); }
+                Err(e) => { display::error(&e); std::process::exit(1); }
+            }
+        }
+        (ids, structs)
     }
 }

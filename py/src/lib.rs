@@ -24,6 +24,8 @@ mod refnd {
         modules.set_item("refnd.kernels.alignments", &alignments)?;
         let molecules = kernels.getattr("molecules")?;
         modules.set_item("refnd.kernels.molecules", &molecules)?;
+        let structures = kernels.getattr("structures")?;
+        modules.set_item("refnd.kernels.structures", &structures)?;
         Ok(())
     }
 
@@ -75,12 +77,17 @@ mod refnd {
 
         #[pymodule]
         mod alignments {
-
             #[pymodule_export]
             use crate::kernels::alignments::{
                 GlobalAligner, LocalAligner, ScoringMatrix, GlobalIdentityMode,
                 VectorizationStrategy, DatatypeWidth, CoverageMode, LocalIdentityMode
             };
+        }
+
+        #[pymodule]
+        mod structures {
+            #[pymodule_export]
+            use crate::kernels::structures::{PdbStructure, USAlignKernel, NormMode};
         }
     }
 }

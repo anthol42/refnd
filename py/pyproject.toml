@@ -20,6 +20,7 @@ dynamic = ["version"]
 module-name = "refnd"
 python-source = "python"
 include = ["python/**/*.pyi", "python/**/__init__.py"]
+profile = "release"
 
 [tool.pyo3-stub-gen]
 use-type-statement = true
