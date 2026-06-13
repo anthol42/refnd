@@ -1,0 +1,20 @@
+[project]
+name = "ablation"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "datasets>=5.0.0",
+    "esm>=3.2.3",
+    "huggingface-hub[hf-xet]",
+    "qmap-benchmark>=0.1.1",
+    "rdkit>=2026.3.3",
+    "refnd",
+    "rich>=15.0.0",
+    "torch>=2.12.0",
+    "transformers",
+]
+
+[tool.uv.sources]
+refnd = { path = "../py" }

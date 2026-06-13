@@ -1,0 +1,103 @@
+{
+  "name": "dbaasp_64_1_1-KPC-UH",
+  "input": {
+    "dataset": "dbaasp",
+    "ef_construction": 64,
+    "ef_init": 1,
+    "extend_candidates": false,
+    "keep_pruned_connections": true,
+    "use_heuristic": true,
+    "strict_ef": false,
+    "threshold_based_neighbourhood": false,
+    "leiden_objective": "modularity",
+    "gamma": 1.0
+  },
+  "results": {
+    "edges": {
+      "hnsw_build_time_s": 2.856049415655434,
+      "community_detection_time_s": 0.021156332921236753,
+      "pct_edges_recovered": 0.9963292095022361,
+      "missed_edge_weight_dist": {
+        "mean": 0.40460121631622314,
+        "std": 0.10289110243320465,
+        "median": 0.4615384340286255,
+        "p10": 0.23076921701431274,
+        "p25": 0.3884408473968506,
+        "p75": 0.46666663885116577,
+        "p90": 0.47058820724487305
+      },
+      "pct_missed_inter_community": 0.47151898734177217,
+      "top3_components": [
+        {
+          "size": 7571,
+          "n_communities": 102
+        },
+        {
+          "size": 59,
+          "n_communities": 1
+        },
+        {
+          "size": 40,
+          "n_communities": 1
+        }
+      ],
+      "split": {
+        "no_postfilter": {
+          "n_test": 2514,
+          "n_train": 7282,
+          "n_violations": 1614,
+          "mlp_score": 0.46954888105392456
+        },
+        "postfilter": {
+          "n_test": 2514,
+          "n_train": 5657,
+          "n_violations": 808,
+          "mlp_score": 0.502029538154602
+        }
+      }
+    },
+    "layer0": {
+      "hnsw_build_time_s": 2.856049415655434,
+      "community_detection_time_s": 0.02735800016671419,
+      "pct_edges_recovered": 0.4249404658186676,
+      "missed_edge_weight_dist": {
+        "mean": 0.3773733973503113,
+        "std": 0.10088156163692474,
+        "median": 0.4166666865348816,
+        "p10": 0.21052628755569458,
+        "p25": 0.3333333134651184,
+        "p75": 0.45454543828964233,
+        "p90": 0.46666663885116577
+      },
+      "pct_missed_inter_community": 0.11568762120232709,
+      "top3_components": [
+        {
+          "size": 7571,
+          "n_communities": 103
+        },
+        {
+          "size": 59,
+          "n_communities": 1
+        },
+        {
+          "size": 40,
+          "n_communities": 1
+        }
+      ],
+      "split": {
+        "no_postfilter": {
+          "n_test": 2135,
+          "n_train": 7661,
+          "n_violations": 1437,
+          "mlp_score": 0.4976443946361542
+        },
+        "postfilter": {
+          "n_test": 2135,
+          "n_train": 2912,
+          "n_violations": 369,
+          "mlp_score": 0.3951672315597534
+        }
+      }
+    }
+  }
+}
