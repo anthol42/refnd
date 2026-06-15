@@ -76,8 +76,11 @@ def main() -> None:
     data, labels = load_dataset(args.dataset, cache)
     print(f"  {len(data)} samples")
 
-    print("Loading/computing embeddings...")
-    embs = compute_embeddings(args.dataset, data, cfg, cache)
+    if cfg.encoder is not None:
+        print("Loading/computing embeddings...")
+        embs = compute_embeddings(args.dataset, data, cfg, cache)
+    else:
+        embs = None
 
     # Gamma: null model for CPM, fixed 1.0 for Modularity
     leiden_obj = (

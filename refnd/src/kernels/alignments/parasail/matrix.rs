@@ -2,6 +2,9 @@
 #[derive(Debug, Clone, clap::ValueEnum)]
 pub enum BundledMatrix {
     Identity,
+    // Nucleotide matrices
+    Dnafull,
+    Nuc44,
     // BLOSUM matrices (30 to 100, step 5)
     Blosum30, Blosum35, Blosum40, Blosum45, Blosum50,
     Blosum55, Blosum60, Blosum62, Blosum65, Blosum70,
@@ -24,6 +27,8 @@ impl BundledMatrix {
     pub fn to_parasail_name(&self) -> &'static str {
         match self {
             BundledMatrix::Identity => "identity",
+            BundledMatrix::Dnafull => "dnafull",
+            BundledMatrix::Nuc44 => "nuc44",
             BundledMatrix::Blosum30 => "blosum30",
             BundledMatrix::Blosum35 => "blosum35",
             BundledMatrix::Blosum40 => "blosum40",

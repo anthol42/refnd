@@ -126,6 +126,8 @@ impl From<VectorizationStrategy> for CoreVectorizationStrategy {
 #[derive(Clone, Copy, PartialEq)]
 pub enum ScoringMatrix {
     Identity,
+    Dnafull,
+    Nuc44,
     Blosum30, Blosum35, Blosum40, Blosum45, Blosum50,
     Blosum55, Blosum60, Blosum62, Blosum65, Blosum70,
     Blosum75, Blosum80, Blosum85, Blosum90, Blosum95, Blosum100,
@@ -145,6 +147,8 @@ impl From<ScoringMatrix> for BundledMatrix {
     fn from(m: ScoringMatrix) -> Self {
         match m {
             ScoringMatrix::Identity => BundledMatrix::Identity,
+            ScoringMatrix::Dnafull  => BundledMatrix::Dnafull,
+            ScoringMatrix::Nuc44    => BundledMatrix::Nuc44,
             ScoringMatrix::Blosum30  => BundledMatrix::Blosum30,
             ScoringMatrix::Blosum35  => BundledMatrix::Blosum35,
             ScoringMatrix::Blosum40  => BundledMatrix::Blosum40,
@@ -405,7 +409,7 @@ impl LocalAligner {
     ///     query: Query alignments sequence.
     ///
     /// Returns:
-    ///     Identity score in ``[0.0, 1.0]``, or ``0.0`` if the coverage filter fails.
+    ///     Identity score in ``[0.0, 1.0]``, or ``1.0`` if the coverage filter fails.
     #[pyo3(signature = (ref_sample, query))]
     fn call(&self, ref_sample: &str, query: &str) -> f32 {
         self.inner.call(ref_sample, query)

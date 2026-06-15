@@ -140,7 +140,7 @@ impl Distance<str> for LocalAligner {
         let align_length = stats.get_length().unwrap();
 
         if !self.satisfies_coverage(align_length, query.len(), ref_sample.len()) {
-            return 0.0;
+            return 1.0;
         }
 
         match self.identity_mode {
