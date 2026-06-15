@@ -100,6 +100,15 @@ def _embed_hf(model_name: str, data: list[Any], device: str) -> torch.Tensor:
     finally:
         _cls.register = _orig_register
 
+    # DNABERT-2's flash_attn_triton uses tl.dot(trans_b=True) which was removed in
+    # Triton 3.x. Null out the module-level reference so the model's forward falls
+    # through to the standard PyTorch attention path instead.
+    import sys
+    for mod_name, mod in sys.modules.items():
+        if "bert_layers" in mod_name and getattr(mod, "flash_attn_qkvpacked_func", None) is not None:
+            mod.flash_attn_qkvpacked_func = None
+            break
+
     texts = [str(x) for x in data]
 
     all_embs: list[torch.Tensor] = []
