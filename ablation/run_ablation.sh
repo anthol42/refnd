@@ -1,13 +1,17 @@
 #!/usr/bin/env bash
 
 
-# We'll test ef: 32 64 128 256
-# We'll test ef_init: 1, 2, 4, 8
+
+# Do a scaling experiment with different subsets of PeptideAtlas
+# Re-do ef-init with peptide atlas to see if same conclusions
 
 # DBAASP
 # Baseline
 uv run python main.py --dataset dbaasp        --ef-construction 64 --ef-init 1 --keep-pruned-connections --use-heuristic --leiden-objective cpm || true
 # ef-construction
+uv run python main.py --dataset dbaasp        --ef-construction 4 --ef-init 1 --keep-pruned-connections --use-heuristic --leiden-objective cpm || true
+uv run python main.py --dataset dbaasp        --ef-construction 8 --ef-init 1 --keep-pruned-connections --use-heuristic --leiden-objective cpm || true
+uv run python main.py --dataset dbaasp        --ef-construction 16 --ef-init 1 --keep-pruned-connections --use-heuristic --leiden-objective cpm || true
 uv run python main.py --dataset dbaasp        --ef-construction 32 --ef-init 1 --keep-pruned-connections --use-heuristic --leiden-objective cpm || true
 uv run python main.py --dataset dbaasp        --ef-construction 128 --ef-init 1 --keep-pruned-connections --use-heuristic --leiden-objective cpm || true
 uv run python main.py --dataset dbaasp        --ef-construction 256 --ef-init 1 --keep-pruned-connections --use-heuristic --leiden-objective cpm || true
@@ -28,6 +32,9 @@ uv run python main.py --dataset dbaasp        --ef-construction 64 --ef-init 1 -
 # Baseline
 uv run python main.py --dataset ld50_zhu      --ef-construction 64 --ef-init 1 --keep-pruned-connections --use-heuristic --leiden-objective cpm || true
 # ef-construction
+uv run python main.py --dataset ld50_zhu        --ef-construction 4 --ef-init 1 --keep-pruned-connections --use-heuristic --leiden-objective cpm || true
+uv run python main.py --dataset ld50_zhu        --ef-construction 8 --ef-init 1 --keep-pruned-connections --use-heuristic --leiden-objective cpm || true
+uv run python main.py --dataset ld50_zhu        --ef-construction 16 --ef-init 1 --keep-pruned-connections --use-heuristic --leiden-objective cpm || true
 uv run python main.py --dataset ld50_zhu        --ef-construction 32 --ef-init 1 --keep-pruned-connections --use-heuristic --leiden-objective cpm || true
 uv run python main.py --dataset ld50_zhu        --ef-construction 128 --ef-init 1 --keep-pruned-connections --use-heuristic --leiden-objective cpm || true
 uv run python main.py --dataset ld50_zhu        --ef-construction 256 --ef-init 1 --keep-pruned-connections --use-heuristic --leiden-objective cpm || true
@@ -47,6 +54,9 @@ uv run python main.py --dataset ld50_zhu        --ef-construction 64 --ef-init 1
 # Baseline
 uv run python main.py --dataset prom_core_all --ef-construction 64 --ef-init 1 --keep-pruned-connections --use-heuristic --leiden-objective cpm || true
 # ef-construction
+uv run python main.py --dataset prom_core_all        --ef-construction 4 --ef-init 1 --keep-pruned-connections --use-heuristic --leiden-objective cpm || true
+uv run python main.py --dataset prom_core_all        --ef-construction 8 --ef-init 1 --keep-pruned-connections --use-heuristic --leiden-objective cpm || true
+uv run python main.py --dataset prom_core_all        --ef-construction 16 --ef-init 1 --keep-pruned-connections --use-heuristic --leiden-objective cpm || true
 uv run python main.py --dataset prom_core_all        --ef-construction 32 --ef-init 1 --keep-pruned-connections --use-heuristic --leiden-objective cpm || true
 uv run python main.py --dataset prom_core_all        --ef-construction 128 --ef-init 1 --keep-pruned-connections --use-heuristic --leiden-objective cpm || true
 uv run python main.py --dataset prom_core_all        --ef-construction 256 --ef-init 1 --keep-pruned-connections --use-heuristic --leiden-objective cpm || true

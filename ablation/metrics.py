@@ -108,10 +108,9 @@ def missed_edge_weight_dist(hnsw_es: EdgeStore, exact_es: EdgeStore) -> dict:
 def pct_missed_inter_community(
     hnsw_es: EdgeStore,
     exact_es: EdgeStore,
-    exact_graph: CsrGraph,
+    exact_communities: list[int],
 ) -> float:
     """% of missed HNSW edges that are inter-community in the exact graph."""
-    exact_communities = find_communities(exact_graph)
     hnsw_pairs = edge_set(hnsw_es)
     missed = [(s, d) for s, d, _ in exact_es.edges()
               if (min(s, d), max(s, d)) not in hnsw_pairs]
@@ -166,10 +165,10 @@ def split_and_violations(
     graph_is_distance: bool,
     data: list[Any],
     labels: np.ndarray,
-    embs: torch.Tensor,
+    embs: torch.Tensor | None,
     variant: KernelVariant,
     proximity_threshold: float,
-    metric: str,
+    metric: str | None,
     kernel_params: dict,
     n_repeats: int = 10,
 ) -> dict:
@@ -180,6 +179,40 @@ def split_and_violations(
     Reports mean and std of MLP score and violation count across repeats.
     """
     n_communities = len(set(hnsw_communities))
+
+    if metric is None or embs is None:
+        # No supervised task — report split sizes and violations only, no MLP score.
+        results = {}
+        for post_filter in (False, True):
+            key = "postfilter" if post_filter else "no_postfilter"
+            if n_communities <= 1:
+                results[key] = {"n_test_mean": float("nan"), "n_train_mean": float("nan"),
+                                "p_violations_mean[%]": float("nan"), "p_violations_std[%]": float("nan")}
+                continue
+            p_violations_list, n_tests, n_trains = [], [], []
+            for seed in range(n_repeats):
+                train_idx, test_idx = partition(
+                    hnsw_communities, hnsw_graph,
+                    test_ratio=0.2, seed=seed, post_filtering=post_filter,
+                )
+                test_data  = [data[i] for i in test_idx]
+                train_data = [data[i] for i in train_idx]
+                train_hnsw = HNSWState(variant, train_data, proximity_threshold=proximity_threshold, **kernel_params)
+                train_hnsw.build(progress=False)
+                nn_results = train_hnsw.search(test_data, k=1, ef=50, threads=0, progress=False)
+                p_viol = 100 * sum(1 for hits in nn_results if hits and hits[0][1] < proximity_threshold) / len(test_data)
+                p_violations_list.append(p_viol)
+                n_tests.append(len(list(test_idx)))
+                n_trains.append(len(list(train_idx)))
+            viol_arr = np.array(p_violations_list, dtype=float)
+            results[key] = {
+                "n_test_mean":          float(np.mean(n_tests)),
+                "n_train_mean":         float(np.mean(n_trains)),
+                "p_violations_mean[%]": float(viol_arr.mean()),
+                "p_violations_std[%]":  float(viol_arr.std()),
+            }
+        return results
+
     from mlp import train_eval_mlp
 
     results = {}
@@ -216,7 +249,7 @@ def split_and_violations(
             train_hnsw.build(progress=True)
             nn_results = train_hnsw.search(test_data, k=1, ef=50, threads=0, progress=True)
             p_viol = 100 * sum(
-                1 for hits in nn_results if hits and hits[0][1] <= proximity_threshold
+                1 for hits in nn_results if hits and hits[0][1] < proximity_threshold
             ) / len(test_data)
 
             train_sub_graph = _build_subgraph(
@@ -269,20 +302,29 @@ def compute_graph_metrics(
     hnsw_build_time: float,
     data: list[Any],
     labels: np.ndarray,
-    embs: torch.Tensor,
+    embs: torch.Tensor | None,
     variant: KernelVariant,
     proximity_threshold: float,
-    metric: str,
+    metric: str | None,
     kernel_params: dict,
     com_objective: LeidenObjective,
     gamma: float,
 ) -> dict:
+    exact_communities = find_communities(exact_graph)
+    exact_edges_list  = exact_es.edges()
+    pct_exact_inter   = (
+        sum(1 for s, d, _ in exact_edges_list if exact_communities[s] != exact_communities[d])
+        / len(exact_edges_list)
+        if exact_edges_list else 0.0
+    )
+
     return {
         "hnsw_build_time_s":          hnsw_build_time,
         "community_detection_time_s": hnsw_cd_time,
         "pct_edges_recovered":        pct_edges_recovered(hnsw_es, exact_es),
         "missed_edge_weight_dist":    missed_edge_weight_dist(hnsw_es, exact_es),
-        "pct_missed_inter_community": pct_missed_inter_community(hnsw_es, exact_es, exact_graph),
+        "pct_inter_community_exact":  pct_exact_inter,
+        "pct_missed_inter_community": pct_missed_inter_community(hnsw_es, exact_es, exact_communities),
         "top3_components":            top3_component_community_counts(hnsw_graph, com_objective, gamma),
         "split":                      split_and_violations(
             hnsw_communities=hnsw_communities,

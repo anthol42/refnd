@@ -5,9 +5,12 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13,<3.14"
 dependencies = [
+    "beautifulsoup4>=4.15.0",
     "datasets>=5.0.0",
     "esm>=3.2.3",
+    "hestia-good>=1.2.1",
     "huggingface-hub[hf-xet]",
+    "matplotlib>=3.11.0",
     "qmap-benchmark>=0.1.1",
     "rdkit>=2026.3.3",
     "refnd",
@@ -18,3 +21,8 @@ dependencies = [
 
 [tool.uv.sources]
 refnd = { path = "../py" }
+
+[dependency-groups]
+dev = [
+    "ipykernel>=7.3.0",
+]
