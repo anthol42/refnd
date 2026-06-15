@@ -65,6 +65,20 @@ class BitFingerprint:
         r"""
         Export as a numpy bool array.
         """
+    @staticmethod
+    def random(len: builtins.int, count: builtins.int) -> BitFingerprint:
+        r"""
+        Create a fingerprint of ``len`` bits with exactly ``count`` bits set at random.
+        
+        Useful for randomized testing.
+        
+        Args:
+            len: Total number of bits.
+            count: Number of bits to turn on. Must be ``<= len``.
+        
+        Raises:
+            ValueError: If ``count > len``.
+        """
     def __len__(self) -> builtins.int: ...
     def count(self) -> builtins.int:
         r"""

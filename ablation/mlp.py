@@ -37,6 +37,9 @@ def train_eval_mlp(
     seed: int = 42,
 ) -> dict:
     """Train MLP on train_idx, use val_idx for early stopping, evaluate on test_idx."""
+    import time
+    from rich import print as rprint
+    t0 = time.perf_counter()
     torch.manual_seed(seed)
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -117,4 +120,5 @@ def train_eval_mlp(
         score, _ = pearsonr(preds, y_te)
         score = float(score)
 
+    rprint(f"[dim]    MLP done in {time.perf_counter() - t0:.1f}s — {metric}={score:.4f}[/]")
     return {"metric": metric, "score": score}

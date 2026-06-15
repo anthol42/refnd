@@ -39,7 +39,7 @@ DATASETS: dict[str, DatasetConfig] = {
         modality=KernelVariant.AlignmentGlobal,
         metric="mcc",
         encoder="zhihan1996/DNABERT-2-117M",
-        proximity_threshold=0.8,
+        proximity_threshold=0.45,
         kernel_params={"matrix": ScoringMatrix.Identity},
     ),
 }

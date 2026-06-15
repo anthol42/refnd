@@ -66,3 +66,5 @@ Notes:
 - Download prom_core_all from this link: https://huggingface.co/datasets/leannmlindsey/GUE/resolve/main/GUE/prom_core_all/train.csv
 
 
+uv run python main.py --dataset prom_core_all --ef-construction 64 --ef-init 1 --use-heuristic 
+--keep-pruned-connections --leiden-objective cpm

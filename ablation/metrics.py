@@ -8,11 +8,12 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 import torch
 from rich import print
+from refnd.utils import BitFingerprint
 from refnd.core import (
     CsrGraph,
     EdgeStore,
+    HNSWState,
     LeidenObjective,
-    exact_nearest_neighbors,
     find_communities,
     find_components,
     partition,
@@ -29,10 +30,7 @@ def _shuffle_sample(sample: Any, rng: np.random.Generator) -> Any:
         chars = list(sample)
         rng.shuffle(chars)
         return "".join(chars)
-    n   = len(sample)
-    arr = np.zeros(n, dtype=bool)
-    arr[rng.choice(n, size=sample.count(), replace=False)] = True
-    return arr
+    return BitFingerprint.random(len(sample), sample.count())
 
 
 
@@ -54,14 +52,12 @@ def null_model(
     rng   = np.random.default_rng(seed)
     idx_a = rng.integers(0, len(data), size=n_samples)
     idx_b = rng.integers(0, len(data), size=n_samples)
-    print("A")
     list_a = [_shuffle_sample(data[i], rng) for i in idx_a]
-    print("B")
     list_b = [_shuffle_sample(data[i], rng) for i in idx_b]
     print("  [dim]Running kernel...[/]")
     scores = zip_kernel(
         cfg.modality, list_a, list_b,
-        n_threads=0, progress=False,
+        n_threads=0, progress=True,
         **cfg.kernel_params,
     )
     return sum(1 for s in scores if s <= cfg.proximity_threshold) / n_samples
@@ -183,11 +179,22 @@ def split_and_violations(
     on the train sub-graph, mirroring the outer test split strategy.
     Reports mean and std of MLP score and violation count across repeats.
     """
+    n_communities = len(set(hnsw_communities))
     from mlp import train_eval_mlp
 
     results = {}
     for post_filter in (False, True):
         key = "postfilter" if post_filter else "no_postfilter"
+        if n_communities <= 1:
+            results[key] = {
+                "n_test_mean": float('nan'),
+                "n_train_mean": float('nan'),
+                "p_violations_mean[%]": float('nan'),
+                "p_violations_std[%]": float('nan'),
+                "mlp_score_mean": float('nan'),
+                "mlp_score_std": float('nan'),
+            }
+            continue
 
         scores, p_violations_list, n_tests, n_trains = [], [], [], []
         for seed in range(n_repeats):
@@ -199,19 +206,19 @@ def split_and_violations(
             train_idx = list(train_idx)
             test_idx  = list(test_idx)
 
-            # Violation count on outer test set vs full train set
-            # Do this before sub-dividing train into train-val
             test_data  = [data[i] for i in test_idx]
             train_data = [data[i] for i in train_idx]
-            nn_results = exact_nearest_neighbors(
-                variant, test_data, train_data, k=1,
-                progress=False, **kernel_params,
+            train_hnsw = HNSWState(
+                variant, train_data,
+                proximity_threshold=proximity_threshold,
+                **kernel_params,
             )
+            train_hnsw.build(progress=True)
+            nn_results = train_hnsw.search(test_data, k=1, ef=50, threads=0, progress=True)
             p_viol = 100 * sum(
                 1 for hits in nn_results if hits and hits[0][1] <= proximity_threshold
             ) / len(test_data)
 
-            # Community-based val split on train sub-graph
             train_sub_graph = _build_subgraph(
                 train_idx, hnsw_es, graph_weighted, graph_is_distance,
             )

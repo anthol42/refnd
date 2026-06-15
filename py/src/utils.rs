@@ -130,6 +130,26 @@ impl BitFingerprint {
         BoolArray(data.into_pyarray(py))
     }
 
+    /// Create a fingerprint of ``len`` bits with exactly ``count`` bits set at random.
+    ///
+    /// Useful for randomized testing.
+    ///
+    /// Args:
+    ///     len: Total number of bits.
+    ///     count: Number of bits to turn on. Must be ``<= len``.
+    ///
+    /// Raises:
+    ///     ValueError: If ``count > len``.
+    #[staticmethod]
+    pub fn random(len: usize, count: usize) -> PyResult<Self> {
+        if count > len {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "count ({count}) must be <= len ({len})"
+            )));
+        }
+        Ok(Self { inner: CoreBitFP::random(len, count) })
+    }
+
     pub fn __len__(&self) -> usize { self.inner.bits.len() }
     /// Number of on bits (popcount).
     pub fn count(&self) -> u32 { self.inner.count }

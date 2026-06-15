@@ -126,7 +126,7 @@ def main() -> None:
     # 4. Per graph type
     graph_results: dict[str, dict] = {}
 
-    for graph_type in ("edges", "layer0"):
+    for graph_type in ("edges", ):# ("edges", "layer0"):
         print(f"\n[green]-- Graph type: {graph_type} --[/]")
 
         if graph_type == "edges":
