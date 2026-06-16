@@ -23,7 +23,6 @@ from cache import CacheStore
 from datasets import load_dataset
 
 SIZES   = [5_000, 25_000, 125_000, 625_000, 1_250_000]
-# SIZES = [125_000]
 SEED    = 42
 TIMEOUT = 86_400           # 1 day in seconds
 RESULTS = Path("results/runtime.json")
@@ -35,6 +34,7 @@ METHODS_DIR = Path(__file__).parent / "runtime_scripts"
 METHODS: dict[str, Path] = {
     "refnd": METHODS_DIR / "split_refnd.py",
     "hestia": METHODS_DIR / "split_hestia.py",
+    "hnsw-only": METHODS_DIR / "split_hnsw_only.py",
 }
 
 # ── FASTA helpers ──────────────────────────────────────────────────────────────

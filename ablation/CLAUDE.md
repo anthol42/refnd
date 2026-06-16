@@ -2,6 +2,8 @@
 
 Standalone CLI that ablates HNSW parameters across three biological dataset modalities and evaluates community-based dataset splitting quality.
 
+**ALWAYS USE UV RUN! NOT python3!!**
+
 ---
 
 ## Running an experiment
