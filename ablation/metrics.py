@@ -255,7 +255,9 @@ def split_and_violations(
             train_sub_graph = _build_subgraph(
                 train_idx, hnsw_es, graph_weighted, graph_is_distance,
             )
-            train_communities_local = [hnsw_communities[i] for i in train_idx]
+            train_communities_global = [hnsw_communities[i] for i in train_idx]
+            relabel = {old: new for new, old in enumerate(sorted(set(train_communities_global)))}
+            train_communities_local = [relabel[c] for c in train_communities_global]
             inner_train_local, val_local = partition(
                 train_communities_local, train_sub_graph,
                 test_ratio=0.15, seed=seed, post_filtering=post_filter,

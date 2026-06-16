@@ -37,10 +37,10 @@ DATASETS: dict[str, DatasetConfig] = {
         kernel_params={},
     ),
     "prom_core_all": DatasetConfig(
-        modality=KernelVariant.AlignmentGlobal,
+        modality=KernelVariant.AlignmentLocal,
         metric="mcc",
         encoder="zhihan1996/DNABERT-2-117M",
-        proximity_threshold=0.45,
+        proximity_threshold=0.4,
         kernel_params={"matrix": ScoringMatrix.Dnafull,
                        "identity_mode": LocalIdentityMode.MinSeqLength,
                        "cov_mode": CoverageMode.ShorterSeq,

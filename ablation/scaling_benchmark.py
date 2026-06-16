@@ -5,11 +5,12 @@ Usage:
 
 Each method in METHODS is a standalone Python script that takes a single
 positional argument (the input FASTA file). The orchestrator runs it under
-/usr/bin/time -l to capture true peak RSS including Rust heap allocations.
+/usr/bin/time to capture true peak RSS including Rust heap allocations.
 """
 from __future__ import annotations
 
 import json
+import platform
 import re
 import subprocess
 import time
@@ -82,15 +83,23 @@ def _save_results(records: list[dict]) -> None:
 
 # ── Subprocess runner ──────────────────────────────────────────────────────────
 
+_IS_MACOS = platform.system() == "Darwin"
+_TIME_FLAG = "-l" if _IS_MACOS else "-v"
+
+
 def _parse_peak_rss_bytes(stderr: str) -> int | None:
-    """Parse peak RSS from /usr/bin/time -l stderr (macOS, value in bytes)."""
-    m = re.search(r"(\d+)\s+maximum resident set size", stderr)
-    return int(m.group(1)) if m else None
+    """Parse peak RSS from /usr/bin/time stderr (bytes on macOS, kbytes on Linux)."""
+    if _IS_MACOS:
+        m = re.search(r"(\d+)\s+maximum resident set size", stderr)
+        return int(m.group(1)) if m else None
+    else:
+        m = re.search(r"Maximum resident set size \(kbytes\):\s*(\d+)", stderr)
+        return int(m.group(1)) * 1024 if m else None
 
 
 def _run_subprocess(method_name: str, script: Path, size: int, input_path: Path) -> dict:
-    """Run script under /usr/bin/time -l in a fresh process; return timing/memory record."""
-    cmd = ["/usr/bin/time", "-l", "uv", "run", str(script), str(input_path)]
+    """Run script under /usr/bin/time in a fresh process; return timing/memory record."""
+    cmd = ["/usr/bin/time", _TIME_FLAG, "uv", "run", str(script), str(input_path)]
 
     t0     = time.perf_counter()
     status = "ok"
