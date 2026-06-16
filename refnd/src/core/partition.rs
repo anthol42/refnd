@@ -13,11 +13,11 @@ pub fn partition_dataset(clusters: Vec<usize>, graph: &CsrGraph, test_ratio: f32
             .as_millis() as u64;
         StdRng::seed_from_u64(ms)
     };
-    let &num_clusters = clusters.iter().max().ok_or("Found no clusters because the vector is empty")?;
+    let &num_clusters = clusters.iter().max().ok_or("Found no clusters because the vector is empty")? +1;
     let mut all_clusters: Vec<usize> = (0..num_clusters).collect();
     all_clusters.shuffle(&mut rng);
-
-    let num_test = (test_ratio * num_clusters as f32) as usize;
+    
+    let num_test = (test_ratio * num_clusters as f32).ceil() as usize;
     let test_clusters = FxHashSet::from_iter(all_clusters[0..num_test].iter().copied());
 
     let mut test_ids = FxHashSet::default();
