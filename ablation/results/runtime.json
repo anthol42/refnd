@@ -1,0 +1,58 @@
+[
+  {
+    "method": "refnd",
+    "size": 5000,
+    "runtime_s": 2.057,
+    "peak_mem_mb": 546.93,
+    "status": "ok"
+  },
+  {
+    "method": "refnd",
+    "size": 25000,
+    "runtime_s": 15.104,
+    "peak_mem_mb": 572.9,
+    "status": "ok"
+  },
+  {
+    "method": "refnd",
+    "size": 125000,
+    "runtime_s": 127.331,
+    "peak_mem_mb": 706.73,
+    "status": "ok"
+  },
+  {
+    "method": "refnd",
+    "size": 625000,
+    "runtime_s": 843.634,
+    "peak_mem_mb": 1983.23,
+    "status": "ok"
+  },
+  {
+    "method": "refnd",
+    "size": 1250000,
+    "runtime_s": 1804.575,
+    "peak_mem_mb": 4979.9,
+    "status": "ok"
+  },
+  {
+    "method": "hestia",
+    "size": 5000,
+    "runtime_s": 1.666,
+    "peak_mem_mb": 287.02,
+    "status": "ok"
+  },
+  {
+    "method": "hestia",
+    "size": 25000,
+    "runtime_s": 15.407,
+    "peak_mem_mb": 386.41,
+    "status": "ok"
+  },
+  {
+    "method": "hestia",
+    "size": 125000,
+    "runtime_s": 371.462,
+    "peak_mem_mb": 782.82,
+    "status": "ok"
+  }
+]

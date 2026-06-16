@@ -22,8 +22,8 @@ from rich import print
 from cache import CacheStore
 from datasets import load_dataset
 
-# SIZES   = [5_000, 25_000, 125_000, 625_000, 1_250_000]
-SIZES = [125_000]
+SIZES   = [5_000, 25_000, 125_000, 625_000, 1_250_000]
+# SIZES = [125_000]
 SEED    = 42
 TIMEOUT = 86_400           # 1 day in seconds
 RESULTS = Path("results/runtime.json")
