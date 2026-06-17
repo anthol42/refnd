@@ -32,8 +32,8 @@ METHODS_DIR = Path(__file__).parent / "runtime_scripts"
 # ── Method registry: name → script path ───────────────────────────────────────
 
 METHODS: dict[str, Path] = {
-    "refnd": METHODS_DIR / "split_refnd.py",
-    "hestia": METHODS_DIR / "split_hestia.py",
+    # "refnd": METHODS_DIR / "split_refnd.py",
+    # "hestia": METHODS_DIR / "split_hestia.py",
     "hnsw-only": METHODS_DIR / "split_hnsw_only.py",
 }
 

@@ -40,7 +40,7 @@ DATASETS: dict[str, DatasetConfig] = {
         modality=KernelVariant.AlignmentLocal,
         metric="mcc",
         encoder="zhihan1996/DNABERT-2-117M",
-        proximity_threshold=0.4,
+        proximity_threshold=0.35,
         kernel_params={"matrix": ScoringMatrix.Dnafull,
                        "identity_mode": LocalIdentityMode.MinSeqLength,
                        "cov_mode": CoverageMode.ShorterSeq,
