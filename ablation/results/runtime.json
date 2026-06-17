@@ -54,5 +54,19 @@
     "runtime_s": 371.462,
     "peak_mem_mb": 782.82,
     "status": "ok"
+  },
+  {
+    "method": "hestia",
+    "size": 625000,
+    "runtime_s": 11485.804,
+    "peak_mem_mb": 2545.84,
+    "status": "ok"
+  },
+  {
+    "method": "hestia",
+    "size": 1250000,
+    "runtime_s": 49516.41,
+    "peak_mem_mb": 5646.91,
+    "status": "ok"
   }
 ]
