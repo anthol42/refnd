@@ -68,5 +68,40 @@
     "runtime_s": 49516.41,
     "peak_mem_mb": 5646.91,
     "status": "ok"
+  },
+  {
+    "method": "hnsw-only",
+    "size": 5000,
+    "runtime_s": 2.088,
+    "peak_mem_mb": 829.18,
+    "status": "ok"
+  },
+  {
+    "method": "hnsw-only",
+    "size": 25000,
+    "runtime_s": 14.455,
+    "peak_mem_mb": 892.16,
+    "status": "ok"
+  },
+  {
+    "method": "hnsw-only",
+    "size": 125000,
+    "runtime_s": 122.625,
+    "peak_mem_mb": 1010.12,
+    "status": "ok"
+  },
+  {
+    "method": "hnsw-only",
+    "size": 625000,
+    "runtime_s": 777.843,
+    "peak_mem_mb": 1502.18,
+    "status": "ok"
+  },
+  {
+    "method": "hnsw-only",
+    "size": 1250000,
+    "runtime_s": 1603.268,
+    "peak_mem_mb": 2801.73,
+    "status": "ok"
   }
 ]
