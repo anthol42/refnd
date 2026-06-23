@@ -28,3 +28,7 @@ molprint-core = "0.1.0"
 molprint-fp = "0.1.0"
 molprint-io = "0.1.0"
 libusalign-sys = "0.1.0"
+
+[[bin]]
+name = "bench_leiden"
+path = "src/bench_leiden.rs"

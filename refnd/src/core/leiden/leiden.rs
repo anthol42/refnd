@@ -1,9 +1,16 @@
 use super::{CsrGraph, reindex_membership};
+use crate::core::hnsw::{measure, LockStat};
 use fixedbitset::FixedBitSet;
 use std::collections::VecDeque;
 use rand::prelude::*;
 use rand::rng;
 use clap::ValueEnum;
+
+pub static STAT_FASTMOVE:   LockStat = LockStat::new();
+pub static STAT_MERGE:      LockStat = LockStat::new();
+pub static STAT_AGGREGATE:  LockStat = LockStat::new();
+pub static STAT_REINDEX:    LockStat = LockStat::new();
+pub static STAT_FLATTEN:    LockStat = LockStat::new();
 
 struct LeidenConfig {
     pub resolution: f32,
@@ -26,6 +33,7 @@ impl LeidenState {
         // Initialize temporary buffers
         let mut refined_membership: Vec<usize> = vec![0; self.graph.n];
         let mut cluster_scratch: Vec<Vec<usize>> = vec![vec![]; self.graph.n]; // clusters
+        let mut clean_scratch: Vec<usize> = vec![0usize; self.graph.n]; // reused by clean_refined_membership
         let mut super_node_map: Vec<usize> = (0..self.graph.n).collect(); // aggregate_vertex
         let mut aggregated_node_weights: Vec<f32> = self.node_weight.clone(); // i_vertex_out_weight
         let mut aggregated_membership: Vec<usize> = self.membership.clone(); // i_membership
@@ -41,30 +49,32 @@ impl LeidenState {
         let mut level = 0;
         loop {
             // Move nodes in order to increase the quality
-            (did_changed, nb_clusters) = self.fastmove_nodes(
+            (did_changed, nb_clusters) = measure!(self.fastmove_nodes(
                 &aggregated_graph,
                 &aggregated_node_weights,
                 &config,
                 &mut aggregated_membership,
-            );
+            ), STAT_FASTMOVE);
             changed = changed || did_changed;
 
             continue_clustering = nb_clusters < aggregated_graph.n;
             if continue_clustering {
                 // Flatten membership
-                if level > 0 {
-                    for node_id in 0..self.graph.n {
-                        let super_node_id = super_node_map[node_id];
-                        self.membership[node_id] = aggregated_membership[super_node_id];
+                measure!({
+                    if level > 0 {
+                        for node_id in 0..self.graph.n {
+                            let super_node_id = super_node_map[node_id];
+                            self.membership[node_id] = aggregated_membership[super_node_id];
+                        }
                     }
-                }
-                self.retrieve_clusters(&mut cluster_scratch, &aggregated_membership);
+                    self.retrieve_clusters(&mut cluster_scratch, &aggregated_membership);
+                }, STAT_FLATTEN);
                 // ensure refined membership is correct size
                 refined_membership.truncate(aggregated_graph.n);
                 // Refine each cluster
                 let mut nb_refined_clusters = 0;
                 for cluster_idx in 0..nb_clusters {
-                    nb_refined_clusters = self.merge_nodes(
+                    nb_refined_clusters = measure!(self.merge_nodes(
                         &aggregated_graph,
                         &aggregated_node_weights,
                         &mut cluster_scratch[cluster_idx],
@@ -72,8 +82,9 @@ impl LeidenState {
                         cluster_idx,
                         &config,
                         nb_refined_clusters,
-                        &mut refined_membership
-                    );
+                        &mut refined_membership,
+                        &mut clean_scratch,
+                    ), STAT_MERGE);
                     cluster_scratch[cluster_idx].clear()
                 }
 
@@ -85,17 +96,19 @@ impl LeidenState {
                 }
 
                 // Compute super node mapping
-                for node_id in 0..self.graph.n {
-                    let super_node_id = super_node_map[node_id];
-                    super_node_map[node_id] = refined_membership[super_node_id];
-                }
-                (aggregated_graph, aggregated_membership, aggregated_node_weights) = self.aggregate(
+                measure!({
+                    for node_id in 0..self.graph.n {
+                        let super_node_id = super_node_map[node_id];
+                        super_node_map[node_id] = refined_membership[super_node_id];
+                    }
+                }, STAT_REINDEX);
+                (aggregated_graph, aggregated_membership, aggregated_node_weights) = measure!(self.aggregate(
                     &aggregated_graph,
                     &aggregated_node_weights,
                     &aggregated_membership,
                     &refined_membership,
                     nb_refined_clusters
-                );
+                ), STAT_AGGREGATE);
 
                 level += 1
             }
@@ -227,7 +240,8 @@ impl LeidenState {
                       cluster_idx: usize,
                       config: &LeidenConfig,
                       nb_refined_clusters: usize,
-                      refined_membership: &mut Vec<usize>) -> usize {
+                      refined_membership: &mut Vec<usize>,
+                      clean_scratch: &mut Vec<usize>) -> usize {
         let n = cluster_members.len();
         // Weight of cluster. Sum of weights of all nodes
         let mut cluster_weights = vec![0.0f32; n]; // cluster_out_weights
@@ -343,15 +357,15 @@ impl LeidenState {
             }
         }
 
-        self.clean_refined_membership(&cluster_members, refined_membership, nb_refined_clusters)
+        self.clean_refined_membership(&cluster_members, refined_membership, nb_refined_clusters, clean_scratch)
     }
 
     fn clean_refined_membership(&self, cluster_members: &Vec<usize>,
                                 refined_membership: &mut Vec<usize>,
-                                mut nb_refined_clusters: usize) -> usize {
-        let mut new_cluster = vec![0usize; refined_membership.len()];
+                                mut nb_refined_clusters: usize,
+                                new_cluster: &mut Vec<usize>) -> usize {
         nb_refined_clusters += 1;
-        // Fill new_cluster / cluster mapping
+        // Fill new_cluster / cluster mapping (new_cluster is pre-zeroed; local IDs are in [0, cluster_size))
         for v in cluster_members {
             let c = refined_membership[*v];
             if new_cluster[c] == 0 {
@@ -361,9 +375,10 @@ impl LeidenState {
         }
         // Assign new clusters
         for v in cluster_members {
-            let c = refined_membership[*v];
-            refined_membership[*v] = new_cluster[c] - 1;
+            refined_membership[*v] = new_cluster[refined_membership[*v]] - 1;
         }
+        // Restore scratch to zero; local IDs are enumerate indices so they live in [0, cluster_size)
+        new_cluster[..cluster_members.len()].fill(0);
         nb_refined_clusters -= 1;
 
         nb_refined_clusters
@@ -443,6 +458,17 @@ pub fn find_communities(graph: CsrGraph, gamma: f32, beta: f64, n_iterations: us
     for _ in 0..(if n_iterations > 0 {n_iterations} else {usize::MAX}) {
         let changed = leiden_state.find_partition(&config);
         if !changed { break; }
+    }
+
+    #[cfg(feature = "monitor")]
+    {
+        eprintln!("── Leiden timings ──────────────────────────────");
+        STAT_FASTMOVE.report("  fastmove_nodes");
+        STAT_MERGE.report("  merge_nodes    ");
+        STAT_AGGREGATE.report("  aggregate      ");
+        STAT_FLATTEN.report("  flatten/retrieve");
+        STAT_REINDEX.report("  supernode_remap");
+        eprintln!("────────────────────────────────────────────────");
     }
 
     leiden_state.membership
