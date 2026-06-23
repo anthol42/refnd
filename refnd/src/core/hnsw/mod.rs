@@ -353,13 +353,13 @@ impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
     }
 
     /// Returns all edges with distance below `config.proximity_threshold`
-    pub fn edges(&self) -> Vec<(usize, usize, f32)> {
+    pub fn edges(&self) -> Vec<(u32, u32, f32)> {
         self.proximity_edges
             .iter()
             .map(|entry| {
                 let &(u, v) = entry.key();
                 let &w = entry.value();
-                (u, v, w)
+                (u as u32, v as u32, w)
             })
             .collect()
     }

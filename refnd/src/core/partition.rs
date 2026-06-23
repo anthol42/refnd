@@ -28,7 +28,7 @@ pub fn partition_dataset(clusters: Vec<usize>, graph: &CsrGraph, test_ratio: f32
         } else {
             let is_test_connected = graph.neighbors(v)
                 .iter()
-                .any(|&(u, _)| test_clusters.contains(&clusters[u]));
+                .any(|&(u, _)| test_clusters.contains(&clusters[u as usize]));
             if post_filtering && is_test_connected {
                 // filtered out — skip
             } else {
