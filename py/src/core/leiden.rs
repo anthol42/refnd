@@ -73,7 +73,7 @@ impl CsrGraph {
     ///
     /// Args:
     ///     v: Zero-based node index.
-    fn neighbors(&self, v: usize) -> Vec<(usize, f32)> {
+    fn neighbors(&self, v: usize) -> Vec<(u32, f32)> {
         self.inner.neighbors(v).to_vec()
     }
 

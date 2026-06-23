@@ -41,19 +41,19 @@ impl EdgeStore {
     ///     node_count: Total number of nodes in the graph (must be ≥ the largest node ID + 1).
     ///     edges: List of ``(src, dst, weight)`` triples. Weights are ``float32`` similarity scores.
     #[new]
-    pub fn new(node_count: usize, edges: Vec<(usize, usize, f32)>) -> Self {
+    pub fn new(node_count: usize, edges: Vec<(u32, u32, f32)>) -> Self {
         Self { inner: CoreEdgeStore::new(node_count, edges) }
     }
 
     /// Return all edges as a list of ``(src, dst, weight)`` triples.
     #[pyo3(signature = ())]
-    pub fn edges(&self) -> Vec<(usize, usize, f32)> {
-        self.inner.edges()
+    pub fn edges(&self) -> Vec<(u32, u32, f32)> {
+        self.inner.edges().to_vec()
     }
 
     /// Return the total number of nodes this store was created with.
     #[pyo3(signature = ())]
-    pub fn node_count(&self) -> usize {self.inner.node_count}
+    pub fn node_count(&self) -> usize { self.inner.node_count }
 
     /// Build a ``CsrGraph`` from this edge store.
     ///
@@ -113,7 +113,7 @@ impl EdgeStore {
         self.inner.len()
     }
 
-    fn __getitem__(&self, idx: isize) -> PyResult<(usize, usize, f32)> {
+    fn __getitem__(&self, idx: isize) -> PyResult<(u32, u32, f32)> {
         let n = self.inner.len();
         let i = if idx < 0 { n as isize + idx } else { idx } as usize;
         if i >= n {
@@ -123,7 +123,7 @@ impl EdgeStore {
     }
 
     fn __iter__(slf: PyRef<'_, Self>) -> EdgeStoreIter {
-        EdgeStoreIter { edges: slf.inner.edges(), pos: 0 }
+        EdgeStoreIter { edges: slf.inner.edges().to_vec(), pos: 0 }
     }
 
     fn __str__(&self) -> String {
@@ -138,7 +138,7 @@ impl EdgeStore {
 #[gen_stub_pyclass]
 #[pyclass(module = "refnd.core")]
 pub struct EdgeStoreIter {
-    edges: Vec<(usize, usize, f32)>,
+    edges: Vec<(u32, u32, f32)>,
     pos: usize,
 }
 
@@ -146,7 +146,7 @@ pub struct EdgeStoreIter {
 impl EdgeStoreIter {
     fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> { slf }
 
-    fn __next__(&mut self) -> Option<(usize, usize, f32)> {
+    fn __next__(&mut self) -> Option<(u32, u32, f32)> {
         if self.pos < self.edges.len() {
             let e = self.edges[self.pos];
             self.pos += 1;
