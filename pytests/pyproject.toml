@@ -8,10 +8,11 @@ dependencies = [
     "refnd",
     "pytest>=9.0.3",
     "rdkit>=2026.3.1",
+    "igraph>=1.0.0",
 ]
 
 [tool.uv.sources]
-refnd = { path = "../py", editable = true }
+refnd = { path = "../py" }
 
 [dependency-groups]
 dev = [
