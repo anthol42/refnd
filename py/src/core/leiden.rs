@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use pyo3::prelude::*;
 use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pyclass_enum, gen_stub_pymethods, gen_stub_pyfunction};
 use super::edge_store::EdgeStore;
-use refnd_core::core::leiden::{CsrGraph as CoreCsrGraph, LeidenObjective as CoreLeidenObjective, find_communities as CoreFindCommunities};
+use refnd_core::core::leiden::{CsrGraph as CoreCsrGraph, LeidenObjective as CoreLeidenObjective, INWeightType as CoreINWeightType, find_communities as CoreFindCommunities};
 
 /// Objective function used by the Leiden community-detection algorithm.
 ///
@@ -25,6 +25,36 @@ impl From<LeidenObjective> for CoreLeidenObjective {
     }
 }
 
+/// How to convert a raw ``EdgeStore`` weight into the similarity-like edge weight
+/// used internally by ``CsrGraph`` and the Leiden algorithm.
+///
+/// - ``Similarity`` — the raw weight is already a similarity; used as-is.
+/// - ``Distance`` — the raw weight is a distance in ``[0, ∞)``; mapped to
+///   ``1 / (1 + w)`` so closer nodes get a higher weight.
+/// - ``SimilarityComplement`` — the raw weight is ``1 - similarity``; mapped
+///   back to a similarity via ``1 - w``.
+/// - ``Unweighted`` — the raw weight is ignored; every edge weight is set to ``1.0``.
+#[gen_stub_pyclass_enum]
+#[pyclass(eq, eq_int, from_py_object, module = "refnd.core")]
+#[derive(Clone, Copy, PartialEq)]
+pub enum INWeightType {
+    Similarity,
+    Distance,
+    SimilarityComplement,
+    Unweighted,
+}
+
+impl From<INWeightType> for CoreINWeightType {
+    fn from(t: INWeightType) -> Self {
+        match t {
+            INWeightType::Similarity => CoreINWeightType::Similarity,
+            INWeightType::Distance => CoreINWeightType::Distance,
+            INWeightType::SimilarityComplement => CoreINWeightType::SimilarityComplement,
+            INWeightType::Unweighted => CoreINWeightType::Unweighted,
+        }
+    }
+}
+
 /// Compressed Sparse Row graph built from an ``EdgeStore``. A CSR graph is compact, and highly
 /// efficient for traversal, exploiting cache structure and maximizing cache hits. However, it is
 /// immutable, so adding a new node or edge require building the full graph again.
@@ -35,14 +65,14 @@ impl From<LeidenObjective> for CoreLeidenObjective {
 ///
 /// Properties:
 ///     - ``n``: Number of nodes.
-///     - ``m``: Sum of all edge weights (or total edge count when ``use_weight=False``).
+///     - ``m``: Sum of all edge weights (or total edge count when ``inweight_type=INWeightType.Unweighted``).
 ///
 /// Example::
 ///
 ///     from refnd.core import EdgeStore, CsrGraph
 ///
 ///     store = EdgeStore(4, [(0,1,0.9),(1,2,0.8),(2,3,0.6)])
-///     g = CsrGraph(store, use_weight=True)
+///     g = CsrGraph(store)
 ///     print(g.n)               # 4
 ///     print(g.neighbors(1))    # [(0, 0.9), (2, 0.8)]
 ///     print(g.strength(1))     # 1.7
@@ -59,15 +89,15 @@ impl CsrGraph {
     ///
     /// Args:
     ///     edges: The edge store to build the graph from.
-    ///     use_weight: If ``True``, edge weights are used for graph operations.
-    ///     is_weight_distance: If ``True`` (default), raw weights are treated as
-    ///                         distances and converted to similarities internally
-    ///                         (``similarity = 1 - distance``). Set to ``False``
-    ///                         when weights are already similarities.
+    ///     inweight_type: How to convert the raw ``EdgeStore`` weights to
+    ///                    similarity-like weights. See ``INWeightType``. Pass
+    ///                    ``INWeightType.Unweighted`` to ignore weights entirely
+    ///                    (every edge gets weight ``1.0``). Defaults to
+    ///                    ``INWeightType.Distance``.
     #[new]
-    #[pyo3(signature = (edges, use_weight = true, is_weight_distance = true))]
-    fn new(edges: EdgeStore, use_weight: bool, is_weight_distance: bool) -> Self {
-        Self { inner: CoreCsrGraph::new(edges.node_count(), &edges.edges(), use_weight, is_weight_distance) }
+    #[pyo3(signature = (edges, inweight_type = INWeightType::Distance))]
+    fn new(edges: EdgeStore, inweight_type: INWeightType) -> Self {
+        Self { inner: CoreCsrGraph::new(edges.node_count(), &edges.edges(), inweight_type.into()) }
     }
 
     /// Return the neighbors of node ``v`` as a list of ``(node_id, weight)`` pairs.
@@ -145,7 +175,7 @@ impl CsrGraph {
 ///     from refnd.core import CsrGraph, EdgeStore, find_communities, LeidenObjective
 ///
 ///     store = EdgeStore(4, [(0,1,0.9),(1,2,0.8),(2,3,0.6)])
-///     g = CsrGraph(store, use_weight=True, is_weight_distance=False)
+///     g = CsrGraph(store, inweight_type=INWeightType.Similarity)
 ///     clusters = find_communities(g, gamma=1.0, n_iterations=20) # e.g. [0, 1, 2, 3]
 #[gen_stub_pyfunction(module = "refnd.core")]
 #[pyfunction]

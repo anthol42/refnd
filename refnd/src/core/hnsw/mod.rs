@@ -347,7 +347,7 @@ impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
         // Slow path: compute via FFI, then cache for all threads
         let d = measure!(self.distance.call(&self.data[key.0], &self.data[key.1]), STAT_ALIGNMENT);
         measure!(self.dist_cache.insert(key, d), STAT_CACHE_INSERT);
-        if d < self.config.proximity_threshold {
+        if self.config.keep_all_edges && d < self.config.proximity_threshold {
             measure!(self.proximity_edges.insert(key, d), STAT_DASHMAP);
         }
         d
@@ -362,16 +362,21 @@ impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
         min_distance
     }
 
-    /// Returns all edges with distance below `config.proximity_threshold`
-    pub fn edges(&self) -> Vec<(u32, u32, f32)> {
-        self.proximity_edges
-            .iter()
-            .map(|entry| {
-                let &(u, v) = entry.key();
-                let &w = entry.value();
-                (u as u32, v as u32, w)
-            })
-            .collect()
+    /// Returns all edges with distance below `config.proximity_threshold`, but only if
+    /// `keep_all_edges` is True, otherwise it returns None.
+    pub fn edges(&self) -> Option<Vec<(u32, u32, f32)>> {
+        if self.config.keep_all_edges {
+            Some(        
+                self.proximity_edges
+                .iter()
+                .map(|entry| {
+                    let &(u, v) = entry.key();
+                    let &w = entry.value();
+                    (u as u32, v as u32, w)
+                })
+                .collect()
+            )
+        }else { None }
     }
 
     pub fn get_layer(&self, layer_idx: usize) -> Result<Vec<Vec<usize>>, String> {

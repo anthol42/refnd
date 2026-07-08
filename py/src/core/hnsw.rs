@@ -37,6 +37,12 @@ use super::super::utils::PdbStructure;
 ///   a greedy search.
 /// - ``extend_candidates`` *(bool)* — Use neighbors of neighbors as candidates, making search more exhaustive.
 /// - ``keep_pruned_connections`` *(bool)* — Retain discarded candidates to fill up to ``m`` connections when not enough connections are found.
+/// - ``keep_all_edges`` *(bool)* — Record every below-threshold distance computed during build into
+///   the proximity graph returned by ``edges()``. Default ``True``. Setting it to ``False`` makes
+///   ``edges()`` return ``None``, but removes a per-hit locked hashmap insert from the hot path —
+///   worth doing when matches are dense (e.g. a fixed Tanimoto threshold over a large, structurally
+///   similar molecule library), since more matches means more locked inserts, which pushes build
+///   time past the expected ``O(n log n)``.
 /// - ``cache_capacity`` *(int)* — Maximum cached kernel scores. Increasing it increase the memory
 ///   footprint, but also cache hits, which can improve runtime performances for computationally expensive kernels.
 ///   Set to ``0`` to disable the cache entirely — every distance is recomputed directly, which is
@@ -71,6 +77,7 @@ impl HNSWConfig {
         ef_init = 1,
         extend_candidates = false,
         keep_pruned_connections = true,
+        keep_all_edges = true,
         cache_capacity = 2_000_000,
         cache_shards = 64,
         n_threads = 0,
@@ -85,6 +92,7 @@ impl HNSWConfig {
         m: usize, m_max: usize, m_max0: usize, m_l: f64,
         ef_init: usize,
         extend_candidates: bool, keep_pruned_connections: bool,
+        keep_all_edges: bool,
         cache_capacity: usize, cache_shards: usize, n_threads: usize,
         shuffle: bool, use_heuristic: bool,
         strict_ef: bool, threshold_based_neighbourhood: bool,
@@ -92,7 +100,7 @@ impl HNSWConfig {
         HNSWConfig {
             inner: HNSWConfigCore {
                 m, m_max, m_max0, m_l, ef_init, ef_construction,
-                extend_candidates, keep_pruned_connections,
+                extend_candidates, keep_pruned_connections, keep_all_edges,
                 cache_capacity, cache_shards, proximity_threshold,
                 n_threads, shuffle, use_heuristic,
                 strict_ef, threshold_based_neighbourhood,
@@ -108,6 +116,7 @@ impl HNSWConfig {
     #[getter] fn ef_construction(&self) -> usize { self.inner.ef_construction }
     #[getter] fn extend_candidates(&self) -> bool { self.inner.extend_candidates }
     #[getter] fn keep_pruned_connections(&self) -> bool { self.inner.keep_pruned_connections }
+    #[getter] fn keep_all_edges(&self) -> bool { self.inner.keep_all_edges }
     #[getter] fn cache_capacity(&self) -> usize { self.inner.cache_capacity }
     #[getter] fn cache_shards(&self) -> usize { self.inner.cache_shards }
     #[getter] fn proximity_threshold(&self) -> f32 { self.inner.proximity_threshold }
@@ -128,6 +137,7 @@ impl HNSWConfig {
         d.set_item("ef_construction", self.inner.ef_construction)?;
         d.set_item("extend_candidates", self.inner.extend_candidates)?;
         d.set_item("keep_pruned_connections", self.inner.keep_pruned_connections)?;
+        d.set_item("keep_all_edges", self.inner.keep_all_edges)?;
         d.set_item("cache_capacity", self.inner.cache_capacity)?;
         d.set_item("cache_shards", self.inner.cache_shards)?;
         d.set_item("proximity_threshold", self.inner.proximity_threshold)?;
@@ -292,7 +302,7 @@ macro_rules! hnsw_dispatch_mut {
 ///     variant: Kernel to use (e.g.  ``KernelVariant.ProteinGlobal``, ``KernelVariant.ProteinLocal``, ``KernelVariant.TanimotoBit``, *etc*).
 ///     data: The dataset — a list of items matching the kernel type (e.g. ``list[str]`` or ``list[np.ndarray]``).
 ///     proximity_threshold, ef_construction, m, m_max, m_max0, m_l, ef_init, extend_candidates,
-///         keep_pruned_connections, cache_capacity, cache_shards,
+///         keep_pruned_connections, keep_all_edges, cache_capacity, cache_shards,
 ///         n_threads, shuffle, use_heuristic, strict_ef,
 ///         threshold_based_neighbourhood: See ``HNSWConfig`` for descriptions.
 ///
@@ -337,6 +347,7 @@ impl HNSWState {
         ef_init = 1,
         extend_candidates = false,
         keep_pruned_connections = true,
+        keep_all_edges = true,
         cache_capacity = 2_000_000,
         cache_shards = 64,
         n_threads = 0,
@@ -361,6 +372,7 @@ impl HNSWState {
         ef_init: usize,
         extend_candidates: bool,
         keep_pruned_connections: bool,
+        keep_all_edges: bool,
         cache_capacity: usize,
         cache_shards: usize,
         n_threads: usize,
@@ -373,7 +385,7 @@ impl HNSWState {
         let n = data.bind(py).len()?;
         let config = HNSWConfigCore {
             m, m_max, m_max0, m_l, ef_init, ef_construction,
-            extend_candidates, keep_pruned_connections,
+            extend_candidates, keep_pruned_connections, keep_all_edges,
             cache_capacity, cache_shards, proximity_threshold,
             n_threads, shuffle, use_heuristic,
             strict_ef, threshold_based_neighbourhood,
@@ -470,8 +482,9 @@ impl HNSWState {
     /// ``proximity_threshold``.
     ///
     /// Returns:
-    ///     An ``EdgeStore`` with ``node_count = dataset_size``.
-    pub fn edges(&self) -> EdgeStore {
+    ///     An ``EdgeStore`` with ``node_count = dataset_size``, or ``None`` if the index was built
+    ///     with ``keep_all_edges=False``.
+    pub fn edges(&self) -> Option<EdgeStore> {
         let edges = hnsw_dispatch!(
             self.inner, edges();
             AlignmentGlobal:_GlobalAligner,
@@ -479,8 +492,8 @@ impl HNSWState {
             TanimotoBit:_TanimotoBit,
             TanimotoReal:_TanimotoReal,
             Structure:_USAlignKernel
-        );
-        EdgeStore::new(self.n, edges)
+        )?;
+        Some(EdgeStore::new(self.n, edges))
     }
 
     /// Return the adjacency lists for a specific HNSW layer.

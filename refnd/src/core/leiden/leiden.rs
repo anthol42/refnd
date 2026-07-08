@@ -1,15 +1,22 @@
-use super::{CsrGraph, reindex_membership};
-use crate::core::hnsw::{measure, LockStat};
+use super::{CsrGraph, INWeightType, reindex_membership};
+use crate::core::hnsw::measure;
+#[cfg(feature = "monitor")]
+use crate::core::hnsw::LockStat;
 use fixedbitset::FixedBitSet;
 use std::collections::VecDeque;
 use rand::prelude::*;
 use rand::rng;
 use clap::ValueEnum;
 
+#[cfg(feature = "monitor")]
 pub static STAT_FASTMOVE:   LockStat = LockStat::new();
+#[cfg(feature = "monitor")]
 pub static STAT_MERGE:      LockStat = LockStat::new();
+#[cfg(feature = "monitor")]
 pub static STAT_AGGREGATE:  LockStat = LockStat::new();
+#[cfg(feature = "monitor")]
 pub static STAT_REINDEX:    LockStat = LockStat::new();
+#[cfg(feature = "monitor")]
 pub static STAT_FLATTEN:    LockStat = LockStat::new();
 
 struct LeidenConfig {
@@ -448,7 +455,7 @@ impl LeidenState {
             aggregated_membership[c] = membership[refined_cluster[0] as usize];
         }
 
-        (CsrGraph::new(nb_refined_clusters, &aggregated_edges, false, false),
+        (CsrGraph::new(nb_refined_clusters, &aggregated_edges, INWeightType::Unweighted),
         aggregated_membership,
         aggregated_node_weights)
     }

@@ -48,7 +48,7 @@ use super::leiden::CsrGraph;
 ///     )
 ///
 ///     store = EdgeStore(6, [(0,1,0.9),(1,2,0.8),(3,4,0.7),(4,5,0.6)])
-///     g = CsrGraph(store, use_weight=True, is_weight_distance=False)
+///     g = CsrGraph(store, inweight_type=INWeightType.Similarity)
 ///     clusters = find_communities(g) # or connected_components(g)
 ///     train_idx, test_idx = partition(clusters, g, test_ratio=0.3, seed=42)
 #[gen_stub_pyfunction(module = "refnd.core")]

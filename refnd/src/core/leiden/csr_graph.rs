@@ -1,6 +1,13 @@
 use std::collections::BTreeMap;
 
 #[derive(Clone)]
+pub enum  INWeightType{
+    Similarity,
+    Distance,
+    SimilarityComplement,
+    Unweighted,
+}
+#[derive(Clone)]
 pub struct CsrGraph {
     pub n: usize,
     pub m: f32,           // total weight (each edge counted once)
@@ -9,7 +16,19 @@ pub struct CsrGraph {
 }
 
 impl CsrGraph {
-    pub fn new(n: usize, edges: &[(u32, u32, f32)], use_weight: bool, is_weight_distance: bool) -> Self {
+    /// Builds an undirected CSR graph from a raw edge list.
+    ///
+    /// - `n`: number of nodes.
+    /// - `edges`: `(src, dst, w)` triples; each is stored on both endpoints' adjacency
+    ///   lists (self-loops occupy a single slot).
+    /// - `inweight_type`: how to interpret the raw `w` value in `edges` and convert it
+    ///   to a similarity-like edge weight used by Leiden:
+    ///   - `Similarity`: `w` is already a similarity — used as-is.
+    ///   - `Distance`: `w` is a distance, mapped to `1 / (1 + w)` so closer nodes get
+    ///     higher weight.
+    ///   - `SimilarityComplement`: `w` is `1 - similarity`, mapped back via `1 - w`.
+    ///   - `Unweighted`: `w` is ignored and every edge weight is set to `1.0`.
+    pub fn new(n: usize, edges: &[(u32, u32, f32)], inweight_type: INWeightType) -> Self {
         let m = edges.iter().map(|&(_, _, w)| w).sum();
 
         // Degree count — self-loops occupy one slot, not two
@@ -26,12 +45,12 @@ impl CsrGraph {
 
         for &(src, dst, mut w) in edges {
             let (src, dst) = (src as usize, dst as usize);
-            if is_weight_distance {
-                w = 1.0 / (1.0 + w)
-            }
-            if !use_weight {
-                w = 1.0
-            }
+            w = match inweight_type {
+                INWeightType::Similarity => {w}
+                INWeightType::Distance => {1.0 / (1.0 + w)}
+                INWeightType::SimilarityComplement => {1.0 - w}
+                INWeightType::Unweighted => {1.0}
+            };
             adj[cursor[src]] = (dst as u32, w);
             cursor[src] += 1;
             if src != dst {
@@ -77,6 +96,6 @@ impl CsrGraph {
             }
         }
 
-        (Self::new(old_to_new.len(), &edges, true, false), old_to_new)
+        (Self::new(old_to_new.len(), &edges, INWeightType::Similarity), old_to_new)
     }
 }

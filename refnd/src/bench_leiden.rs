@@ -5,7 +5,7 @@ use mimalloc::MiMalloc;
 static GLOBAL: MiMalloc = MiMalloc;
 
 use refnd::core::EdgeStore;
-use refnd::core::leiden::{find_communities, LeidenObjective};
+use refnd::core::leiden::{find_communities, INWeightType, LeidenObjective};
 
 fn main() {
     let path = std::env::args().nth(1).expect("usage: bench_leiden <file.edgestr>");
@@ -17,7 +17,7 @@ fn main() {
 
     eprint!("Building CsrGraph ... ");
     let t = Instant::now();
-    let graph = edges.graph(true, true);
+    let graph = edges.graph(INWeightType::SimilarityComplement);
     eprintln!("done in {:.2}s", t.elapsed().as_secs_f64());
 
     eprintln!("Running Leiden (Modularity, γ=1.0) ...");

@@ -46,6 +46,8 @@ mod refnd {
         #[pymodule_export]
         use crate::core::leiden::LeidenObjective;
         #[pymodule_export]
+        use crate::core::leiden::INWeightType;
+        #[pymodule_export]
         use crate::core::leiden::find_communities;
         #[pymodule_export]
         use crate::core::edge_store::EdgeStore;

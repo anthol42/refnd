@@ -5,7 +5,7 @@ use std::{
     io::{BufRead, BufReader, BufWriter, Write},
     path::Path,
 };
-use super::leiden::CsrGraph;
+use super::leiden::{CsrGraph, INWeightType};
 
 // ── Public struct ─────────────────────────────────────────────────────────────
 #[derive(Clone)]
@@ -26,8 +26,8 @@ impl EdgeStore {
     }
 
     /// Build a [`CsrGraph`] from the stored edges.
-    pub fn graph(&self, use_weight: bool, is_weight_distance: bool) -> CsrGraph {
-        CsrGraph::new(self.node_count, &self.edges, use_weight, is_weight_distance)
+    pub fn graph(&self, inweight_type: INWeightType) -> CsrGraph {
+        CsrGraph::new(self.node_count, &self.edges, inweight_type)
     }
 
     /// Persist to `path`.
@@ -109,7 +109,6 @@ impl EdgeStore {
     }
 
     pub fn load_binary(path: &Path) -> Result<Self, Box<dyn Error>> {
-        use std::io::Read;
         let mut r = BufReader::new(File::open(path)?);
 
         let node_count = read_u64(&mut r)? as usize;
