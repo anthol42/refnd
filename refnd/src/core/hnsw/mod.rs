@@ -90,6 +90,7 @@ pub use config::HNSWConfig;
 /// With 64 shards and 8 threads, the probability that two threads hit the same
 /// shard simultaneously is ~12%, vs 100% for a single shared cache.
 struct ShardedCache {
+    /// Empty when `cache_capacity == 0` — caching is disabled, every lookup is a no-op.
     shards: Vec<Cache<(usize, usize), f32>>,
     /// n_shards - 1: used for the fast-modulo AND
     mask: usize,
@@ -97,6 +98,9 @@ struct ShardedCache {
 
 impl ShardedCache {
     fn new(total_capacity: usize, n_shards: usize) -> Self {
+        if total_capacity == 0 {
+            return Self { shards: Vec::new(), mask: 0 };
+        }
         // Round up to the nearest power of two so `key.0 & mask` is valid
         let n_shards = n_shards.next_power_of_two();
         let per_shard = (total_capacity / n_shards).max(1);
@@ -108,12 +112,18 @@ impl ShardedCache {
 
     #[inline]
     fn get(&self, key: &(usize, usize)) -> Option<f32> {
+        if self.shards.is_empty() {
+            return None;
+        }
         // key.0 & mask is equivalent to key.0 % n_shards, but faster (single AND vs division)
         self.shards[key.0 & self.mask].get(key)
     }
 
     #[inline]
     fn insert(&self, key: (usize, usize), val: f32) {
+        if self.shards.is_empty() {
+            return;
+        }
         // key.0 & mask is equivalent to key.0 % n_shards, but faster (single AND vs division)
         self.shards[key.0 & self.mask].insert(key, val);
     }

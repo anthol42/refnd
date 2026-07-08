@@ -39,6 +39,9 @@ use super::super::utils::PdbStructure;
 /// - ``keep_pruned_connections`` *(bool)* — Retain discarded candidates to fill up to ``m`` connections when not enough connections are found.
 /// - ``cache_capacity`` *(int)* — Maximum cached kernel scores. Increasing it increase the memory
 ///   footprint, but also cache hits, which can improve runtime performances for computationally expensive kernels.
+///   Set to ``0`` to disable the cache entirely — every distance is recomputed directly, which is
+///   faster for cheap kernels (e.g. ``TanimotoBit``/``TanimotoReal``) where cache overhead exceeds the
+///   cost of the kernel itself.
 /// - ``cache_shards`` *(int)* — Number of cache shards (reduces lock contention).
 /// - ``n_threads`` *(int)* — Threads used during build. ``0`` = all available cores.
 /// - ``shuffle`` *(bool)* — Shuffle insertion order before building. Can create a less biased

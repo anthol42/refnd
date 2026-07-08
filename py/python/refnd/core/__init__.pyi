@@ -83,6 +83,26 @@ class CsrGraph:
         Args:
             v: Zero-based node index.
         """
+    def subgraph(self, nodes: typing.Sequence[builtins.int]) -> tuple[CsrGraph, builtins.dict[builtins.int, builtins.int]]:
+        r"""
+        Extract the induced subgraph on a subset of nodes.
+        
+        New node ids are assigned contiguously in the order ``nodes`` is given, so callers
+        control — and can make reproducible — the resulting node ordering.
+        
+        Args:
+            nodes: Node ids (into this graph) to keep, in the desired new order.
+        
+        Returns:
+            A tuple ``(subgraph, mapping)`` where ``mapping`` is a dict from old node id
+            to new node id.
+        
+        Example::
+        
+            sub, mapping = g.subgraph([2, 0, 3])
+            print(sub.n)      # 3
+            print(mapping)    # {0: 1, 2: 0, 3: 2}
+        """
 
 @typing.final
 class EdgeStore:

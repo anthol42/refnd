@@ -10,7 +10,9 @@ pub struct HNSWConfig{
     pub ef_construction: usize,
     pub extend_candidates: bool, // Extends candidates with their neighbors when finding neighbors
     pub keep_pruned_connections: bool,
-    /// Total number of entries across all cache shards
+    /// Total number of entries across all cache shards. `0` disables the distance cache
+    /// entirely (every distance is recomputed directly) — worth setting for cheap kernels
+    /// (e.g. Tanimoto) where the cache's hashing/locking costs more than the kernel itself.
     pub cache_capacity: usize,
     /// Number of independent cache shards (rounded up to next power of two).
     /// More shards = less contention, but more memory overhead. Default: 64.
