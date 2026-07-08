@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use pyo3::prelude::*;
 use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pyclass_enum, gen_stub_pymethods, gen_stub_pyfunction};
 use super::edge_store::EdgeStore;
@@ -85,6 +86,28 @@ impl CsrGraph {
     ///     v: Zero-based node index.
     fn strength(&self, v: usize) -> f32 {
         self.inner.strength(v)
+    }
+
+    /// Extract the induced subgraph on a subset of nodes.
+    ///
+    /// New node ids are assigned contiguously in the order ``nodes`` is given, so callers
+    /// control — and can make reproducible — the resulting node ordering.
+    ///
+    /// Args:
+    ///     nodes: Node ids (into this graph) to keep, in the desired new order.
+    ///
+    /// Returns:
+    ///     A tuple ``(subgraph, mapping)`` where ``mapping`` is a dict from old node id
+    ///     to new node id.
+    ///
+    /// Example::
+    ///
+    ///     sub, mapping = g.subgraph([2, 0, 3])
+    ///     print(sub.n)      # 3
+    ///     print(mapping)    # {0: 1, 2: 0, 3: 2}
+    fn subgraph(&self, nodes: Vec<usize>) -> (CsrGraph, BTreeMap<usize, usize>) {
+        let (inner, mapping) = self.inner.subgraph(&nodes);
+        (CsrGraph { inner }, mapping)
     }
 
     /// Number of nodes
