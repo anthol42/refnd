@@ -27,16 +27,17 @@ Pre-implemented distance functions are implemented in `kernels/`. Some utils fun
 
 ```
 src/
-  main.rs                        Entry point referencing to the `cli` module
-  cli/                           Command Line Interace code
   core/
     hnsw/                        HNSW implementation
     leiden/                      Leiden implementation
     distance.rs                  Distance<T> trait
   kernels/
-    proteins/                    Protein sequence-related kernels
+    alignments/parasail/         Protein sequence kernels (NW/SW via libparasail)
+    alignments/usalign/          Protein structure kernels (TM-score via libusalign-sys)
+    molecules/tanimoto/          Molecular similarity (Tanimoto on fingerprints)
   utils/
     read_fasta.rs                FASTA parser
+../libusalign-sys/               Sys-crate: compiles USalign C++ + bindgen bindings
 ```
 
 ---

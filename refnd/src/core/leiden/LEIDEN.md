@@ -18,6 +18,9 @@ Performance-critical loops (`fastmove_nodes`, `merge_nodes`, `aggregate`) pre-al
 **Compact CSR graph representation.**
 Graphs are stored in Compressed Sparse Row (CSR) format: `offsets` array (row pointers) + `adj` array (neighbor, weight pairs). This is memory-efficient for sparse graphs and enables cache-friendly sequential access. Self-loops are handled specially: counted once (not twice) when building adjacency lists.
 
+**Deterministic subgraph extraction.**
+`CsrGraph::subgraph(nodes: &[usize])` builds the induced subgraph on `nodes`, reindexing to contiguous ids in the order of the provided `nodes`. Returns the subgraph plus a `BTreeMap<usize, u32>` from old id to new id; `BTreeMap` keeps the mapping's iteration order reproducible.
+
 **Two objective functions with different semantics.**
 - **Modularity** (`LeidenObjective::Modularity`): Weighted by node strengths (sum of incident edge weights). Resolution parameter is normalized by total graph strength. Suitable for detecting communities in networks with heterogeneous node degrees.
 - **CPM** (`LeidenObjective::CPM`, Constant Potts Model): All nodes have unit weight. Resolution is absolute. Simpler semantics, useful for uniform community detection.

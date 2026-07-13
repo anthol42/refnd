@@ -3,7 +3,7 @@ use rand::prelude::*;
 use crate::core::Distance;
 
 impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
-    pub fn insert_parallel(&self, query_idx: usize, scratch_buffers: &mut ScratchBuffers, rng: &mut impl Rng) {
+    pub fn insert_parallel(&self, query_idx: u32, scratch_buffers: &mut ScratchBuffers, rng: &mut impl Rng) {
         debug_assert!(scratch_buffers.is_clear(), "scratch_buffers are expected to be empty on entry");
         scratch_buffers.ensure_capacity(self.data.len());
 

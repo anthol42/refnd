@@ -19,13 +19,13 @@ mod refnd {
         let utils = m.getattr("utils")?;
         modules.set_item("refnd.utils", &utils)?;
         let kernels = m.getattr("kernels")?;
-        let protein = kernels.getattr("protein")?;
-        let sequence = protein.getattr("sequence")?;
+        let alignments = kernels.getattr("alignments")?;
         modules.set_item("refnd.kernels", &kernels)?;
-        modules.set_item("refnd.kernels.protein", &protein)?;
-        modules.set_item("refnd.kernels.protein.sequence", &sequence)?;
+        modules.set_item("refnd.kernels.alignments", &alignments)?;
         let molecules = kernels.getattr("molecules")?;
         modules.set_item("refnd.kernels.molecules", &molecules)?;
+        let structures = kernels.getattr("structures")?;
+        modules.set_item("refnd.kernels.structures", &structures)?;
         Ok(())
     }
 
@@ -46,6 +46,8 @@ mod refnd {
         #[pymodule_export]
         use crate::core::leiden::LeidenObjective;
         #[pymodule_export]
+        use crate::core::leiden::INWeightType;
+        #[pymodule_export]
         use crate::core::leiden::find_communities;
         #[pymodule_export]
         use crate::core::edge_store::EdgeStore;
@@ -60,7 +62,7 @@ mod refnd {
     #[pymodule]
     mod utils {
         #[pymodule_export]
-        use crate::utils::{BitFingerprint, RealFingerprint, read_fasta, largest_cluster};
+        use crate::utils::{BitFingerprint, RealFingerprint, PdbStructure, read_fasta, largest_cluster};
     }
 
     #[pymodule]
@@ -76,18 +78,21 @@ mod refnd {
         }
 
         #[pymodule]
-        mod protein {
-            use pyo3::prelude::*;
-
-            #[pymodule]
-            mod sequence {
-
-                #[pymodule_export]
-                use crate::kernels::protein::sequence::{
-                    GlobalAligner, LocalAligner, ScoringMatrix, GlobalIdentityMode,
-                    VectorizationStrategy, DatatypeWidth, CoverageMode, LocalIdentityMode
-                };
-            }
+        mod alignments {
+            #[pymodule_export]
+            use crate::kernels::alignments::{
+                GlobalAligner, LocalAligner, ScoringMatrix, GlobalIdentityMode,
+                VectorizationStrategy, DatatypeWidth, CoverageMode, LocalIdentityMode
+            };
         }
+
+        #[pymodule]
+        mod structures {
+            #[pymodule_export]
+            use crate::kernels::structures::{USAlignKernel, NormMode};
+        }
+
+        #[pymodule_export]
+        use crate::kernels::zip_kernel::zip_kernel;
     }
 }

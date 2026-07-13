@@ -11,7 +11,7 @@ thread_local! {
 
 impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
 
-    pub fn parallel_search(&self, queries: &[T], k: usize, ef: usize, threads: usize, pb: Option<&ProgressBar>) -> Result<Vec<Vec<(usize, f32)>>, &'static str> {
+    pub fn parallel_search(&self, queries: &[T], k: usize, ef: usize, threads: usize, pb: Option<&ProgressBar>) -> Result<Vec<Vec<(u32, f32)>>, &'static str> {
         if !self.has_been_built {
             return Err("Index has not been built yet. Call build() before search().");
         }
@@ -42,7 +42,7 @@ impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
 
     /// Algorithm 5: K-NN-SEARCH
     /// Returns the `k` nearest neighbors to `query` from the index.
-    pub fn search(&self, query: &T, k: usize, ef: usize, scratch: &mut ScratchBuffers) -> Vec<(usize, f32)> {
+    pub fn search(&self, query: &T, k: usize, ef: usize, scratch: &mut ScratchBuffers) -> Vec<(u32, f32)> {
         let Some((ep_node, ep_layer)) = self.entry_point.get() else {
             return Vec::new();
         };
@@ -98,7 +98,7 @@ impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
         // Input/Output
         nearest_neighbors: &mut MaxHeap<Candidate>,
         // Snapshot buffer: clones a node's neighbor list under a brief read lock
-        snapshot: &mut Vec<usize>,
+        snapshot: &mut Vec<u32>,
     ) {
         debug_assert!(!nearest_neighbors.is_empty(), "search_layer requires at least one entry point");
         debug_assert!(candidates.is_empty(), "candidates requires to be empty");
@@ -106,7 +106,7 @@ impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
 
         for &v in nearest_neighbors.iter() {
             candidates.push(Reverse(v));
-            visited.set(v.idx, true);
+            visited.set(v.idx as usize, true);
         }
 
         while let Some(Reverse(c)) = candidates.pop() {
@@ -120,7 +120,7 @@ impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
             self.hgraph.neighbors_snapshot(layer, c.idx, snapshot);
 
             for &neighbor in snapshot.iter() {
-                if !visited.put(neighbor) {
+                if !visited.put(neighbor as usize) {
                     let f = nearest_neighbors.peek().expect("nearest_neighbors should be non-empty").clone();
                     let dist_neighbor2query = self.query_distance(query, neighbor);
                     if dist_neighbor2query < f.distance || nearest_neighbors.len() < ef {

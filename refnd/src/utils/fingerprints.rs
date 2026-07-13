@@ -1,5 +1,6 @@
 use fixedbitset::FixedBitSet;
 use ndarray::Array1;
+use rand::seq::index::sample as rand_sample;
 
 #[derive(Clone)]
 pub struct BitFingerprint {
@@ -13,6 +14,19 @@ impl BitFingerprint {
     pub fn new(bits: FixedBitSet) -> Self {
         let count = bits.count_ones(..) as u32;
         Self { bits, count }
+    }
+
+    /// Create a fingerprint of `len` bits with exactly `count` bits set at random.
+    ///
+    /// Panics if `count > len`.
+    pub fn random(len: usize, count: usize) -> Self {
+        assert!(count <= len, "count ({count}) must be <= len ({len})");
+        let indices = rand_sample(&mut rand::rng(), len, count);
+        let mut bits = FixedBitSet::with_capacity(len);
+        for i in indices.iter() {
+            bits.insert(i);
+        }
+        Self::new(bits)
     }
 }
 

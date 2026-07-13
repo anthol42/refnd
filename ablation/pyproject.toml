@@ -1,0 +1,52 @@
+[project]
+name = "ablation"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "beautifulsoup4>=4.15.0",
+    "datasets>=5.0.0",
+    "esm>=3.2.3",
+    "hestia-good>=1.2.1",
+    "huggingface-hub[hf-xet]",
+    "matplotlib>=3.11.0",
+    "qmap-benchmark>=0.1.1",
+    "rdkit>=2026.3.3",
+    "refnd",
+    "rich>=15.0.0",
+    "transformers",
+]
+
+[project.optional-dependencies]
+cpu = ["torch>=2.7.1", "torchvision>=0.22.1"]
+cuda = ["torch>=2.7.1", "torchvision>=0.22.1"]
+
+[tool.uv]
+conflicts = [[{ extra = "cpu" }, { extra = "cuda" }]]
+
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cpu", extra = "cpu" },
+    { index = "pytorch-cu118", extra = "cuda" },
+]
+torchvision = [
+    { index = "pytorch-cpu", extra = "cpu" },
+    { index = "pytorch-cu118", extra = "cuda" },
+]
+refnd = { path = "../py" }
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu118"
+url = "https://download.pytorch.org/whl/cu118"
+explicit = true
+
+[dependency-groups]
+dev = [
+    "ipykernel>=7.3.0",
+]

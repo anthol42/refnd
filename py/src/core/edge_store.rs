@@ -2,7 +2,7 @@ use pyo3::prelude::*;
 use pyo3::exceptions::{PyIndexError, PyIOError};
 use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pymethods};
 use refnd_core::core::EdgeStore as CoreEdgeStore;
-use super::leiden::CsrGraph;
+use super::leiden::{CsrGraph, INWeightType};
 
 /// A compact, flat list of weighted directed edges between integer node IDs.
 ///
@@ -12,9 +12,7 @@ use super::leiden::CsrGraph;
 ///
 /// Each edge is a triple ``(src, dst, weight)`` where ``src`` and ``dst`` are
 /// zero-based node indices in ``[0, node_count)`` and ``weight`` is a ``float32``
-/// similarity score (higher = more similar, unless the graph is built with
-/// ``is_weight_distance=True``, in such case it's a real distance ``[0, ∞)`` that will be converted
-/// to a similarity score).
+/// value.
 ///
 /// Example::
 ///
@@ -41,39 +39,44 @@ impl EdgeStore {
     ///     node_count: Total number of nodes in the graph (must be ≥ the largest node ID + 1).
     ///     edges: List of ``(src, dst, weight)`` triples. Weights are ``float32`` similarity scores.
     #[new]
-    pub fn new(node_count: usize, edges: Vec<(usize, usize, f32)>) -> Self {
+    pub fn new(node_count: usize, edges: Vec<(u32, u32, f32)>) -> Self {
         Self { inner: CoreEdgeStore::new(node_count, edges) }
     }
 
     /// Return all edges as a list of ``(src, dst, weight)`` triples.
     #[pyo3(signature = ())]
-    pub fn edges(&self) -> Vec<(usize, usize, f32)> {
-        self.inner.edges()
+    pub fn edges(&self) -> Vec<(u32, u32, f32)> {
+        self.inner.edges().to_vec()
     }
 
     /// Return the total number of nodes this store was created with.
     #[pyo3(signature = ())]
-    pub fn node_count(&self) -> usize {self.inner.node_count}
+    pub fn node_count(&self) -> usize { self.inner.node_count }
 
     /// Build a ``CsrGraph`` from this edge store.
     ///
     /// Args:
-    ///     use_weight: If ``True``, edge weights are used for graph operations (e.g. strength).
-    ///                 If ``False``, all edges are treated as unweighted (weight = 1.0).
-    ///     is_weight_distance: If ``True``, edges weights are normalized to have a maximal bound of
-    ///                         1 using this formula: ``1.0 / (1.0 + w)`` since the Leiden algorithm works on
-    ///                         similarity graphs.
+    ///     inweight_type: How to convert the raw edge weights to similarity-like weights.
+    ///                    See ``INWeightType``. Pass ``INWeightType.Unweighted`` to ignore
+    ///                    weights entirely (every edge gets weight ``1.0``). Defaults to
+    ///                    ``INWeightType.Distance``, meaning weights are assumed to be a distance
+    ///                    measurement, and are converted to similarities.
     ///
     /// Returns:
     ///     A ``CsrGraph`` backed by this edge list.
-    #[pyo3(signature = (weighted = true, is_weight_distance=true))]
-    fn graph(&self, weighted: bool, is_weight_distance: bool) -> CsrGraph {
-        CsrGraph { inner: self.inner.graph(weighted, is_weight_distance) }
+    #[pyo3(signature = (inweight_type = INWeightType::Distance))]
+    fn graph(&self, inweight_type: INWeightType) -> CsrGraph {
+        CsrGraph { inner: self.inner.graph(inweight_type.into()) }
     }
 
     /// Serialize this EdgeStore to disk. It supports two file formats: ``text`` with
     /// ``.edgelist`` extension or ``binary`` with ``.edgestr`` extension. Binary is usually 2x
     /// more space efficient at the cost of not being human-readable.
+    ///
+    /// **Version compatibility (binary format only):** The binary ``.edgestr`` format is versioned
+    /// to the exact package version and is not forward or backward compatible. A file saved with
+    /// a different package version will fail to load with a version mismatch error. The text
+    /// ``.edgelist`` format has no version stamp and may be portable across versions.
     ///
     /// Args:
     ///     path: Destination file path.
@@ -94,6 +97,11 @@ impl EdgeStore {
     /// Load an EdgeStore that was previously saved with ``EdgeStore.save``. It infers the format
     /// from the extension of the path, ``.edgelist`` or ``.edgestr``.
     ///
+    /// **Version compatibility (binary format only):** The binary ``.edgestr`` format is versioned
+    /// to the exact package version. A file saved with a different package version will fail to
+    /// load with a version mismatch error. There is no forward or backward compatibility. The text
+    /// ``.edgelist`` format is not versioned and may be portable across versions.
+    ///
     /// Args:
     ///     path: Path to the file produced by ``save``.
     ///
@@ -101,7 +109,8 @@ impl EdgeStore {
     ///     The deserialized ``EdgeStore``.
     ///
     /// Raises:
-    ///     IOError: If the file cannot be read or the format is invalid.
+    ///     IOError: If the file cannot be read, the format is invalid, or (for ``.edgestr`` files)
+    ///              the saved version does not match the running package version.
     #[staticmethod]
     fn load(path: &str) -> PyResult<Self> {
         CoreEdgeStore::load(path)
@@ -113,7 +122,7 @@ impl EdgeStore {
         self.inner.len()
     }
 
-    fn __getitem__(&self, idx: isize) -> PyResult<(usize, usize, f32)> {
+    fn __getitem__(&self, idx: isize) -> PyResult<(u32, u32, f32)> {
         let n = self.inner.len();
         let i = if idx < 0 { n as isize + idx } else { idx } as usize;
         if i >= n {
@@ -123,7 +132,7 @@ impl EdgeStore {
     }
 
     fn __iter__(slf: PyRef<'_, Self>) -> EdgeStoreIter {
-        EdgeStoreIter { edges: slf.inner.edges(), pos: 0 }
+        EdgeStoreIter { edges: slf.inner.edges().to_vec(), pos: 0 }
     }
 
     fn __str__(&self) -> String {
@@ -138,7 +147,7 @@ impl EdgeStore {
 #[gen_stub_pyclass]
 #[pyclass(module = "refnd.core")]
 pub struct EdgeStoreIter {
-    edges: Vec<(usize, usize, f32)>,
+    edges: Vec<(u32, u32, f32)>,
     pos: usize,
 }
 
@@ -146,7 +155,7 @@ pub struct EdgeStoreIter {
 impl EdgeStoreIter {
     fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> { slf }
 
-    fn __next__(&mut self) -> Option<(usize, usize, f32)> {
+    fn __next__(&mut self) -> Option<(u32, u32, f32)> {
         if self.pos < self.edges.len() {
             let e = self.edges[self.pos];
             self.pos += 1;

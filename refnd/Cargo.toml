@@ -8,7 +8,6 @@ monitor = []
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }
-dashmap = { version = "6", features = ["rayon"] }
 fixedbitset = "0.5.7"
 indicatif = "0.17"
 quick_cache = "0.6"
@@ -27,3 +26,8 @@ ndarray = "0.17.2"
 molprint-core = "0.1.0"
 molprint-fp = "0.1.0"
 molprint-io = "0.1.0"
+libusalign-sys = "0.1.0"
+
+[[bin]]
+name = "bench_leiden"
+path = "src/bench_leiden.rs"

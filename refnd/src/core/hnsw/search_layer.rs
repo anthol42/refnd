@@ -9,7 +9,7 @@ impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
     /// both input (entry points) and output (result set).
     pub(super) fn search_layer(
         &self,
-        query: usize,
+        query: u32,
         layer: usize,
         ef: usize,
         threshold: f32,
@@ -20,7 +20,7 @@ impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
         // Input/Output
         nearest_neighbors: &mut MaxHeap<Candidate>,
         // Snapshot buffer: clones a node's neighbor list under a brief read lock
-        snapshot: &mut Vec<usize>,
+        snapshot: &mut Vec<u32>,
     ) {
         debug_assert!(!nearest_neighbors.is_empty(), "search_layer requires at least one entry point");
         debug_assert!(candidates.is_empty(), "candidates requires to be empty");
@@ -28,7 +28,7 @@ impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
 
         for &v in nearest_neighbors.iter() {
             candidates.push(Reverse(v));
-            visited.set(v.idx, true);
+            visited.set(v.idx as usize, true);
         }
 
         while let Some(Reverse(c)) = candidates.pop() {
@@ -42,7 +42,7 @@ impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
             self.hgraph.neighbors_snapshot(layer, c.idx, snapshot);
 
             for &neighbor in snapshot.iter() {
-                if !visited.put(neighbor) {
+                if !visited.put(neighbor as usize) {
                     let f = nearest_neighbors.peek().expect("nearest_neighbors should be non-empty").clone();
                     let dist_neighbor2query = self.distance(neighbor, query);
                     if dist_neighbor2query < f.distance || nearest_neighbors.len() < ef {

@@ -17,7 +17,7 @@ pub fn find_connected_components(graph: &CsrGraph) -> Vec<usize> {
     let mut uf: UnionFind<usize> = UnionFind::new(graph.n);
     for v in 0..graph.n {
         for &(u, _) in graph.neighbors(v) {
-            uf.union(v, u);
+            uf.union(v, u as usize);
         }
     }
     let mut label_map: FxHashMap<usize, usize> = FxHashMap::default();

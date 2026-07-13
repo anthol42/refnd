@@ -10,8 +10,9 @@ Once the graph is obtained, operations on the dataset become easier, and more th
 Furthermore, we can cluster the graph by finding communities or connected components. From these clusters, we can effectively **split the dataset into train and test set without leakage** with respect to the `proximity threshold` by splitting along clusters.
 
 This library contains a toolkit of efficient functions and data structures to work with datasets generated from RGP. The core computations are implemented in Rust and multithreaded for maximum throughput! Everything is wrapped within an easy to use Python API. It currently supports:
-- Protein/peptides sequences with Local and Global alignments
+- Protein/dna sequences with Local and Global alignments.
 - Molecules with Real and Bit based Tanimoto similarities.
+- Protein, DNA and RNA structures with USAlign.
 - More coming!
 
 To give an idea of what the library contains, we have these functions:
@@ -44,7 +45,7 @@ dataset = read_fasta("datasets/proteins.fasta")
 sequences = [seq for header, seq in dataset]
 
 # Initiate the HNSW index
-hnsw = HNSWState(KernelVariant.ProteinGlobal, sequences, proximity_threshold=0.3)
+hnsw = HNSWState(KernelVariant.AlignmentGlobal, sequences, proximity_threshold=0.3)
 
 # Build it
 hnsw.build()

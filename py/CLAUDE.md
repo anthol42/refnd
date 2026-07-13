@@ -27,7 +27,7 @@ src/
     exact/                       Exact api
     functional.rs                Other core functions
   kernels/
-    proteins                     Protein sequence-related kernels
+    alignments                   Alignments (protein or nucleotides) sequence-related kernels
   utils.rs                       Utilitary functions (Ex: read_fasta)
 ```
 
@@ -54,17 +54,17 @@ After any change, regenerate stubs with:
 ```shell
 cargo run --bin stub_gen
 ```
-This rewrites all `python/py_proto/**/*.pyi` files and `python/py_proto/__init__.py`.
+This rewrites all `python/refnd/**/*.pyi` files and `python/refnd/__init__.py`.
 
 ---
 
-example for the `py_proto.kernels.protein.sequence` sub-module, adjust the paths.
+example for the `refnd.kernels.alignments` sub-module, adjust the paths.
 ### Enum
 
 ```rust
-// src/kernels/protein/sequence.rs
+// src/kernels/alignments/sequence.rs
 #[gen_stub_pyclass_enum]
-#[pyclass(eq, eq_int, module = "py_proto.kernels.protein.sequence")]
+#[pyclass(eq, eq_int, module = "refnd.kernels.alignments.sequence")]
 #[derive(Clone, Copy, PartialEq)]
 pub enum MyMode { VariantA, VariantB }
 ```
@@ -72,7 +72,7 @@ pub enum MyMode { VariantA, VariantB }
 ```rust
 // src/lib.rs — inside mod sequence { ... }
 #[pymodule_export]
-use crate::kernels::protein::sequence::MyMode;
+use crate::kernels::alignments::MyMode;
 ```
 
 ---
@@ -80,9 +80,9 @@ use crate::kernels::protein::sequence::MyMode;
 ### Struct (class)
 
 ```rust
-// src/kernels/protein/sequence.rs
+// src/kernels/alignments/sequence.rs
 #[gen_stub_pyclass]
-#[pyclass(module = "py_proto.kernels.protein.sequence")]
+#[pyclass(module = "refnd.kernels.alignments.sequence")]
 pub struct MyAligner { pub inner: CoreAligner }
 
 #[gen_stub_pymethods]
@@ -97,7 +97,7 @@ impl MyAligner {
 ```rust
 // src/lib.rs — inside mod sequence { ... }
 #[pymodule_export]
-use crate::kernels::protein::sequence::MyAligner;
+use crate::kernels::alignments::MyAligner;
 ```
 
 ---
@@ -105,8 +105,8 @@ use crate::kernels::protein::sequence::MyAligner;
 ### Function
 
 ```rust
-// src/kernels/protein/sequence.rs
-#[gen_stub_pyfunction(module = "py_proto.kernels.protein.sequence")]
+// src/kernels/alignments/sequence.rs
+#[gen_stub_pyfunction(module = "refnd.kernels.alignments.sequence")]
 #[pyfunction]
 pub fn my_function(x: f32) -> f32 { x * 2.0 }
 ```
@@ -114,14 +114,14 @@ pub fn my_function(x: f32) -> f32 { x * 2.0 }
 ```rust
 // src/lib.rs — inside mod sequence { ... }
 #[pymodule_export]
-use crate::kernels::protein::sequence::my_function;
+use crate::kernels::alignments::my_function;
 ```
 
 ---
 
-### Nested submodule (e.g. `py_proto.kernels.protein.pairwise`)
+### Nested submodule (e.g. `refnd.kernels.protein.pairwise`)
 
-**1.** Create `src/kernels/protein/pairwise.rs` with annotated items (same rules as above, `module = "py_proto.kernels.protein.pairwise"`).
+**1.** Create `src/kernels/protein/pairwise.rs` with annotated items (same rules as above, `module = "refnd.kernels.protein.pairwise"`).
 
 **2.** Add `pub mod pairwise;` to `src/kernels/protein/mod.rs`.
 
@@ -132,7 +132,7 @@ use crate::kernels::protein::sequence::my_function;
 fn init(m: &Bound<'_, PyModule>) -> PyResult<()> {
     // ...existing entries
     let pairwise = protein.getattr("pairwise")?;
-    modules.set_item("py_proto.kernels.protein.pairwise", &pairwise)?;
+    modules.set_item("refnd.kernels.alignments.pairwise", &pairwise)?;
     Ok(())
 }
 
@@ -148,9 +148,9 @@ mod protein {
 
 ---
 
-### Top-level submodule (e.g. `py_proto.core`)
+### Top-level submodule (e.g. `refnd.core`)
 
-**1.** Create `src/core/mod.rs` with annotated items (`module = "py_proto.core"`).
+**1.** Create `src/core/mod.rs` with annotated items (`module = "refnd.core"`).
 
 **2.** Add `pub mod core;` at the top of `src/lib.rs`.
 
@@ -161,7 +161,7 @@ mod protein {
 fn init(m: &Bound<'_, PyModule>) -> PyResult<()> {
     // ...existing entries
     let core = m.getattr("core")?;
-    modules.set_item("py_proto.core", &core)?;
+    modules.set_item("refnd.core", &core)?;
     Ok(())
 }
 
@@ -175,10 +175,10 @@ mod core {
 
 ```rust
 std::fs::write(
-    "python/py_proto/__init__.py",
-    "from .py_proto import *\n\
-     from .py_proto import kernels\n\
-     from .py_proto import core\n",   // ← add one line per top-level submodule
+    "python/refnd/__init__.py",
+    "from .refnd import *\n\
+     from .refnd import kernels\n\
+     from .refnd import core\n",   // ← add one line per top-level submodule
 )?;
 ```
 
@@ -186,4 +186,4 @@ std::fs::write(
 
 ### Why `stub_gen.rs` only needs updating for top-level submodules
 
-`from .py_proto import *` loads the extension and triggers `#[pymodule_init]`, which registers all dotted paths in `sys.modules`. The explicit `from .py_proto import core` is additionally needed so `core` is an attribute of the `py_proto` package object itself. Deeper submodules (`kernels.protein.sequence`, etc.) are reachable through their parent once the top-level is exposed — no extra line needed.
+`from .refnd import *` loads the extension and triggers `#[pymodule_init]`, which registers all dotted paths in `sys.modules`. The explicit `from .refnd import core` is additionally needed so `core` is an attribute of the `refnd` package object itself. Deeper submodules (`kernels.alignments`, etc.) are reachable through their parent once the top-level is exposed — no extra line needed.

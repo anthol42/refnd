@@ -12,6 +12,7 @@ __all__ = [
     "HNSWConfig",
     "HNSWIndex",
     "HNSWState",
+    "INWeightType",
     "LeidenObjective",
     "exact_edges",
     "exact_nearest_neighbors",
@@ -33,14 +34,14 @@ class CsrGraph:
     
     Properties:
         - ``n``: Number of nodes.
-        - ``m``: Sum of all edge weights (or total edge count when ``use_weight=False``).
+        - ``m``: Sum of all edge weights (or total edge count when ``inweight_type=INWeightType.Unweighted``).
     
     Example::
     
         from refnd.core import EdgeStore, CsrGraph
     
         store = EdgeStore(4, [(0,1,0.9),(1,2,0.8),(2,3,0.6)])
-        g = CsrGraph(store, use_weight=True)
+        g = CsrGraph(store)
         print(g.n)               # 4
         print(g.neighbors(1))    # [(0, 0.9), (2, 0.8)]
         print(g.strength(1))     # 1.7
@@ -55,17 +56,17 @@ class CsrGraph:
         r"""
         Total weight (each edge counted once)
         """
-    def __new__(cls, edges: EdgeStore, use_weight: builtins.bool = True, is_weight_distance: builtins.bool = True) -> CsrGraph:
+    def __new__(cls, edges: EdgeStore, inweight_type: INWeightType = INWeightType.Distance) -> CsrGraph:
         r"""
         Build a CsrGraph from an EdgeStore.
         
         Args:
             edges: The edge store to build the graph from.
-            use_weight: If ``True``, edge weights are used for graph operations.
-            is_weight_distance: If ``True`` (default), raw weights are treated as
-                                distances and converted to similarities internally
-                                (``similarity = 1 - distance``). Set to ``False``
-                                when weights are already similarities.
+            inweight_type: How to convert the raw ``EdgeStore`` weights to
+                           similarity-like weights. See ``INWeightType``. Pass
+                           ``INWeightType.Unweighted`` to ignore weights entirely
+                           (every edge gets weight ``1.0``). Defaults to
+                           ``INWeightType.Distance``.
         """
     def neighbors(self, v: builtins.int) -> builtins.list[tuple[builtins.int, builtins.float]]:
         r"""
@@ -83,6 +84,27 @@ class CsrGraph:
         Args:
             v: Zero-based node index.
         """
+    def subgraph(self, nodes: typing.Sequence[builtins.int]) -> tuple[CsrGraph, builtins.dict[builtins.int, builtins.int]]:
+        r"""
+        Extract a subgraph composed of a subset of nodes.
+        
+        New node ids are assigned contiguously in the order ``nodes`` is given.
+        
+        All edges pointing outside the subgraph are ignores.
+        
+        Args:
+            nodes: Node ids to keep, in the desired new order.
+        
+        Returns:
+            A tuple ``(subgraph, mapping)`` where ``mapping`` is a dict from old node id
+            to new node id.
+        
+        Example::
+        
+            sub, mapping = g.subgraph([2, 0, 3])
+            print(sub.n)      # 3
+            print(mapping)    # {0: 1, 2: 0, 3: 2}
+        """
 
 @typing.final
 class EdgeStore:
@@ -95,9 +117,7 @@ class EdgeStore:
     
     Each edge is a triple ``(src, dst, weight)`` where ``src`` and ``dst`` are
     zero-based node indices in ``[0, node_count)`` and ``weight`` is a ``float32``
-    similarity score (higher = more similar, unless the graph is built with
-    ``is_weight_distance=True``, in such case it's a real distance ``[0, ∞)`` that will be converted
-    to a similarity score).
+    value.
     
     Example::
     
@@ -125,16 +145,16 @@ class EdgeStore:
         r"""
         Return the total number of nodes this store was created with.
         """
-    def graph(self, weighted: builtins.bool = True, is_weight_distance: builtins.bool = True) -> CsrGraph:
+    def graph(self, inweight_type: INWeightType = INWeightType.Distance) -> CsrGraph:
         r"""
         Build a ``CsrGraph`` from this edge store.
         
         Args:
-            use_weight: If ``True``, edge weights are used for graph operations (e.g. strength).
-                        If ``False``, all edges are treated as unweighted (weight = 1.0).
-            is_weight_distance: If ``True``, edges weights are normalized to have a maximal bound of
-                                1 using this formula: ``1.0 / (1.0 + w)`` since the Leiden algorithm works on
-                                similarity graphs.
+            inweight_type: How to convert the raw edge weights to similarity-like weights.
+                           See ``INWeightType``. Pass ``INWeightType.Unweighted`` to ignore
+                           weights entirely (every edge gets weight ``1.0``). Defaults to
+                           ``INWeightType.Distance``, meaning weights are assumed to be a distance
+                           measurement, and are converted to similarities.
         
         Returns:
             A ``CsrGraph`` backed by this edge list.
@@ -144,6 +164,11 @@ class EdgeStore:
         Serialize this EdgeStore to disk. It supports two file formats: ``text`` with
         ``.edgelist`` extension or ``binary`` with ``.edgestr`` extension. Binary is usually 2x
         more space efficient at the cost of not being human-readable.
+        
+        **Version compatibility (binary format only):** The binary ``.edgestr`` format is versioned
+        to the exact package version and is not forward or backward compatible. A file saved with
+        a different package version will fail to load with a version mismatch error. The text
+        ``.edgelist`` format has no version stamp and may be portable across versions.
         
         Args:
             path: Destination file path.
@@ -164,6 +189,11 @@ class EdgeStore:
         Load an EdgeStore that was previously saved with ``EdgeStore.save``. It infers the format
         from the extension of the path, ``.edgelist`` or ``.edgestr``.
         
+        **Version compatibility (binary format only):** The binary ``.edgestr`` format is versioned
+        to the exact package version. A file saved with a different package version will fail to
+        load with a version mismatch error. There is no forward or backward compatibility. The text
+        ``.edgelist`` format is not versioned and may be portable across versions.
+        
         Args:
             path: Path to the file produced by ``save``.
         
@@ -171,7 +201,8 @@ class EdgeStore:
             The deserialized ``EdgeStore``.
         
         Raises:
-            IOError: If the file cannot be read or the format is invalid.
+            IOError: If the file cannot be read, the format is invalid, or (for ``.edgestr`` files)
+                     the saved version does not match the running package version.
         """
     def __len__(self) -> builtins.int: ...
     def __getitem__(self, idx: builtins.int) -> tuple[builtins.int, builtins.int, builtins.float]: ...
@@ -204,8 +235,15 @@ class HNSWConfig:
       a greedy search.
     - ``extend_candidates`` *(bool)* — Use neighbors of neighbors as candidates, making search more exhaustive.
     - ``keep_pruned_connections`` *(bool)* — Retain discarded candidates to fill up to ``m`` connections when not enough connections are found.
+    - ``keep_all_edges`` *(bool)* — Record every below-threshold distance computed during build into
+      the proximity graph returned by ``edges()``. Default ``True``. Setting it to ``False`` makes
+      ``edges()`` return ``None``, but removes a per-hit locked hashmap insert from the hot path.
+      Worth doing when the proximity graph is not required.
     - ``cache_capacity`` *(int)* — Maximum cached kernel scores. Increasing it increase the memory
       footprint, but also cache hits, which can improve runtime performances for computationally expensive kernels.
+      Set to ``0`` to disable the cache entirely — every distance is recomputed directly, which is
+      faster for cheap kernels (e.g. ``TanimotoBit``/``TanimotoReal``) where cache overhead exceeds the
+      cost of the kernel itself.
     - ``cache_shards`` *(int)* — Number of cache shards (reduces lock contention).
     - ``n_threads`` *(int)* — Threads used during build. ``0`` = all available cores.
     - ``shuffle`` *(bool)* — Shuffle insertion order before building. Can create a less biased
@@ -231,6 +269,8 @@ class HNSWConfig:
     @property
     def keep_pruned_connections(self) -> builtins.bool: ...
     @property
+    def keep_all_edges(self) -> builtins.bool: ...
+    @property
     def cache_capacity(self) -> builtins.int: ...
     @property
     def cache_shards(self) -> builtins.int: ...
@@ -246,7 +286,7 @@ class HNSWConfig:
     def strict_ef(self) -> builtins.bool: ...
     @property
     def threshold_based_neighbourhood(self) -> builtins.bool: ...
-    def __new__(cls, proximity_threshold: builtins.float = 0.5, ef_construction: builtins.int = 64, m: builtins.int = 16, m_max: builtins.int = 16, m_max0: builtins.int = 32, m_l: builtins.float = 0.36, ef_init: builtins.int = 1, extend_candidates: builtins.bool = False, keep_pruned_connections: builtins.bool = True, cache_capacity: builtins.int = 2000000, cache_shards: builtins.int = 64, n_threads: builtins.int = 0, shuffle: builtins.bool = False, use_heuristic: builtins.bool = True, strict_ef: builtins.bool = False, threshold_based_neighbourhood: builtins.bool = False) -> HNSWConfig:
+    def __new__(cls, proximity_threshold: builtins.float = 0.5, ef_construction: builtins.int = 64, m: builtins.int = 16, m_max: builtins.int = 16, m_max0: builtins.int = 32, m_l: builtins.float = 0.36, ef_init: builtins.int = 1, extend_candidates: builtins.bool = False, keep_pruned_connections: builtins.bool = True, keep_all_edges: builtins.bool = True, cache_capacity: builtins.int = 2000000, cache_shards: builtins.int = 64, n_threads: builtins.int = 0, shuffle: builtins.bool = False, use_heuristic: builtins.bool = True, strict_ef: builtins.bool = False, threshold_based_neighbourhood: builtins.bool = False) -> HNSWConfig:
         r"""
         Create an HNSWConfig. See class docstring for parameter descriptions.
         """
@@ -290,6 +330,11 @@ class HNSWIndex:
         r"""
         Save the object to a binary representation (e.g. *.hnsw* file).
         
+        The binary format is versioned to the exact package version and is not
+        forward or backward compatible. A file saved with version X can only be
+        loaded by the exact same version X. Files saved with a different version
+        will fail to load with a version mismatch error.
+        
         Args:
             path: Destination file path (recommended with a .hnsw extension)
         
@@ -301,6 +346,11 @@ class HNSWIndex:
         r"""
         Load an index previously saved with ``HNSWIndex.save``.
         
+        **Version compatibility:** The binary format is versioned to the exact package version.
+        A file saved with a different package version (older or newer) will fail to load with
+        a version mismatch error. There is no forward or backward compatibility guarantee during
+        the unstable pre-0.1.0 phase.
+        
         Args:
             path: Path to the saved file.
         
@@ -308,7 +358,8 @@ class HNSWIndex:
             The deserialised ``HNSWIndex``.
         
         Raises:
-            RuntimeError: If the file cannot be read or the format is invalid.
+            RuntimeError: If the file cannot be read, the format is invalid, or the saved
+                          version does not match the running package version.
         """
     def __str__(self) -> builtins.str: ...
     def __repr__(self) -> builtins.str: ...
@@ -332,10 +383,10 @@ class HNSWState:
     and can be passed directly to the constructor as keyword arguments.
     
     Args:
-        variant: Kernel to use (e.g.  ``KernelVariant.ProteinGlobal``, ``KernelVariant.ProteinLocal``, ``KernelVariant.TanimotoBit``, *etc*).
+        variant: Kernel to use (e.g.  ``KernelVariant.AlignmentGlobal``, ``KernelVariant.AlignmentLocal``, ``KernelVariant.TanimotoBit``, *etc*).
         data: The dataset — a list of items matching the kernel type (e.g. ``list[str]`` or ``list[np.ndarray]``).
         proximity_threshold, ef_construction, m, m_max, m_max0, m_l, ef_init, extend_candidates,
-            keep_pruned_connections, cache_capacity, cache_shards,
+            keep_pruned_connections, keep_all_edges, cache_capacity, cache_shards,
             n_threads, shuffle, use_heuristic, strict_ef,
             threshold_based_neighbourhood: See ``HNSWConfig`` for descriptions.
     
@@ -348,14 +399,14 @@ class HNSWState:
         from refnd import HNSWState, KernelVariant
     
         seqs = ["MKTAYIAK", "MKTAYIAKQR", "ACDEFGHIKLM", "MKTAYIAKQRQIS"]
-        state = HNSWState(KernelVariant.ProteinGlobal, seqs, proximity_threshold=0.3, ef_construction=64)
+        state = HNSWState(KernelVariant.AlignmentGlobal, seqs, proximity_threshold=0.3, ef_construction=64)
         state.build()
         results = state.search(["MKTAYIAK"], k=2)
         # results[0] -> [(0, 1.0), (1, 0.88)]
     
         store = state.edges()        # EdgeStore for graph-based splitting
         state.save("index.hnsw")
-        state2 = HNSWState.load(KernelVariant.ProteinGlobal, "index.hnsw", seqs)
+        state2 = HNSWState.load(KernelVariant.AlignmentGlobal, "index.hnsw", seqs)
     """
     @property
     def is_built(self) -> builtins.bool:
@@ -372,7 +423,7 @@ class HNSWState:
         r"""
         HNSWIndex snapshot.
         """
-    def __new__(cls, variant: kernels.KernelVariant, data: typing.Any, *args: typing.Any, proximity_threshold: builtins.float = 0.5, ef_construction: builtins.int = 64, m: builtins.int = 16, m_max: builtins.int = 16, m_max0: builtins.int = 32, m_l: builtins.float = 0.36, ef_init: builtins.int = 1, extend_candidates: builtins.bool = False, keep_pruned_connections: builtins.bool = True, cache_capacity: builtins.int = 2000000, cache_shards: builtins.int = 64, n_threads: builtins.int = 0, shuffle: builtins.bool = False, use_heuristic: builtins.bool = True, strict_ef: builtins.bool = False, threshold_based_neighbourhood: builtins.bool = False, **kwargs: typing.Any) -> HNSWState: ...
+    def __new__(cls, variant: kernels.KernelVariant, data: typing.Any, *args: typing.Any, proximity_threshold: builtins.float = 0.5, ef_construction: builtins.int = 64, m: builtins.int = 16, m_max: builtins.int = 16, m_max0: builtins.int = 32, m_l: builtins.float = 0.36, ef_init: builtins.int = 1, extend_candidates: builtins.bool = False, keep_pruned_connections: builtins.bool = True, keep_all_edges: builtins.bool = True, cache_capacity: builtins.int = 2000000, cache_shards: builtins.int = 64, n_threads: builtins.int = 0, shuffle: builtins.bool = False, use_heuristic: builtins.bool = True, strict_ef: builtins.bool = False, threshold_based_neighbourhood: builtins.bool = False, **kwargs: typing.Any) -> HNSWState: ...
     def build(self, progress: builtins.bool = True) -> None:
         r"""
         Build the HNSW index by inserting all data items.
@@ -410,7 +461,7 @@ class HNSWState:
         Raises:
             RuntimeError: If ``build`` has not been called yet.
         """
-    def edges(self) -> EdgeStore:
+    def edges(self) -> typing.Optional[EdgeStore]:
         r"""
         Extract the proximity graph as an ``EdgeStore``.
         
@@ -418,7 +469,8 @@ class HNSWState:
         ``proximity_threshold``.
         
         Returns:
-            An ``EdgeStore`` with ``node_count = dataset_size``.
+            An ``EdgeStore`` with ``node_count = dataset_size``, or ``None`` if the index was built
+            with ``keep_all_edges=False``.
         """
     def get_layer(self, layer_idx: builtins.int) -> builtins.list[builtins.list[builtins.int]]:
         r"""
@@ -441,6 +493,11 @@ class HNSWState:
         The saved file can be loaded back with ``HNSWState.load``. The original
         data must be provided again at load time (it is not embedded in the file).
         
+        **Version compatibility:** The binary format is versioned to the exact package version.
+        A file saved with a different package version (older or newer) will fail to load with
+        a version mismatch error. There is no forward or backward compatibility guarantee during
+        the unstable pre-0.1.0 phase.
+        
         Args:
             path: Destination file path.
         
@@ -452,6 +509,11 @@ class HNSWState:
         r"""
         Load an HNSWState form a binary file saved with ``HNSWState.save``.
         
+        **Version compatibility:** The binary format is versioned to the exact package version.
+        A file saved with a different package version (older or newer) will fail to load with
+        a version mismatch error. There is no forward or backward compatibility guarantee during
+        the unstable pre-0.1.0 phase.
+        
         Args:
             variant: Must match the kernel used during the original build.
             path: Path to the saved file.
@@ -461,8 +523,27 @@ class HNSWState:
             The restored ``HNSWState``, ready to call ``search`` or ``edges`` if the index was built.
         
         Raises:
-            RuntimeError: If the file cannot be read or the format is invalid.
+            RuntimeError: If the file cannot be read, the format is invalid, or the saved
+                          version does not match the running package version.
         """
+
+@typing.final
+class INWeightType(enum.Enum):
+    r"""
+    How to convert a raw ``EdgeStore`` weight into the similarity-like edge weight
+    used internally by ``CsrGraph`` and the Leiden algorithm.
+    
+    - ``Similarity`` — the raw weight is already a similarity; used as-is.
+    - ``Distance`` — the raw weight is a distance in ``[0, ∞)``; mapped to
+      ``1 / (1 + w)`` so closer nodes get a higher weight.
+    - ``SimilarityComplement`` — the raw weight is ``1 - similarity``; mapped
+      back to a similarity via ``1 - w``.
+    - ``Unweighted`` — the raw weight is ignored; every edge weight is set to ``1.0``.
+    """
+    Similarity = ...
+    Distance = ...
+    SimilarityComplement = ...
+    Unweighted = ...
 
 @typing.final
 class LeidenObjective(enum.Enum):
@@ -475,7 +556,7 @@ class LeidenObjective(enum.Enum):
     Modularity = ...
     CPM = ...
 
-def exact_edges(variant: kernels.KernelVariant, data: typing.Any, proximity_threshold: builtins.float = 0.5, threads: builtins.int = 0, progress: builtins.bool = True, *args: typing.Any, **kwargs: typing.Any) -> EdgeStore:
+def exact_edges(variant: kernels.KernelVariant, data: typing.Any, proximity_threshold: builtins.float = 0.5, n_threads: builtins.int = 0, progress: builtins.bool = True, *args: typing.Any, **kwargs: typing.Any) -> EdgeStore:
     r"""
     Compute all pairs of data points whose similarity exceeds a threshold (exact, brute-force).
     
@@ -486,11 +567,11 @@ def exact_edges(variant: kernels.KernelVariant, data: typing.Any, proximity_thre
     Extra positional and keyword arguments are forwarded to the kernel constructor.
     
     Args:
-        variant: Which kernel to use (``KernelVariant.ProteinGlobal`` or
-                 ``KernelVariant.ProteinLocal``).
+        variant: Which kernel to use (``KernelVariant.AlignmentGlobal`` or
+                 ``KernelVariant.AlignmentLocal``).
         data: Sequence of data items (e.g. ``list[str]`` for protein sequences).
         proximity_threshold: Maximum distance for an edge to be recorded.
-        threads: Number of parallel threads. ``0`` uses all available cores.
+        n_threads: Number of parallel threads. ``0`` uses all available cores.
         progress: Show a progress bar. Defaults to ``True``.
     
     Returns:
@@ -501,7 +582,7 @@ def exact_edges(variant: kernels.KernelVariant, data: typing.Any, proximity_thre
         from refnd import KernelVariant, exact_edges
     
         seqs = ["MKTAYIAK", "MKTAYIAKQR", "ACDEFGHIKLM"]
-        store = exact_edges(KernelVariant.ProteinGlobal, seqs, proximity_threshold=0.5)
+        store = exact_edges(KernelVariant.AlignmentGlobal, seqs, proximity_threshold=0.5)
         print(len(store))   # number of similar pairs
     """
 
@@ -517,8 +598,8 @@ def exact_nearest_neighbors(variant: kernels.KernelVariant, queries: typing.Any,
     Extra positional and keyword arguments are forwarded to the kernel constructor.
     
     Args:
-        variant: Which kernel to use (e.g. ``KernelVariant.ProteinGlobal`` or
-                 ``KernelVariant.TanimotoBit``).
+        variant: Which kernel to use (``KernelVariant.AlignmentGlobal`` or
+                 ``KernelVariant.AlignmentsLocal``).
         queries: Sequence of query items.
         references: Sequence of reference items to search over. List of items of the same type of the selected kernel variant.
         k: Number of nearest neighbors to return per query. List of items of the same type of the selected kernel variant.
@@ -536,7 +617,7 @@ def exact_nearest_neighbors(variant: kernels.KernelVariant, queries: typing.Any,
         queries = ["MKTAYIAK"]
         refs    = ["MKTAYIAKQR", "ACDEFGHIKLM", "MKTAYIAKQRQ"]
         results = exact_nearest_neighbors(
-            KernelVariant.ProteinGlobal, queries, refs, k=2
+            KernelVariant.AlignmentGlobal, queries, refs, k=2
         )
         # results[0] -> [(0, 0.20), (2, 0.27)]
     """
@@ -566,10 +647,10 @@ def find_communities(graph: CsrGraph, gamma: builtins.float = 1.0, beta: builtin
     
     Example::
     
-        from refnd.core import CsrGraph, EdgeStore, find_communities, LeidenObjective
+        from refnd.core import CsrGraph, EdgeStore, find_communities, LeidenObjective, INWeightType
     
         store = EdgeStore(4, [(0,1,0.9),(1,2,0.8),(2,3,0.6)])
-        g = CsrGraph(store, use_weight=True, is_weight_distance=False)
+        g = CsrGraph(store, inweight_type=INWeightType.Similarity)
         clusters = find_communities(g, gamma=1.0, n_iterations=20) # e.g. [0, 1, 2, 3]
     """
 
@@ -635,11 +716,11 @@ def partition(clusters: typing.Sequence[builtins.int], graph: CsrGraph, test_rat
     Example::
     
         from refnd.core import (
-            EdgeStore, CsrGraph, find_communities, partition
+            EdgeStore, CsrGraph, find_communities, partition, INWeightType
         )
     
         store = EdgeStore(6, [(0,1,0.9),(1,2,0.8),(3,4,0.7),(4,5,0.6)])
-        g = CsrGraph(store, use_weight=True, is_weight_distance=False)
+        g = CsrGraph(store, inweight_type=INWeightType.Similarity)
         clusters = find_communities(g) # or connected_components(g)
         train_idx, test_idx = partition(clusters, g, test_ratio=0.3, seed=42)
     """
