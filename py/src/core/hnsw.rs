@@ -178,10 +178,10 @@ pub struct HNSWIndex {
 #[pymethods]
 impl HNSWIndex {
     #[getter] pub fn dataset_size(&self) -> usize { self.inner.dataset_size }
-    #[getter] pub fn layers(&self) -> Vec<Vec<Vec<usize>>> { self.inner.layers.clone() }
-    #[getter] pub fn entry_point(&self) -> Option<(usize, usize)> { self.inner.entry_point }
+    #[getter] pub fn layers(&self) -> Vec<Vec<Vec<u32>>> { self.inner.layers.clone() }
+    #[getter] pub fn entry_point(&self) -> Option<(u32, usize)> { self.inner.entry_point }
     #[getter] pub fn max_layers(&self) -> usize { self.inner.max_layers }
-    #[getter] pub fn proximity_edges(&self) -> Vec<((usize, usize), f32)> { self.inner.proximity_edges.clone() }
+    #[getter] pub fn proximity_edges(&self) -> Vec<((u32, u32), f32)> { self.inner.proximity_edges.clone() }
     #[getter] pub fn config(&self) -> HNSWConfig { HNSWConfig { inner: self.inner.config.clone() } }
 
     /// Save the object to a binary representation (e.g. *.hnsw* file).
@@ -457,7 +457,7 @@ impl HNSWState {
         ef: usize,
         threads: usize,
         progress: bool,
-    ) -> PyResult<Vec<Vec<(usize, f32)>>> {
+    ) -> PyResult<Vec<Vec<(u32, f32)>>> {
         let n = queries.bind(py).len()?;
         let pb = if progress { Some(linear_progress_bar(n, "Searching")) } else { None };
         // Direct match: the concrete inner type per arm lets the compiler infer
@@ -507,7 +507,7 @@ impl HNSWState {
     ///
     /// Raises:
     ///     IndexError: If ``layer_idx`` is out of range.
-    pub fn get_layer(&self, layer_idx: usize) -> PyResult<Vec<Vec<usize>>> {
+    pub fn get_layer(&self, layer_idx: usize) -> PyResult<Vec<Vec<u32>>> {
         hnsw_dispatch!(
             self.inner, get_layer(layer_idx);
             AlignmentGlobal:_GlobalAligner,

@@ -92,12 +92,21 @@ impl EdgeStore {
     // ── Binary ────────────────────────────────────────────────────────────────
     //
     // Layout:
+    //   [6 bytes] crate_version (major, minor, patch), each u16 LE
     //   [8 bytes] node_count  as u64 LE
     //   [8 bytes] edge_count  as u64 LE
     //   per edge: u32 + u32 + f32 = 12 bytes, all little-endian
+    //
+    // The crate is pre-1.0; the format is only guaranteed stable from v0.1.0
+    // onward (see `crate::core::hnsw::current_crate_version`).
+    // `load_binary` rejects files saved before that.
 
     pub fn save_binary(&self, path: &Path) -> Result<(), Box<dyn Error>> {
         let mut w = BufWriter::new(File::create(path)?);
+        let (major, minor, patch) = crate::core::hnsw::current_crate_version();
+        w.write_all(&major.to_le_bytes())?;
+        w.write_all(&minor.to_le_bytes())?;
+        w.write_all(&patch.to_le_bytes())?;
         w.write_all(&(self.node_count as u64).to_le_bytes())?;
         w.write_all(&(self.edges.len() as u64).to_le_bytes())?;
         for &(u, v, weight) in &self.edges {
@@ -110,6 +119,17 @@ impl EdgeStore {
 
     pub fn load_binary(path: &Path) -> Result<Self, Box<dyn Error>> {
         let mut r = BufReader::new(File::open(path)?);
+
+        let version = (read_u16(&mut r)?, read_u16(&mut r)?, read_u16(&mut r)?);
+        let running_version = crate::core::hnsw::current_crate_version();
+        if version < (0, 1, 0) || running_version < (0, 1, 0) {
+            return Err(format!(
+                "edgestr format mismatch: saved with refnd v{}.{}.{}, running v{}.{}.{} — \
+                 one of them predates the stable edgestr format (v0.1.0+). Regenerate the file.",
+                version.0, version.1, version.2,
+                running_version.0, running_version.1, running_version.2,
+            ).into());
+        }
 
         let node_count = read_u64(&mut r)? as usize;
         let edge_count = read_u64(&mut r)? as usize;
@@ -181,6 +201,12 @@ fn extension<'a>(path: &'a Path) -> Result<&'a str, Box<dyn Error>> {
     path.extension()
         .and_then(|e| e.to_str())
         .ok_or_else(|| format!("cannot determine extension of '{}'", path.display()).into())
+}
+
+fn read_u16(r: &mut impl std::io::Read) -> Result<u16, Box<dyn Error>> {
+    let mut buf = [0u8; 2];
+    r.read_exact(&mut buf)?;
+    Ok(u16::from_le_bytes(buf))
 }
 
 fn read_u32(r: &mut impl std::io::Read) -> Result<u32, Box<dyn Error>> {

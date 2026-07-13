@@ -27,8 +27,6 @@ Pre-implemented distance functions are implemented in `kernels/`. Some utils fun
 
 ```
 src/
-  main.rs                        Entry point referencing to the `cli` module
-  cli/                           Command Line Interface code
   core/
     hnsw/                        HNSW implementation
     leiden/                      Leiden implementation

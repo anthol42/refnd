@@ -6,7 +6,7 @@
 - [ ] ~**Memory: `CsrGraph::new` — accept an iterator / raw `&[(u32, u32, f32)]` instead of `&[(usize, usize, f32)]`** — `EdgeStore::graph()` currently calls `self.edges()` which allocates a full `Vec<(usize, usize, f32)>` just to widen u32→usize before passing to `CsrGraph::new`. For 1B edges this wastes 20 GB. Fix by adding a `CsrGraph::from_u32_edges(n, edges: &[(u32, u32, f32)], ...)` constructor and dispatching to it from `EdgeStore::graph()` when using U32 storage. The internal leiden aggregation (`CsrGraph::new` with small community-count graphs) can keep the existing `usize` path.~
 - [X] Optimize HNSW with molecules, should be faster than naive
 - [X] Optimize Leiden
-- [ ] Refactor HNSW: Change usize to u32, and if the speedup is meaningful, merge it.
+- [X] Refactor HNSW: Change usize to u32, and if the speedup is meaningful, merge it.
 - [ ] Move structure US score outside of alignment in core 
 - [ ] Use `sphinx-llm` to build LLM-friendly docs
 - [ ] Add to ablation: Test if scaling ef_construction with nlog(n) is enough to maintain recall
