@@ -39,10 +39,8 @@ use super::super::utils::PdbStructure;
 /// - ``keep_pruned_connections`` *(bool)* — Retain discarded candidates to fill up to ``m`` connections when not enough connections are found.
 /// - ``keep_all_edges`` *(bool)* — Record every below-threshold distance computed during build into
 ///   the proximity graph returned by ``edges()``. Default ``True``. Setting it to ``False`` makes
-///   ``edges()`` return ``None``, but removes a per-hit locked hashmap insert from the hot path —
-///   worth doing when matches are dense (e.g. a fixed Tanimoto threshold over a large, structurally
-///   similar molecule library), since more matches means more locked inserts, which pushes build
-///   time past the expected ``O(n log n)``.
+///   ``edges()`` return ``None``, but removes a per-hit locked hashmap insert from the hot path.
+///   Worth doing when the proximity graph is not required.
 /// - ``cache_capacity`` *(int)* — Maximum cached kernel scores. Increasing it increase the memory
 ///   footprint, but also cache hits, which can improve runtime performances for computationally expensive kernels.
 ///   Set to ``0`` to disable the cache entirely — every distance is recomputed directly, which is
@@ -186,6 +184,11 @@ impl HNSWIndex {
 
     /// Save the object to a binary representation (e.g. *.hnsw* file).
     ///
+    /// The binary format is versioned to the exact package version and is not
+    /// forward or backward compatible. A file saved with version X can only be
+    /// loaded by the exact same version X. Files saved with a different version
+    /// will fail to load with a version mismatch error.
+    ///
     /// Args:
     ///     path: Destination file path (recommended with a .hnsw extension)
     ///
@@ -198,6 +201,11 @@ impl HNSWIndex {
 
     /// Load an index previously saved with ``HNSWIndex.save``.
     ///
+    /// **Version compatibility:** The binary format is versioned to the exact package version.
+    /// A file saved with a different package version (older or newer) will fail to load with
+    /// a version mismatch error. There is no forward or backward compatibility guarantee during
+    /// the unstable pre-0.1.0 phase.
+    ///
     /// Args:
     ///     path: Path to the saved file.
     ///
@@ -205,7 +213,8 @@ impl HNSWIndex {
     ///     The deserialised ``HNSWIndex``.
     ///
     /// Raises:
-    ///     RuntimeError: If the file cannot be read or the format is invalid.
+    ///     RuntimeError: If the file cannot be read, the format is invalid, or the saved
+    ///                   version does not match the running package version.
     #[staticmethod]
     pub fn load(path: String) -> PyResult<Self> {
         HNSWIndexCore::load(&path)
@@ -299,7 +308,7 @@ macro_rules! hnsw_dispatch_mut {
 /// and can be passed directly to the constructor as keyword arguments.
 ///
 /// Args:
-///     variant: Kernel to use (e.g.  ``KernelVariant.ProteinGlobal``, ``KernelVariant.ProteinLocal``, ``KernelVariant.TanimotoBit``, *etc*).
+///     variant: Kernel to use (e.g.  ``KernelVariant.AlignmentGlobal``, ``KernelVariant.AlignmentLocal``, ``KernelVariant.TanimotoBit``, *etc*).
 ///     data: The dataset — a list of items matching the kernel type (e.g. ``list[str]`` or ``list[np.ndarray]``).
 ///     proximity_threshold, ef_construction, m, m_max, m_max0, m_l, ef_init, extend_candidates,
 ///         keep_pruned_connections, keep_all_edges, cache_capacity, cache_shards,
@@ -523,6 +532,11 @@ impl HNSWState {
     /// The saved file can be loaded back with ``HNSWState.load``. The original
     /// data must be provided again at load time (it is not embedded in the file).
     ///
+    /// **Version compatibility:** The binary format is versioned to the exact package version.
+    /// A file saved with a different package version (older or newer) will fail to load with
+    /// a version mismatch error. There is no forward or backward compatibility guarantee during
+    /// the unstable pre-0.1.0 phase.
+    /// 
     /// Args:
     ///     path: Destination file path.
     ///
@@ -542,6 +556,11 @@ impl HNSWState {
 
     /// Load an HNSWState form a binary file saved with ``HNSWState.save``.
     ///
+    /// **Version compatibility:** The binary format is versioned to the exact package version.
+    /// A file saved with a different package version (older or newer) will fail to load with
+    /// a version mismatch error. There is no forward or backward compatibility guarantee during
+    /// the unstable pre-0.1.0 phase.
+    ///
     /// Args:
     ///     variant: Must match the kernel used during the original build.
     ///     path: Path to the saved file.
@@ -551,7 +570,8 @@ impl HNSWState {
     ///     The restored ``HNSWState``, ready to call ``search`` or ``edges`` if the index was built.
     ///
     /// Raises:
-    ///     RuntimeError: If the file cannot be read or the format is invalid.
+    ///     RuntimeError: If the file cannot be read, the format is invalid, or the saved
+    ///                   version does not match the running package version.
     #[staticmethod]
     #[pyo3(signature = (variant, path, data, *args, **kwargs))]
     pub fn load(

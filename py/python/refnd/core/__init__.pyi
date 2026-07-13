@@ -86,13 +86,14 @@ class CsrGraph:
         """
     def subgraph(self, nodes: typing.Sequence[builtins.int]) -> tuple[CsrGraph, builtins.dict[builtins.int, builtins.int]]:
         r"""
-        Extract the induced subgraph on a subset of nodes.
+        Extract a subgraph composed of a subset of nodes.
         
-        New node ids are assigned contiguously in the order ``nodes`` is given, so callers
-        control — and can make reproducible — the resulting node ordering.
+        New node ids are assigned contiguously in the order ``nodes`` is given.
+        
+        All edges pointing outside the subgraph are ignores.
         
         Args:
-            nodes: Node ids (into this graph) to keep, in the desired new order.
+            nodes: Node ids to keep, in the desired new order.
         
         Returns:
             A tuple ``(subgraph, mapping)`` where ``mapping`` is a dict from old node id
@@ -116,8 +117,7 @@ class EdgeStore:
     
     Each edge is a triple ``(src, dst, weight)`` where ``src`` and ``dst`` are
     zero-based node indices in ``[0, node_count)`` and ``weight`` is a ``float32``
-    value, interpreted according to the ``inweight_type`` given to ``CsrGraph``/``graph()``
-    (by default a distance ``[0, ∞)`` that gets converted to a similarity score).
+    value.
     
     Example::
     
@@ -153,7 +153,8 @@ class EdgeStore:
             inweight_type: How to convert the raw edge weights to similarity-like weights.
                            See ``INWeightType``. Pass ``INWeightType.Unweighted`` to ignore
                            weights entirely (every edge gets weight ``1.0``). Defaults to
-                           ``INWeightType.Distance``.
+                           ``INWeightType.Distance``, meaning weights are assumed to be a distance
+                           measurement, and are converted to similarities.
         
         Returns:
             A ``CsrGraph`` backed by this edge list.
@@ -163,6 +164,11 @@ class EdgeStore:
         Serialize this EdgeStore to disk. It supports two file formats: ``text`` with
         ``.edgelist`` extension or ``binary`` with ``.edgestr`` extension. Binary is usually 2x
         more space efficient at the cost of not being human-readable.
+        
+        **Version compatibility (binary format only):** The binary ``.edgestr`` format is versioned
+        to the exact package version and is not forward or backward compatible. A file saved with
+        a different package version will fail to load with a version mismatch error. The text
+        ``.edgelist`` format has no version stamp and may be portable across versions.
         
         Args:
             path: Destination file path.
@@ -183,6 +189,11 @@ class EdgeStore:
         Load an EdgeStore that was previously saved with ``EdgeStore.save``. It infers the format
         from the extension of the path, ``.edgelist`` or ``.edgestr``.
         
+        **Version compatibility (binary format only):** The binary ``.edgestr`` format is versioned
+        to the exact package version. A file saved with a different package version will fail to
+        load with a version mismatch error. There is no forward or backward compatibility. The text
+        ``.edgelist`` format is not versioned and may be portable across versions.
+        
         Args:
             path: Path to the file produced by ``save``.
         
@@ -190,7 +201,8 @@ class EdgeStore:
             The deserialized ``EdgeStore``.
         
         Raises:
-            IOError: If the file cannot be read or the format is invalid.
+            IOError: If the file cannot be read, the format is invalid, or (for ``.edgestr`` files)
+                     the saved version does not match the running package version.
         """
     def __len__(self) -> builtins.int: ...
     def __getitem__(self, idx: builtins.int) -> tuple[builtins.int, builtins.int, builtins.float]: ...
@@ -225,10 +237,8 @@ class HNSWConfig:
     - ``keep_pruned_connections`` *(bool)* — Retain discarded candidates to fill up to ``m`` connections when not enough connections are found.
     - ``keep_all_edges`` *(bool)* — Record every below-threshold distance computed during build into
       the proximity graph returned by ``edges()``. Default ``True``. Setting it to ``False`` makes
-      ``edges()`` return ``None``, but removes a per-hit locked hashmap insert from the hot path —
-      worth doing when matches are dense (e.g. a fixed Tanimoto threshold over a large, structurally
-      similar molecule library), since more matches means more locked inserts, which pushes build
-      time past the expected ``O(n log n)``.
+      ``edges()`` return ``None``, but removes a per-hit locked hashmap insert from the hot path.
+      Worth doing when the proximity graph is not required.
     - ``cache_capacity`` *(int)* — Maximum cached kernel scores. Increasing it increase the memory
       footprint, but also cache hits, which can improve runtime performances for computationally expensive kernels.
       Set to ``0`` to disable the cache entirely — every distance is recomputed directly, which is
@@ -320,6 +330,11 @@ class HNSWIndex:
         r"""
         Save the object to a binary representation (e.g. *.hnsw* file).
         
+        The binary format is versioned to the exact package version and is not
+        forward or backward compatible. A file saved with version X can only be
+        loaded by the exact same version X. Files saved with a different version
+        will fail to load with a version mismatch error.
+        
         Args:
             path: Destination file path (recommended with a .hnsw extension)
         
@@ -331,6 +346,11 @@ class HNSWIndex:
         r"""
         Load an index previously saved with ``HNSWIndex.save``.
         
+        **Version compatibility:** The binary format is versioned to the exact package version.
+        A file saved with a different package version (older or newer) will fail to load with
+        a version mismatch error. There is no forward or backward compatibility guarantee during
+        the unstable pre-0.1.0 phase.
+        
         Args:
             path: Path to the saved file.
         
@@ -338,7 +358,8 @@ class HNSWIndex:
             The deserialised ``HNSWIndex``.
         
         Raises:
-            RuntimeError: If the file cannot be read or the format is invalid.
+            RuntimeError: If the file cannot be read, the format is invalid, or the saved
+                          version does not match the running package version.
         """
     def __str__(self) -> builtins.str: ...
     def __repr__(self) -> builtins.str: ...
@@ -362,7 +383,7 @@ class HNSWState:
     and can be passed directly to the constructor as keyword arguments.
     
     Args:
-        variant: Kernel to use (e.g.  ``KernelVariant.ProteinGlobal``, ``KernelVariant.ProteinLocal``, ``KernelVariant.TanimotoBit``, *etc*).
+        variant: Kernel to use (e.g.  ``KernelVariant.AlignmentGlobal``, ``KernelVariant.AlignmentLocal``, ``KernelVariant.TanimotoBit``, *etc*).
         data: The dataset — a list of items matching the kernel type (e.g. ``list[str]`` or ``list[np.ndarray]``).
         proximity_threshold, ef_construction, m, m_max, m_max0, m_l, ef_init, extend_candidates,
             keep_pruned_connections, keep_all_edges, cache_capacity, cache_shards,
@@ -472,6 +493,11 @@ class HNSWState:
         The saved file can be loaded back with ``HNSWState.load``. The original
         data must be provided again at load time (it is not embedded in the file).
         
+        **Version compatibility:** The binary format is versioned to the exact package version.
+        A file saved with a different package version (older or newer) will fail to load with
+        a version mismatch error. There is no forward or backward compatibility guarantee during
+        the unstable pre-0.1.0 phase.
+        
         Args:
             path: Destination file path.
         
@@ -483,6 +509,11 @@ class HNSWState:
         r"""
         Load an HNSWState form a binary file saved with ``HNSWState.save``.
         
+        **Version compatibility:** The binary format is versioned to the exact package version.
+        A file saved with a different package version (older or newer) will fail to load with
+        a version mismatch error. There is no forward or backward compatibility guarantee during
+        the unstable pre-0.1.0 phase.
+        
         Args:
             variant: Must match the kernel used during the original build.
             path: Path to the saved file.
@@ -492,7 +523,8 @@ class HNSWState:
             The restored ``HNSWState``, ready to call ``search`` or ``edges`` if the index was built.
         
         Raises:
-            RuntimeError: If the file cannot be read or the format is invalid.
+            RuntimeError: If the file cannot be read, the format is invalid, or the saved
+                          version does not match the running package version.
         """
 
 @typing.final
@@ -524,7 +556,7 @@ class LeidenObjective(enum.Enum):
     Modularity = ...
     CPM = ...
 
-def exact_edges(variant: kernels.KernelVariant, data: typing.Any, proximity_threshold: builtins.float = 0.5, threads: builtins.int = 0, progress: builtins.bool = True, *args: typing.Any, **kwargs: typing.Any) -> EdgeStore:
+def exact_edges(variant: kernels.KernelVariant, data: typing.Any, proximity_threshold: builtins.float = 0.5, n_threads: builtins.int = 0, progress: builtins.bool = True, *args: typing.Any, **kwargs: typing.Any) -> EdgeStore:
     r"""
     Compute all pairs of data points whose similarity exceeds a threshold (exact, brute-force).
     
@@ -533,20 +565,13 @@ def exact_edges(variant: kernels.KernelVariant, data: typing.Any, proximity_thre
     of data points; prefer the approximate``HNSWState`` for large datasets.
     
     Extra positional and keyword arguments are forwarded to the kernel constructor.
-    For ``KernelVariant.AlignmentGlobal`` and ``AlignmentLocal`` no extra args are
-    needed (all parameters have defaults).
     
     Args:
-        variant: Which kernel to use (``KernelVariant.ProteinGlobal`` or
-                 ``KernelVariant.ProteinLocal``).
-        data: Sequence of data items (e.g. ``list[str]`` for protein sequences).
-        proximity_threshold: Maximum distance for an edge to be recorded.
         variant: Which kernel to use (``KernelVariant.AlignmentGlobal`` or
                  ``KernelVariant.AlignmentLocal``).
-        data: Sequence of data items (e.g. ``list[str]`` for alignments sequences).
-        threshold: Minimum similarity score for an edge to be recorded.
-                   In ``[0.0, 1.0]`` for identity-based kernels.
-        threads: Number of parallel threads. ``0`` uses all available cores.
+        data: Sequence of data items (e.g. ``list[str]`` for protein sequences).
+        proximity_threshold: Maximum distance for an edge to be recorded.
+        n_threads: Number of parallel threads. ``0`` uses all available cores.
         progress: Show a progress bar. Defaults to ``True``.
     
     Returns:
@@ -557,8 +582,7 @@ def exact_edges(variant: kernels.KernelVariant, data: typing.Any, proximity_thre
         from refnd import KernelVariant, exact_edges
     
         seqs = ["MKTAYIAK", "MKTAYIAKQR", "ACDEFGHIKLM"]
-        store = exact_edges(KernelVariant.AlignmentGlobal, seqs, threshold=0.5)
-        store = exact_edges(KernelVariant.ProteinGlobal, seqs, proximity_threshold=0.5)
+        store = exact_edges(KernelVariant.AlignmentGlobal, seqs, proximity_threshold=0.5)
         print(len(store))   # number of similar pairs
     """
 
@@ -623,7 +647,7 @@ def find_communities(graph: CsrGraph, gamma: builtins.float = 1.0, beta: builtin
     
     Example::
     
-        from refnd.core import CsrGraph, EdgeStore, find_communities, LeidenObjective
+        from refnd.core import CsrGraph, EdgeStore, find_communities, LeidenObjective, INWeightType
     
         store = EdgeStore(4, [(0,1,0.9),(1,2,0.8),(2,3,0.6)])
         g = CsrGraph(store, inweight_type=INWeightType.Similarity)
@@ -692,7 +716,7 @@ def partition(clusters: typing.Sequence[builtins.int], graph: CsrGraph, test_rat
     Example::
     
         from refnd.core import (
-            EdgeStore, CsrGraph, find_communities, partition
+            EdgeStore, CsrGraph, find_communities, partition, INWeightType
         )
     
         store = EdgeStore(6, [(0,1,0.9),(1,2,0.8),(3,4,0.7),(4,5,0.6)])

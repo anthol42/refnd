@@ -122,10 +122,10 @@ impl EdgeStore {
 
         let version = (read_u16(&mut r)?, read_u16(&mut r)?, read_u16(&mut r)?);
         let running_version = crate::core::hnsw::current_crate_version();
-        if version < (0, 1, 0) || running_version < (0, 1, 0) {
+        if version != running_version {
             return Err(format!(
                 "edgestr format mismatch: saved with refnd v{}.{}.{}, running v{}.{}.{} — \
-                 one of them predates the stable edgestr format (v0.1.0+). Regenerate the file.",
+                 one of them predates the stable edgestr format. Regenerate the file.",
                 version.0, version.1, version.2,
                 running_version.0, running_version.1, running_version.2,
             ).into());

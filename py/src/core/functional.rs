@@ -44,7 +44,7 @@ use super::leiden::CsrGraph;
 /// Example::
 ///
 ///     from refnd.core import (
-///         EdgeStore, CsrGraph, find_communities, partition
+///         EdgeStore, CsrGraph, find_communities, partition, INWeightType
 ///     )
 ///
 ///     store = EdgeStore(6, [(0,1,0.9),(1,2,0.8),(3,4,0.7),(4,5,0.6)])

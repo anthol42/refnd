@@ -12,8 +12,7 @@ use super::leiden::{CsrGraph, INWeightType};
 ///
 /// Each edge is a triple ``(src, dst, weight)`` where ``src`` and ``dst`` are
 /// zero-based node indices in ``[0, node_count)`` and ``weight`` is a ``float32``
-/// value, interpreted according to the ``inweight_type`` given to ``CsrGraph``/``graph()``
-/// (by default a distance ``[0, ∞)`` that gets converted to a similarity score).
+/// value.
 ///
 /// Example::
 ///
@@ -60,7 +59,8 @@ impl EdgeStore {
     ///     inweight_type: How to convert the raw edge weights to similarity-like weights.
     ///                    See ``INWeightType``. Pass ``INWeightType.Unweighted`` to ignore
     ///                    weights entirely (every edge gets weight ``1.0``). Defaults to
-    ///                    ``INWeightType.Distance``.
+    ///                    ``INWeightType.Distance``, meaning weights are assumed to be a distance
+    ///                    measurement, and are converted to similarities.
     ///
     /// Returns:
     ///     A ``CsrGraph`` backed by this edge list.
@@ -72,6 +72,11 @@ impl EdgeStore {
     /// Serialize this EdgeStore to disk. It supports two file formats: ``text`` with
     /// ``.edgelist`` extension or ``binary`` with ``.edgestr`` extension. Binary is usually 2x
     /// more space efficient at the cost of not being human-readable.
+    ///
+    /// **Version compatibility (binary format only):** The binary ``.edgestr`` format is versioned
+    /// to the exact package version and is not forward or backward compatible. A file saved with
+    /// a different package version will fail to load with a version mismatch error. The text
+    /// ``.edgelist`` format has no version stamp and may be portable across versions.
     ///
     /// Args:
     ///     path: Destination file path.
@@ -92,6 +97,11 @@ impl EdgeStore {
     /// Load an EdgeStore that was previously saved with ``EdgeStore.save``. It infers the format
     /// from the extension of the path, ``.edgelist`` or ``.edgestr``.
     ///
+    /// **Version compatibility (binary format only):** The binary ``.edgestr`` format is versioned
+    /// to the exact package version. A file saved with a different package version will fail to
+    /// load with a version mismatch error. There is no forward or backward compatibility. The text
+    /// ``.edgelist`` format is not versioned and may be portable across versions.
+    ///
     /// Args:
     ///     path: Path to the file produced by ``save``.
     ///
@@ -99,7 +109,8 @@ impl EdgeStore {
     ///     The deserialized ``EdgeStore``.
     ///
     /// Raises:
-    ///     IOError: If the file cannot be read or the format is invalid.
+    ///     IOError: If the file cannot be read, the format is invalid, or (for ``.edgestr`` files)
+    ///              the saved version does not match the running package version.
     #[staticmethod]
     fn load(path: &str) -> PyResult<Self> {
         CoreEdgeStore::load(path)

@@ -196,7 +196,8 @@ impl<'a, 'py> FromPyObject<'a, 'py> for BitFingerprint {
 /// Example::
 ///
 ///     from rdkit.Chem import rdFingerprintGenerator, MolFromSmiles
-///     from refnd.kernels.molecules import RealFingerprint, TanimotoReal
+///     from refnd.utils import RealFingerprint
+///     from refnd.kernels.molecules import TanimotoReal
 ///
 ///     mfpgen = rdFingerprintGenerator.GetMorganGenerator(fpSize=1024, radius=2)
 ///     mol = MolFromSmiles("c1ccccc1")

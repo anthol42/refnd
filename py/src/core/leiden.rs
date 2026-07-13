@@ -118,13 +118,14 @@ impl CsrGraph {
         self.inner.strength(v)
     }
 
-    /// Extract the induced subgraph on a subset of nodes.
+    /// Extract a subgraph composed of a subset of nodes.
     ///
-    /// New node ids are assigned contiguously in the order ``nodes`` is given, so callers
-    /// control — and can make reproducible — the resulting node ordering.
+    /// New node ids are assigned contiguously in the order ``nodes`` is given.
+    ///
+    /// All edges pointing outside the subgraph are ignores.
     ///
     /// Args:
-    ///     nodes: Node ids (into this graph) to keep, in the desired new order.
+    ///     nodes: Node ids to keep, in the desired new order.
     ///
     /// Returns:
     ///     A tuple ``(subgraph, mapping)`` where ``mapping`` is a dict from old node id
@@ -172,7 +173,7 @@ impl CsrGraph {
 ///
 /// Example::
 ///
-///     from refnd.core import CsrGraph, EdgeStore, find_communities, LeidenObjective
+///     from refnd.core import CsrGraph, EdgeStore, find_communities, LeidenObjective, INWeightType
 ///
 ///     store = EdgeStore(4, [(0,1,0.9),(1,2,0.8),(2,3,0.6)])
 ///     g = CsrGraph(store, inweight_type=INWeightType.Similarity)

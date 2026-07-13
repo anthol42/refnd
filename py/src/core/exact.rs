@@ -41,20 +41,13 @@ macro_rules! call_generic {
 /// of data points; prefer the approximate``HNSWState`` for large datasets.
 ///
 /// Extra positional and keyword arguments are forwarded to the kernel constructor.
-/// For ``KernelVariant.AlignmentGlobal`` and ``AlignmentLocal`` no extra args are
-/// needed (all parameters have defaults).
 ///
 /// Args:
-///     variant: Which kernel to use (``KernelVariant.ProteinGlobal`` or
-///              ``KernelVariant.ProteinLocal``).
-///     data: Sequence of data items (e.g. ``list[str]`` for protein sequences).
-///     proximity_threshold: Maximum distance for an edge to be recorded.
 ///     variant: Which kernel to use (``KernelVariant.AlignmentGlobal`` or
 ///              ``KernelVariant.AlignmentLocal``).
-///     data: Sequence of data items (e.g. ``list[str]`` for alignments sequences).
-///     threshold: Minimum similarity score for an edge to be recorded.
-///                In ``[0.0, 1.0]`` for identity-based kernels.
-///     threads: Number of parallel threads. ``0`` uses all available cores.
+///     data: Sequence of data items (e.g. ``list[str]`` for protein sequences).
+///     proximity_threshold: Maximum distance for an edge to be recorded.
+///     n_threads: Number of parallel threads. ``0`` uses all available cores.
 ///     progress: Show a progress bar. Defaults to ``True``.
 ///
 /// Returns:
@@ -65,18 +58,17 @@ macro_rules! call_generic {
 ///     from refnd import KernelVariant, exact_edges
 ///
 ///     seqs = ["MKTAYIAK", "MKTAYIAKQR", "ACDEFGHIKLM"]
-///     store = exact_edges(KernelVariant.AlignmentGlobal, seqs, threshold=0.5)
-///     store = exact_edges(KernelVariant.ProteinGlobal, seqs, proximity_threshold=0.5)
+///     store = exact_edges(KernelVariant.AlignmentGlobal, seqs, proximity_threshold=0.5)
 ///     print(len(store))   # number of similar pairs
 #[gen_stub_pyfunction(module = "refnd.core")]
 #[pyfunction]
-#[pyo3(signature = (variant, data, proximity_threshold = 0.5, threads = 0, progress = true, *args, **kwargs))]
+#[pyo3(signature = (variant, data, proximity_threshold = 0.5, n_threads = 0, progress = true, *args, **kwargs))]
 pub fn exact_edges(
     py: Python,
     variant: KernelVariant,
     data: Py<PyAny>,
     proximity_threshold: f32,
-    threads: usize,
+    n_threads: usize,
     progress: bool,
     args: &Bound<'_, PyTuple>,
     kwargs: Option<&Bound<'_, PyDict>>,
@@ -91,15 +83,15 @@ pub fn exact_edges(
     };
     let edges = match variant {
         KernelVariant::AlignmentGlobal => {call_generic!(exact_edges_core;
-            py, String, GlobalAligner, args, kwargs; data; proximity_threshold, threads, pb.as_ref())}
+            py, String, GlobalAligner, args, kwargs; data; proximity_threshold, n_threads, pb.as_ref())}
         KernelVariant::AlignmentLocal => {call_generic!(exact_edges_core;
-            py, String, LocalAligner, args, kwargs; data; proximity_threshold, threads, pb.as_ref())}
+            py, String, LocalAligner, args, kwargs; data; proximity_threshold, n_threads, pb.as_ref())}
         KernelVariant::TanimotoBit => {call_generic!(exact_edges_core;
-            py, BitFingerprint, TanimotoBit, args, kwargs; data; proximity_threshold, threads, pb.as_ref())}
+            py, BitFingerprint, TanimotoBit, args, kwargs; data; proximity_threshold, n_threads, pb.as_ref())}
         KernelVariant::TanimotoReal => {call_generic!(exact_edges_core;
-            py, RealFingerprint, TanimotoReal, args, kwargs; data; proximity_threshold, threads, pb.as_ref())}
+            py, RealFingerprint, TanimotoReal, args, kwargs; data; proximity_threshold, n_threads, pb.as_ref())}
         KernelVariant::Structure => {call_generic!(exact_edges_core;
-            py, PdbStructure, _USAlignKernel, args, kwargs; data; proximity_threshold, threads, pb.as_ref())}
+            py, PdbStructure, _USAlignKernel, args, kwargs; data; proximity_threshold, n_threads, pb.as_ref())}
     };
     if let Some(pb) = pb { pb.finish(); }
     Ok(EdgeStore::new(n, edges))

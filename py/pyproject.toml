@@ -29,6 +29,8 @@ use-type-statement = true
 docs = [
     "furo>=2025.12.19; python_version>='3.12'",
     "myst-parser>=5.0.0; python_version>='3.12'",
+    "rdkit>=2026.3.3",
     "sphinx>=9.1.0; python_version>='3.12'",
     "sphinx-autodoc-typehints>=3.10.2; python_version>='3.12'",
+    "sphinx-llm>=0.4.1",
 ]

@@ -515,10 +515,10 @@ impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
         // The on-disk format is stable from v0.1.0 onward; reject if either the file
         // or the running crate predates that (pre the u32 node-id refactor).
         let running_version = hnsw_index::current_crate_version();
-        if index.crate_version < (0, 1, 0) || running_version < (0, 1, 0) {
+        if index.crate_version != running_version {
             return Err(format!(
                 "index format mismatch: saved with refnd v{}.{}.{}, running v{}.{}.{} — \
-                 one of them predates the stable index format (v0.1.0+). Rebuild the index.",
+                 one of them predates the stable index format. Rebuild the index.",
                 index.crate_version.0, index.crate_version.1, index.crate_version.2,
                 running_version.0, running_version.1, running_version.2,
             ).into());

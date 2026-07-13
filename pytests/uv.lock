@@ -457,7 +457,7 @@ requires-dist = [
     { name = "pyarrow", specifier = ">=24.0.0" },
     { name = "pytest", specifier = ">=9.0.3" },
     { name = "rdkit", specifier = ">=2026.3.1" },
-    { name = "refnd", directory = "../py" },
+    { name = "refnd", editable = "../py" },
 ]
 
 [package.metadata.requires-dev]
@@ -498,7 +498,7 @@ wheels = [
 
 [[package]]
 name = "refnd"
-source = { directory = "../py" }
+source = { editable = "../py" }
 
 [package.metadata]
 
@@ -506,8 +506,10 @@ source = { directory = "../py" }
 docs = [
     { name = "furo", marker = "python_full_version >= '3.12'", specifier = ">=2025.12.19" },
     { name = "myst-parser", marker = "python_full_version >= '3.12'", specifier = ">=5.0.0" },
+    { name = "rdkit", specifier = ">=2026.3.3" },
     { name = "sphinx", marker = "python_full_version >= '3.12'", specifier = ">=9.1.0" },
     { name = "sphinx-autodoc-typehints", marker = "python_full_version >= '3.12'", specifier = ">=3.10.2" },
+    { name = "sphinx-llm", specifier = ">=0.4.1" },
 ]
 
 [[package]]

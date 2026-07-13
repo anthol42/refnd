@@ -8,5 +8,5 @@
 - [X] Optimize Leiden
 - [X] Refactor HNSW: Change usize to u32, and if the speedup is meaningful, merge it.
 - [X] Move structure US score outside of alignment in core 
-- [ ] Use `sphinx-llm` to build LLM-friendly docs
+- [X] Use `sphinx-llm` to build LLM-friendly docs
 - [ ] Add to ablation: Test if scaling ef_construction with nlog(n) is enough to maintain recall
