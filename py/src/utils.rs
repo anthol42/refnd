@@ -7,7 +7,7 @@ use std::path::Path;
 use fixedbitset::FixedBitSet;
 use numpy::{IntoPyArray, PyArray1};
 use refnd_core::utils::{BitFingerprint as CoreBitFP, RealFingerprint as CoreRealFP};
-use refnd_core::kernels::alignments::usalign::PdbStructure as CorePdbStructure;
+use refnd_core::kernels::usalign::PdbStructure as CorePdbStructure;
 use std::collections::{HashMap, HashSet};
 use refnd_core::core::largest_cluster as largest_cluster_core;
 

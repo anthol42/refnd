@@ -7,6 +7,6 @@
 - [X] Optimize HNSW with molecules, should be faster than naive
 - [X] Optimize Leiden
 - [X] Refactor HNSW: Change usize to u32, and if the speedup is meaningful, merge it.
-- [ ] Move structure US score outside of alignment in core 
+- [X] Move structure US score outside of alignment in core 
 - [ ] Use `sphinx-llm` to build LLM-friendly docs
 - [ ] Add to ablation: Test if scaling ef_construction with nlog(n) is enough to maintain recall

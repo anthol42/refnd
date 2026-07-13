@@ -3,7 +3,7 @@ use pyo3::types::{PyDict, PyTuple};
 use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pymethods};
 use refnd_core::core::hnsw::{HNSWState as HNSWStateCore, HNSWIndex as HNSWIndexCore, HNSWConfig as HNSWConfigCore};
 use refnd_core::kernels::alignments::parasail::{GlobalAligner, LocalAligner};
-use refnd_core::kernels::alignments::usalign::USAlignKernel as CoreUSAlignKernel;
+use refnd_core::kernels::usalign::USAlignKernel as CoreUSAlignKernel;
 use refnd_core::kernels::molecules::tanimoto::Tanimoto;
 use super::edge_store::EdgeStore;
 use super::_utils::{logfacto_progress_bar, linear_progress_bar};
