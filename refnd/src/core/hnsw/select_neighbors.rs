@@ -9,18 +9,18 @@ impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
     /// `selected_neighbors` is the output — modified in place.
     pub(super) fn select_neighbors(
         &self,
-        query: usize,
+        query: u32,
         layer: usize,
         m: usize,
-        nearest_neighbors: &[usize],
+        nearest_neighbors: &[u32],
         // Scratch buffers
         candidates: &mut MinHeap<Candidate>,
         discarded_candidates: &mut MinHeap<Candidate>,
         visited: &mut FixedBitSet,
         // Output
-        selected_neighbors: &mut Vec<usize>,
+        selected_neighbors: &mut Vec<u32>,
         // Snapshot buffer for the extend_candidates path
-        inner_snapshot: &mut Vec<usize>,
+        inner_snapshot: &mut Vec<u32>,
     ) {
         debug_assert!(selected_neighbors.is_empty(), "Expect selected_neighbors to be empty on entry");
         debug_assert!(candidates.is_empty(), "Expect candidates to be empty on entry");
@@ -30,7 +30,7 @@ impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
         for &neighbor in nearest_neighbors {
             let dist_neighbor2query = self.distance(query, neighbor);
             candidates.push(Reverse(Candidate { idx: neighbor, distance: dist_neighbor2query }));
-            visited.set(neighbor, true);
+            visited.set(neighbor as usize, true);
         }
 
         if self.config.extend_candidates {
@@ -38,7 +38,7 @@ impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
                 // Snapshot under read lock, release before calling distance()
                 self.hgraph.neighbors_snapshot(layer, neighbor, inner_snapshot);
                 for &neighbor_of_neighbor in inner_snapshot.iter() {
-                    if !visited.put(neighbor_of_neighbor) {
+                    if !visited.put(neighbor_of_neighbor as usize) {
                         let dist = self.distance(query, neighbor_of_neighbor);
                         candidates.push(Reverse(Candidate { idx: neighbor_of_neighbor, distance: dist }));
                     }
@@ -80,11 +80,11 @@ impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
     /// Clears `candidates` before returning.
     pub(super) fn select_neighbors_simple(
         &self,
-        query: usize,
+        query: u32,
         m: usize,
-        nearest_neighbors: &[usize],
+        nearest_neighbors: &[u32],
         candidates: &mut MinHeap<Candidate>,
-        selected_neighbors: &mut Vec<usize>,
+        selected_neighbors: &mut Vec<u32>,
     ) {
         debug_assert!(selected_neighbors.is_empty());
         debug_assert!(candidates.is_empty());
@@ -111,19 +111,19 @@ impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
     /// Should only be called on layer 0 (produces a denser neighbourhood than upper layers need).
     pub(super) fn select_threshold_neighbors(
         &self,
-        query: usize,
+        query: u32,
         layer: usize,
         m: usize,
         threshold: f32,
-        nearest_neighbors: &[usize],
+        nearest_neighbors: &[u32],
         // Scratch buffers
         candidates: &mut MinHeap<Candidate>,
         discarded_candidates: &mut MinHeap<Candidate>,
         visited: &mut FixedBitSet,
         // Output
-        selected_neighbors: &mut Vec<usize>,
+        selected_neighbors: &mut Vec<u32>,
         // Snapshot buffer for the extend_candidates path
-        inner_snapshot: &mut Vec<usize>,
+        inner_snapshot: &mut Vec<u32>,
     ) {
         debug_assert!(selected_neighbors.is_empty(), "Expect selected_neighbors to be empty on entry");
         debug_assert!(candidates.is_empty(), "Expect candidates to be empty on entry");
@@ -133,14 +133,14 @@ impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
         for &neighbor in nearest_neighbors {
             let dist = self.distance(query, neighbor);
             candidates.push(Reverse(Candidate { idx: neighbor, distance: dist }));
-            visited.set(neighbor, true);
+            visited.set(neighbor as usize, true);
         }
 
         if self.config.extend_candidates {
             for &neighbor in nearest_neighbors {
                 self.hgraph.neighbors_snapshot(layer, neighbor, inner_snapshot);
                 for &neighbor_of_neighbor in inner_snapshot.iter() {
-                    if !visited.put(neighbor_of_neighbor) {
+                    if !visited.put(neighbor_of_neighbor as usize) {
                         let dist = self.distance(query, neighbor_of_neighbor);
                         candidates.push(Reverse(Candidate { idx: neighbor_of_neighbor, distance: dist }));
                     }

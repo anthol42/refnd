@@ -7,6 +7,7 @@ mod select_neighbors;
 mod search;
 
 pub use hnsw_index::HNSWIndex;
+pub(crate) use hnsw_index::current_crate_version;
 
 // ── Lock contention monitoring ────────────────────────────────────────────────
 
@@ -73,14 +74,39 @@ use fixedbitset::FixedBitSet;
 use std::collections::BinaryHeap;
 use std::cmp::{Reverse, Ordering};
 use std::cell::RefCell;
+use std::hash::{BuildHasher, Hasher};
 use parking_lot::{Mutex, RwLock};
 use rand::rngs::StdRng;
 use rand::SeedableRng;
 use crate::core::Distance;
-use rustc_hash::FxBuildHasher;
 use dashmap::DashMap;
 use quick_cache::sync::Cache;
 pub use config::HNSWConfig;
+
+/// Hasher for `(u32, u32)` node-pair keys. `Hash` for a tuple feeds each field
+/// through `write_u32` in order, so this packs them into a single u64
+/// (`first << 32 | second`) with just a shift and an OR — no multiplication,
+/// no mixing.
+#[derive(Default, Clone, Copy)]
+pub(crate) struct PairHasher(u64);
+
+impl Hasher for PairHasher {
+    fn finish(&self) -> u64 { self.0 }
+    fn write(&mut self, _bytes: &[u8]) {
+        unreachable!("PairHasher only supports write_u32, fed by hashing a (u32, u32) key");
+    }
+    fn write_u32(&mut self, i: u32) {
+        self.0 = (self.0 << 32) | i as u64;
+    }
+}
+
+#[derive(Default, Clone, Copy)]
+pub(crate) struct PairBuildHasher;
+
+impl BuildHasher for PairBuildHasher {
+    type Hasher = PairHasher;
+    fn build_hasher(&self) -> PairHasher { PairHasher::default() }
+}
 
 /// A sharded distance cache: N independent `Cache` instances, each with its own
 /// internal locks and LRU state. Pair `(i, j)` (with i ≤ j) always routes to
@@ -91,9 +117,9 @@ pub use config::HNSWConfig;
 /// shard simultaneously is ~12%, vs 100% for a single shared cache.
 struct ShardedCache {
     /// Empty when `cache_capacity == 0` — caching is disabled, every lookup is a no-op.
-    shards: Vec<Cache<(usize, usize), f32>>,
+    shards: Vec<Cache<(u32, u32), f32, quick_cache::UnitWeighter, PairBuildHasher>>,
     /// n_shards - 1: used for the fast-modulo AND
-    mask: usize,
+    mask: u32,
 }
 
 impl ShardedCache {
@@ -105,27 +131,29 @@ impl ShardedCache {
         let n_shards = n_shards.next_power_of_two();
         let per_shard = (total_capacity / n_shards).max(1);
         Self {
-            shards: (0..n_shards).map(|_| Cache::new(per_shard)).collect(),
-            mask: n_shards - 1,
+            shards: (0..n_shards)
+                .map(|_| Cache::with(per_shard, per_shard as u64, Default::default(), PairBuildHasher, Default::default()))
+                .collect(),
+            mask: (n_shards - 1) as u32,
         }
     }
 
     #[inline]
-    fn get(&self, key: &(usize, usize)) -> Option<f32> {
+    fn get(&self, key: &(u32, u32)) -> Option<f32> {
         if self.shards.is_empty() {
             return None;
         }
         // key.0 & mask is equivalent to key.0 % n_shards, but faster (single AND vs division)
-        self.shards[key.0 & self.mask].get(key)
+        self.shards[(key.0 & self.mask) as usize].get(key)
     }
 
     #[inline]
-    fn insert(&self, key: (usize, usize), val: f32) {
+    fn insert(&self, key: (u32, u32), val: f32) {
         if self.shards.is_empty() {
             return;
         }
         // key.0 & mask is equivalent to key.0 % n_shards, but faster (single AND vs division)
-        self.shards[key.0 & self.mask].insert(key, val);
+        self.shards[(key.0 & self.mask) as usize].insert(key, val);
     }
 }
 
@@ -137,7 +165,7 @@ pub type MinHeap<T> = BinaryHeap<Reverse<T>>;
 
 #[derive(Copy, Clone)]
 struct Candidate {
-    pub idx: usize,
+    pub idx: u32,
     /// Distance between node idx and query
     pub distance: f32,
 }
@@ -165,13 +193,13 @@ impl Ord for Candidate {
 #[derive(Copy, Clone)]
 struct Loc {
     pub(super) layer: usize,
-    pub(super) node: usize,
+    pub(super) node: u32,
 }
 
 /// Hierarchical Graph with per-node RwLock for concurrent access
 struct HGraph {
     /// Shape(N_layers, N_nodes): each node's neighbor list is individually locked
-    layers: Vec<Vec<RwLock<Vec<usize>>>>,
+    layers: Vec<Vec<RwLock<Vec<u32>>>>,
 }
 
 impl HGraph {
@@ -184,28 +212,28 @@ impl HGraph {
     }
 
     /// Clone the neighbor list under a brief read lock into `buffer`, then release.
-    pub fn neighbors_snapshot(&self, layer: usize, node: usize, buffer: &mut Vec<usize>) {
-        buffer.clone_from(&*measure!(self.layers[layer][node].read(), STAT_SNAPSHOT));
+    pub fn neighbors_snapshot(&self, layer: usize, node: u32, buffer: &mut Vec<u32>) {
+        buffer.clone_from(&*measure!(self.layers[layer][node as usize].read(), STAT_SNAPSHOT));
     }
 
-    pub fn neighbors_len(&self, layer: usize, node: usize) -> usize {
-        self.layers[layer][node].read().len()
+    pub fn neighbors_len(&self, layer: usize, node: u32) -> usize {
+        self.layers[layer][node as usize].read().len()
     }
 
     /// Add a bidirectional edge. Always locks min(from, to) first to prevent deadlocks.
-    pub fn add_edge(&self, layer: usize, from: usize, to: usize) {
+    pub fn add_edge(&self, layer: usize, from: u32, to: u32) {
         if from == to {
             return;
         }
         let (lo, hi) = if from < to { (from, to) } else { (to, from) };
-        let mut lo_guard = measure!(self.layers[layer][lo].write(), STAT_ADD_EDGE_LO);
-        let mut hi_guard = measure!(self.layers[layer][hi].write(), STAT_ADD_EDGE_HI);
+        let mut lo_guard = measure!(self.layers[layer][lo as usize].write(), STAT_ADD_EDGE_LO);
+        let mut hi_guard = measure!(self.layers[layer][hi as usize].write(), STAT_ADD_EDGE_HI);
         lo_guard.push(hi);
         hi_guard.push(lo);
     }
 
-    pub fn set_neighbourhood(&self, layer: usize, node: usize, neighbourhood: &[usize]) {
-        let mut guard = measure!(self.layers[layer][node].write(), STAT_SET_NEIGHBOURHOOD);
+    pub fn set_neighbourhood(&self, layer: usize, node: u32, neighbourhood: &[u32]) {
+        let mut guard = measure!(self.layers[layer][node as usize].write(), STAT_SET_NEIGHBOURHOOD);
         guard.clear();
         guard.extend_from_slice(neighbourhood);
     }
@@ -221,12 +249,12 @@ impl EntryPoint {
         Self { inner: Mutex::new(None) }
     }
 
-    fn get(&self) -> Option<(usize, usize)> {
+    fn get(&self) -> Option<(u32, usize)> {
         self.inner.lock().map(|loc| (loc.node, loc.layer))
     }
 
     /// Update to (new_node, new_layer) only if new_layer exceeds the current layer.
-    fn try_update(&self, new_layer: usize, new_node: usize) {
+    fn try_update(&self, new_layer: usize, new_node: u32) {
         let mut guard = self.inner.lock();
         let should_update = match *guard {
             None => true,
@@ -243,12 +271,12 @@ pub struct ScratchBuffers {
     candidates: MinHeap<Candidate>,
     discarded_candidates: MinHeap<Candidate>,
     nearest_neighbors: MaxHeap<Candidate>,
-    selected_neighbors: Vec<usize>,
-    neighbors: Vec<usize>,
+    selected_neighbors: Vec<u32>,
+    neighbors: Vec<u32>,
     /// Snapshot buffer: holds a node's neighbor list cloned under a read lock
-    snapshot: Vec<usize>,
+    snapshot: Vec<u32>,
     /// Inner snapshot buffer used inside select_neighbors for the extend_candidates path
-    inner_snapshot: Vec<usize>,
+    inner_snapshot: Vec<u32>,
 }
 
 impl ScratchBuffers {
@@ -309,7 +337,7 @@ pub struct HNSWState<T: Sync, D: Distance<T>> {
     /// Sharded distance cache: reduces contention vs a single shared cache.
     dist_cache: ShardedCache,
     /// All pairs whose distance is below config.proximity_threshold
-    proximity_edges: DashMap<(usize, usize), f32, FxBuildHasher>,
+    proximity_edges: DashMap<(u32, u32), f32, PairBuildHasher>,
     pub has_been_built: bool,
 }
 
@@ -322,7 +350,7 @@ impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
             hgraph: HGraph::with_capacity(max_layers, len),
             entry_point: EntryPoint::new(),
             dist_cache: ShardedCache::new(config.cache_capacity, config.cache_shards),
-            proximity_edges: DashMap::with_hasher(FxBuildHasher),
+            proximity_edges: DashMap::with_hasher(PairBuildHasher),
             max_layers,
             data,
             config,
@@ -331,10 +359,10 @@ impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
         }
     }
 
-    pub fn query_distance(&self, query: &T, y: usize) -> f32 {
-        self.distance.call(query, &self.data[y])
+    pub fn query_distance(&self, query: &T, y: u32) -> f32 {
+        self.distance.call(query, &self.data[y as usize])
     }
-    pub fn distance(&self, x: usize, y: usize) -> f32 {
+    pub fn distance(&self, x: u32, y: u32) -> f32 {
         let key = if x <= y { (x, y) } else { (y, x) };
 
         // Fast path: shared cache hit (no FFI call, no allocation)
@@ -345,7 +373,7 @@ impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
         measure!((), STAT_CACHE_MISS);
 
         // Slow path: compute via FFI, then cache for all threads
-        let d = measure!(self.distance.call(&self.data[key.0], &self.data[key.1]), STAT_ALIGNMENT);
+        let d = measure!(self.distance.call(&self.data[key.0 as usize], &self.data[key.1 as usize]), STAT_ALIGNMENT);
         measure!(self.dist_cache.insert(key, d), STAT_CACHE_INSERT);
         if self.config.keep_all_edges && d < self.config.proximity_threshold {
             measure!(self.proximity_edges.insert(key, d), STAT_DASHMAP);
@@ -353,7 +381,7 @@ impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
         d
     }
 
-    fn min_distance_with_many(&self, x: usize, ys: &[usize]) -> f32 {
+    fn min_distance_with_many(&self, x: u32, ys: &[u32]) -> f32 {
         let mut min_distance = f32::MAX;
         for &y in ys {
             let dist = self.distance(x, y);
@@ -366,20 +394,20 @@ impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
     /// `keep_all_edges` is True, otherwise it returns None.
     pub fn edges(&self) -> Option<Vec<(u32, u32, f32)>> {
         if self.config.keep_all_edges {
-            Some(        
+            Some(
                 self.proximity_edges
                 .iter()
                 .map(|entry| {
                     let &(u, v) = entry.key();
                     let &w = entry.value();
-                    (u as u32, v as u32, w)
+                    (u, v, w)
                 })
                 .collect()
             )
         }else { None }
     }
 
-    pub fn get_layer(&self, layer_idx: usize) -> Result<Vec<Vec<usize>>, String> {
+    pub fn get_layer(&self, layer_idx: usize) -> Result<Vec<Vec<u32>>, String> {
         if layer_idx >= self.hgraph.layers.len() {
             return Err(format!(
                 "layer index {} out of range: index has {} layers (0..{})",
@@ -398,6 +426,7 @@ impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
 
     pub fn index(&self) -> HNSWIndex {
         HNSWIndex {
+            crate_version: hnsw_index::current_crate_version(),
             dataset_size: self.data.len(),
             layers: self.hgraph.layers.iter()
                 .map(|layer| layer.iter().map(|node| node.read().clone()).collect())
@@ -437,6 +466,17 @@ impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
         let index = HNSWIndex::load(path)?;
 
         // Sanity checks
+        // The on-disk format is stable from v0.1.0 onward; reject if either the file
+        // or the running crate predates that (pre the u32 node-id refactor).
+        let running_version = hnsw_index::current_crate_version();
+        if index.crate_version < (0, 1, 0) || running_version < (0, 1, 0) {
+            return Err(format!(
+                "index format mismatch: saved with refnd v{}.{}.{}, running v{}.{}.{} — \
+                 one of them predates the stable index format (v0.1.0+). Rebuild the index.",
+                index.crate_version.0, index.crate_version.1, index.crate_version.2,
+                running_version.0, running_version.1, running_version.2,
+            ).into());
+        }
         if index.dataset_size != data.len() {
             return Err(format!(
                 "dataset size mismatch: index was built on {} points, got {}. Consider\
@@ -463,8 +503,8 @@ impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
             entry_point.try_update(layer, node);
         }
 
-        let proximity_edges: DashMap<(usize, usize), f32, FxBuildHasher> =
-            DashMap::with_hasher(FxBuildHasher);
+        let proximity_edges: DashMap<(u32, u32), f32, PairBuildHasher> =
+            DashMap::with_hasher(PairBuildHasher);
         for (key, val) in index.proximity_edges {
             proximity_edges.insert(key, val);
         }

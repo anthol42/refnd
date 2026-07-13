@@ -9,17 +9,22 @@ use super::HNSWConfig;
 /// the graph is stored as plain `Vec`s and proximity edges as a flat list.
 #[derive(bincode::Encode, bincode::Decode)]
 pub struct HNSWIndex {
+    /// `refnd`'s `(major, minor, patch)` version at save time. The crate is
+    /// pre-1.0 and the on-disk format is not guaranteed stable across
+    /// versions — checked against the running crate's version on load so a
+    /// mismatch fails loudly instead of decoding into garbage.
+    pub crate_version: (u16, u16, u16),
     /// Number of data points the index was built on.
     /// Checked against the dataset length on load to catch mismatches early.
     pub dataset_size: usize,
     /// `layers[layer][node]` → neighbor list (no `RwLock`).
-    pub layers: Vec<Vec<Vec<usize>>>,
+    pub layers: Vec<Vec<Vec<u32>>>,
     /// Global entry point as `(node, layer)`, or `None` if the index is empty.
-    pub entry_point: Option<(usize, usize)>,
+    pub entry_point: Option<(u32, usize)>,
     pub config: HNSWConfig,
     pub max_layers: usize,
     /// All pairs `(i, j)` (with `i ≤ j`) whose distance is below `config.proximity_threshold`.
-    pub proximity_edges: Vec<((usize, usize), f32)>,
+    pub proximity_edges: Vec<((u32, u32), f32)>,
     pub has_been_built: bool,
 }
 
@@ -67,6 +72,14 @@ impl fmt::Debug for HNSWIndex {
             self.config,
         )
     }
+}
+
+/// Parses the crate's own `CARGO_PKG_VERSION` (always `major.minor.patch`), so this
+/// never sees arbitrary input and unwrapping is safe.
+pub(crate) fn current_crate_version() -> (u16, u16, u16) {
+    let mut parts = env!("CARGO_PKG_VERSION").split('.');
+    let mut next = || parts.next().unwrap().parse().unwrap();
+    (next(), next(), next())
 }
 
 impl HNSWIndex {

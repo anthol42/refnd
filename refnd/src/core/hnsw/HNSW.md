@@ -24,6 +24,12 @@ Three strategies are available, selected per-insertion via config flags:
 **Query-time search API.**
 `HNSWState::search(&T, &mut ScratchBuffers, k, ef_search)` performs nearest-neighbor lookup for an external query (not inserted in the graph). It does a greedy descent on upper layers, then a best-first search on layer 0, and returns `(index, distance)` sorted by ascending distance.
 
+**Node ids are `u32`.**
+Every node id (`HGraph` adjacency lists, `Candidate.idx`, `ScratchBuffers` vecs, `proximity_edges`/`ShardedCache` keys, the public search/insert API) is `u32`, not `usize` — halves memory for adjacency/proximity storage and, more importantly, shrinks `Candidate` from 16 to 8 bytes so twice as many candidates fit per cache line in the search/insert heaps. Datasets are assumed to fit under 4B points. `(u32, u32)` map/cache keys use `PairHasher`/`PairBuildHasher` (mod.rs) — packs both halves into a u64 via a shift and OR, no multiplication or mixing.
+
+**Index format versioning.**
+`HNSWIndex` stores the `(major, minor, patch)` crate version at save time. `HNSWState::load` rejects indices saved before v0.1.0 (pre the u32 node-id refactor) with a clear error rather than silently decoding garbage. From v0.1.0 onward the on-disk format is expected to stay stable.
+
 ## Structure
 ```
 src/

@@ -13,7 +13,7 @@ impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
         }
         let n = self.data.len();
 
-        let mut order: Vec<usize> = (0..n).collect();
+        let mut order: Vec<u32> = (0..n as u32).collect();
         if self.config.shuffle {
             RNG.with(|r| order.shuffle(&mut *r.borrow_mut()));
         }
