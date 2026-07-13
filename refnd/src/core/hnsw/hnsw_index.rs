@@ -5,8 +5,8 @@ use super::HNSWConfig;
 ///
 /// Contains everything needed to reconstruct the index, minus the data
 /// and the distance function (both supplied by the caller on load).
-/// Concurrency wrappers (`RwLock`, `Mutex`, `DashMap`) are stripped:
-/// the graph is stored as plain `Vec`s and proximity edges as a flat list.
+/// Concurrency wrappers (`RwLock`, `Mutex`) are stripped: the graph is stored
+/// as plain `Vec`s and proximity edges as a flat list.
 #[derive(bincode::Encode, bincode::Decode)]
 pub struct HNSWIndex {
     /// `refnd`'s `(major, minor, patch)` version at save time. The crate is

@@ -79,19 +79,33 @@ use parking_lot::{Mutex, RwLock};
 use rand::rngs::StdRng;
 use rand::SeedableRng;
 use crate::core::Distance;
-use dashmap::DashMap;
 use quick_cache::sync::Cache;
 pub use config::HNSWConfig;
 
-/// Hasher for `(u32, u32)` node-pair keys. `Hash` for a tuple feeds each field
-/// through `write_u32` in order, so this packs them into a single u64
-/// (`first << 32 | second`) with just a shift and an OR — no multiplication,
-/// no mixing.
+/// Hasher for `(u32, u32)` node-pair keys, used for the internal bucket
+/// placement of the per-shard hashmaps in [`ShardedCache`] and
+/// [`ShardedEdgeSet`] (shard *selection* itself is a plain `key.0 & mask` in
+/// both, not this hasher — see their docs).
+///
+/// `Hash` for a tuple feeds each field through `write_u32` in order, so
+/// `write_u32` packs them into a single u64 (`first << 32 | second`) with
+/// just a shift and an OR. `finish()` then runs one multiply + xor-shift
+/// (Fibonacci hashing) over the packed value. This is *not* optional: node
+/// ids are far smaller than 2^32, so the packed value's real entropy sits in
+/// the low bits of each half — hash table implementations generally rely on
+/// the high bits too (e.g. for SwissTable-style probing), which would
+/// otherwise be constant zero for any dataset under ~2M nodes. One multiply +
+/// xor-shift is enough to spread that entropy across all 64 bits and is still
+/// a couple orders of magnitude cheaper than a general-purpose hasher.
 #[derive(Default, Clone, Copy)]
 pub(crate) struct PairHasher(u64);
 
 impl Hasher for PairHasher {
-    fn finish(&self) -> u64 { self.0 }
+    fn finish(&self) -> u64 {
+        let mut h = self.0.wrapping_mul(0x9E3779B97F4A7C15);
+        h ^= h >> 32;
+        h
+    }
     fn write(&mut self, _bytes: &[u8]) {
         unreachable!("PairHasher only supports write_u32, fed by hashing a (u32, u32) key");
     }
@@ -154,6 +168,44 @@ impl ShardedCache {
         }
         // key.0 & mask is equivalent to key.0 % n_shards, but faster (single AND vs division)
         self.shards[(key.0 & self.mask) as usize].insert(key, val);
+    }
+}
+
+/// Concurrent store for `proximity_edges`: routes to a shard the same cheap way as
+/// [`ShardedCache`] (`key.0 & mask`, no hashing needed to pick the shard), but each
+/// shard is a plain `HashMap` behind a `Mutex` rather than a `DashMap`.
+///
+/// This is write-mostly, dump-once-at-the-end usage — build() never looks a key
+/// up, only inserts and (at the very end) iterates everything. A `HashMap` per
+/// shard still dedups redundant re-inserts of the same pair (recomputed by two
+/// different node insertions) so memory doesn't grow with duplicate writes, but
+/// skips `DashMap`'s own internal shard-selection hashing entirely — we already
+/// know which shard a key belongs to from `key.0` alone.
+struct ShardedEdgeSet {
+    shards: Vec<Mutex<std::collections::HashMap<(u32, u32), f32, PairBuildHasher>>>,
+    mask: u32,
+}
+
+impl ShardedEdgeSet {
+    fn new(n_shards: usize) -> Self {
+        let n_shards = n_shards.next_power_of_two();
+        Self {
+            shards: (0..n_shards)
+                .map(|_| Mutex::new(std::collections::HashMap::with_hasher(PairBuildHasher)))
+                .collect(),
+            mask: (n_shards - 1) as u32,
+        }
+    }
+
+    #[inline]
+    fn insert(&self, key: (u32, u32), val: f32) {
+        self.shards[(key.0 & self.mask) as usize].lock().insert(key, val);
+    }
+
+    fn iter_all(&self) -> impl Iterator<Item = ((u32, u32), f32)> + '_ {
+        self.shards.iter().flat_map(|s| {
+            s.lock().iter().map(|(&k, &v)| (k, v)).collect::<Vec<_>>()
+        })
     }
 }
 
@@ -337,7 +389,7 @@ pub struct HNSWState<T: Sync, D: Distance<T>> {
     /// Sharded distance cache: reduces contention vs a single shared cache.
     dist_cache: ShardedCache,
     /// All pairs whose distance is below config.proximity_threshold
-    proximity_edges: DashMap<(u32, u32), f32, PairBuildHasher>,
+    proximity_edges: ShardedEdgeSet,
     pub has_been_built: bool,
 }
 
@@ -350,7 +402,7 @@ impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
             hgraph: HGraph::with_capacity(max_layers, len),
             entry_point: EntryPoint::new(),
             dist_cache: ShardedCache::new(config.cache_capacity, config.cache_shards),
-            proximity_edges: DashMap::with_hasher(PairBuildHasher),
+            proximity_edges: ShardedEdgeSet::new(config.cache_shards),
             max_layers,
             data,
             config,
@@ -396,13 +448,9 @@ impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
         if self.config.keep_all_edges {
             Some(
                 self.proximity_edges
-                .iter()
-                .map(|entry| {
-                    let &(u, v) = entry.key();
-                    let &w = entry.value();
-                    (u, v, w)
-                })
-                .collect()
+                    .iter_all()
+                    .map(|((u, v), w)| (u, v, w))
+                    .collect()
             )
         }else { None }
     }
@@ -434,9 +482,7 @@ impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
             entry_point: self.entry_point.get(),
             config: self.config.clone(),
             max_layers: self.max_layers,
-            proximity_edges: self.proximity_edges.iter()
-                .map(|e| (*e.key(), *e.value()))
-                .collect(),
+            proximity_edges: self.proximity_edges.iter_all().collect(),
             has_been_built: self.has_been_built,
         }
     }
@@ -503,8 +549,7 @@ impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
             entry_point.try_update(layer, node);
         }
 
-        let proximity_edges: DashMap<(u32, u32), f32, PairBuildHasher> =
-            DashMap::with_hasher(PairBuildHasher);
+        let proximity_edges = ShardedEdgeSet::new(index.config.cache_shards);
         for (key, val) in index.proximity_edges {
             proximity_edges.insert(key, val);
         }
