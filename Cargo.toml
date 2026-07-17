@@ -4,5 +4,5 @@ resolver = "2"
 
 [patch.crates-io]
 libparasail-sys = { git = "https://github.com/anthol42/libparasail-sys", branch = "main" }
-libusalign-sys  = { git = "https://github.com/anthol42/libusalign-sys",  branch = "main" }
+libusalign-sys  = { git = "https://github.com/JacobCote/libusalign-sys",  branch = "main" }
 

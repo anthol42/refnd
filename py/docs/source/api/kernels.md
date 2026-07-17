@@ -26,3 +26,13 @@ Molecules Tanimoto kernels.
    :members:
    :member-order: bysource
 ```
+
+## refnd.kernels.structures
+
+Protein structure kernels (USalign TM-score).
+
+```{eval-rst}
+.. automodule:: refnd.kernels.structures
+   :members:
+   :member-order: bysource
+```
