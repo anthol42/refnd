@@ -8,6 +8,7 @@ import typing
 from rdkit.DataStructs.cDataStructs import ExplicitBitVect, UIntSparseIntVect
 __all__ = [
     "BitFingerprint",
+    "PdbStructure",
     "RealFingerprint",
     "largest_cluster",
     "read_fasta",
@@ -64,10 +65,48 @@ class BitFingerprint:
         r"""
         Export as a numpy bool array.
         """
+    @staticmethod
+    def random(len: builtins.int, count: builtins.int) -> BitFingerprint:
+        r"""
+        Create a fingerprint of ``len`` bits with exactly ``count`` bits set at random.
+        
+        Useful for randomized testing.
+        
+        Args:
+            len: Total number of bits.
+            count: Number of bits to turn on. Must be ``<= len``.
+        
+        Raises:
+            ValueError: If ``count > len``.
+        """
     def __len__(self) -> builtins.int: ...
     def count(self) -> builtins.int:
         r"""
         Number of on bits (popcount).
+        """
+
+@typing.final
+class PdbStructure:
+    r"""
+    A protein structure loaded from a PDB file and held in memory.
+    
+    The structure is parsed once on construction and the coordinate arrays are
+    kept alive for the lifetime of the object. Cloning is cheap (reference-counted).
+    
+    Example::
+    
+        from refnd.utils import PdbStructure
+        s = PdbStructure("1abc.pdb")
+    """
+    def __new__(cls, path: builtins.str) -> PdbStructure:
+        r"""
+        Load a protein structure from a PDB file.
+        
+        Args:
+            path: Path to the PDB file (standard format, not gzipped).
+        
+        Raises:
+            RuntimeError: If the file cannot be opened or contains fewer than 3 residues.
         """
 
 @typing.final
@@ -84,7 +123,8 @@ class RealFingerprint:
     Example::
     
         from rdkit.Chem import rdFingerprintGenerator, MolFromSmiles
-        from refnd.kernels.molecules import RealFingerprint, TanimotoReal
+        from refnd.utils import RealFingerprint
+        from refnd.kernels.molecules import TanimotoReal
     
         mfpgen = rdFingerprintGenerator.GetMorganGenerator(fpSize=1024, radius=2)
         mol = MolFromSmiles("c1ccccc1")

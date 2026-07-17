@@ -7,6 +7,7 @@ use std::path::Path;
 use fixedbitset::FixedBitSet;
 use numpy::{IntoPyArray, PyArray1};
 use refnd_core::utils::{BitFingerprint as CoreBitFP, RealFingerprint as CoreRealFP};
+use refnd_core::kernels::usalign::PdbStructure as CorePdbStructure;
 use std::collections::{HashMap, HashSet};
 use refnd_core::core::largest_cluster as largest_cluster_core;
 
@@ -129,6 +130,26 @@ impl BitFingerprint {
         BoolArray(data.into_pyarray(py))
     }
 
+    /// Create a fingerprint of ``len`` bits with exactly ``count`` bits set at random.
+    ///
+    /// Useful for randomized testing.
+    ///
+    /// Args:
+    ///     len: Total number of bits.
+    ///     count: Number of bits to turn on. Must be ``<= len``.
+    ///
+    /// Raises:
+    ///     ValueError: If ``count > len``.
+    #[staticmethod]
+    pub fn random(len: usize, count: usize) -> PyResult<Self> {
+        if count > len {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "count ({count}) must be <= len ({len})"
+            )));
+        }
+        Ok(Self { inner: CoreBitFP::random(len, count) })
+    }
+
     pub fn __len__(&self) -> usize { self.inner.bits.len() }
     /// Number of on bits (popcount).
     pub fn count(&self) -> u32 { self.inner.count }
@@ -175,7 +196,8 @@ impl<'a, 'py> FromPyObject<'a, 'py> for BitFingerprint {
 /// Example::
 ///
 ///     from rdkit.Chem import rdFingerprintGenerator, MolFromSmiles
-///     from refnd.kernels.molecules import RealFingerprint, TanimotoReal
+///     from refnd.utils import RealFingerprint
+///     from refnd.kernels.molecules import TanimotoReal
 ///
 ///     mfpgen = rdFingerprintGenerator.GetMorganGenerator(fpSize=1024, radius=2)
 ///     mol = MolFromSmiles("c1ccccc1")
@@ -287,6 +309,42 @@ impl<'a, 'py> FromPyObject<'a, 'py> for RealFingerprint {
             )
         })?;
         Ok(Self::from_list(values))
+    }
+}
+
+// ── PdbStructure ──────────────────────────────────────────────────────────────
+
+/// A protein structure loaded from a PDB file and held in memory.
+///
+/// The structure is parsed once on construction and the coordinate arrays are
+/// kept alive for the lifetime of the object. Cloning is cheap (reference-counted).
+///
+/// Example::
+///
+///     from refnd.utils import PdbStructure
+///     s = PdbStructure("1abc.pdb")
+#[gen_stub_pyclass]
+#[pyclass(module = "refnd.utils", from_py_object)]
+#[derive(Clone)]
+pub struct PdbStructure {
+    pub inner: CorePdbStructure,
+}
+
+#[gen_stub_pymethods]
+#[pymethods]
+impl PdbStructure {
+    /// Load a protein structure from a PDB file.
+    ///
+    /// Args:
+    ///     path: Path to the PDB file (standard format, not gzipped).
+    ///
+    /// Raises:
+    ///     RuntimeError: If the file cannot be opened or contains fewer than 3 residues.
+    #[new]
+    pub fn new(path: &str) -> PyResult<Self> {
+        CorePdbStructure::load(path)
+            .map(|inner| Self { inner })
+            .map_err(pyo3::exceptions::PyRuntimeError::new_err)
     }
 }
 

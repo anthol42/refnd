@@ -26,6 +26,9 @@
 ## Graph algorithms
 
 ```{eval-rst}
+.. autoclass:: refnd.core.INWeightType
+   :members:
+
 .. autoclass:: refnd.core.LeidenObjective
    :members:
 

@@ -7,12 +7,12 @@
    :members:
 ```
 
-## refnd.kernels.protein.sequence
+## refnd.kernels.alignments
 
-Protein sequence aligners and their configuration enums.
+Protein or Nucleotide sequence aligners and their configuration enums.
 
 ```{eval-rst}
-.. automodule:: refnd.kernels.protein.sequence
+.. automodule:: refnd.kernels.alignments
    :members:
    :member-order: bysource
 ```

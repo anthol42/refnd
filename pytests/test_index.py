@@ -11,7 +11,7 @@ DATA = [
 
 
 def test_config_repr():
-    state = HNSWState(KernelVariant.ProteinGlobal, DATA)
+    state = HNSWState(KernelVariant.AlignmentGlobal, DATA)
     config = state.config
     assert isinstance(config, HNSWConfig)
     s = str(config)
@@ -20,7 +20,7 @@ def test_config_repr():
 
 
 def test_index_repr():
-    state = HNSWState(KernelVariant.ProteinGlobal, DATA)
+    state = HNSWState(KernelVariant.AlignmentGlobal, DATA)
     state.build(progress=False)
     idx = state.index
     assert isinstance(idx, HNSWIndex)
@@ -35,7 +35,7 @@ def test_index_repr():
 
 
 def test_index_fields():
-    state = HNSWState(KernelVariant.ProteinGlobal, DATA)
+    state = HNSWState(KernelVariant.AlignmentGlobal, DATA)
     state.build(progress=False)
     idx = state.index
     assert idx.dataset_size == len(DATA)

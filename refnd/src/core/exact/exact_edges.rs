@@ -17,7 +17,7 @@ pub fn exact_edges<T, D>(
     threshold: f32,
     threads: usize,
     pb: Option<&ProgressBar>,
-) -> Vec<(usize, usize, f32)>
+) -> Vec<(u32, u32, f32)>
 where
     T: Sync,
     D: Distance<T>,
@@ -36,7 +36,7 @@ where
                 for j in (i + 1)..n {
                     let d = distance.call(&data[i], &data[j]);
                     if d < threshold {
-                        row.push((i, j, d));
+                        row.push((i as u32, j as u32, d));
                     }
                 }
                 if let Some(pb) = pb {

@@ -26,7 +26,8 @@ class TanimotoBit:
     Example::
     
         from rdkit.Chem import MolFromSmiles, rdFingerprintGenerator
-        from refnd.kernels.molecules import BitFingerprint, TanimotoBit
+        from refnd.utils import BitFingerprint
+        from refnd.kernels.molecules import TanimotoBit
     
         mfpgen = rdFingerprintGenerator.GetMorganGenerator(fpSize=1024, radius=2)
         benzene    = BitFingerprint(mfpgen.GetFingerprint(MolFromSmiles("c1ccccc1")))
@@ -51,6 +52,9 @@ class TanimotoBit:
             ``1.0`` means fully disjoint.
         
         Example::
+        
+            from refnd.utils import BitFingerprint
+            from refnd.kernels.molecules import TanimotoBit
         
             fp1 = BitFingerprint.from_list([True, False, True, True])
             fp2 = BitFingerprint.from_list([True, True,  True, False])
@@ -80,7 +84,8 @@ class TanimotoReal:
     Example::
     
         from rdkit.Chem import MolFromSmiles, rdFingerprintGenerator
-        from refnd.kernels.molecules import RealFingerprint, TanimotoReal
+        from refnd.utils import RealFingerprint
+        from refnd.kernels.molecules import TanimotoReal
     
         mfpgen = rdFingerprintGenerator.GetMorganGenerator(fpSize=1024, radius=2)
         benzene     = RealFingerprint(mfpgen.GetCountFingerprint(MolFromSmiles("c1ccccc1")))
@@ -105,6 +110,9 @@ class TanimotoReal:
             feature vectors, ``1.0`` means fully orthogonal.
         
         Example::
+        
+            from refnd.utils import RealFingerprint
+            from refnd.kernels.molecules import TanimotoReal
         
             fp1 = RealFingerprint.from_list([1.0, 0.0, 1.0])
             fp2 = RealFingerprint.from_list([0.0, 1.0, 1.0])

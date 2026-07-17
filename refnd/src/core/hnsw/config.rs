@@ -10,7 +10,13 @@ pub struct HNSWConfig{
     pub ef_construction: usize,
     pub extend_candidates: bool, // Extends candidates with their neighbors when finding neighbors
     pub keep_pruned_connections: bool,
-    /// Total number of entries across all cache shards
+    /// If true, all edges computed during the building process are stored if the distance is
+    /// under the threshold. Can cause the build time to scale faster that nlog(n), but improve
+    /// graph recall.
+    pub keep_all_edges: bool,
+    /// Total number of entries across all cache shards. `0` disables the distance cache
+    /// entirely (every distance is recomputed directly) — worth setting for cheap kernels
+    /// (e.g. Tanimoto) where the cache's hashing/locking costs more than the kernel itself.
     pub cache_capacity: usize,
     /// Number of independent cache shards (rounded up to next power of two).
     /// More shards = less contention, but more memory overhead. Default: 64.
@@ -43,6 +49,7 @@ impl Default for HNSWConfig {
             ef_construction: 128,
             extend_candidates: false,
             keep_pruned_connections: true,
+            keep_all_edges: true,
             cache_capacity: 2_000_000,
             cache_shards: 64,
             proximity_threshold: 0.5,
@@ -88,6 +95,11 @@ impl HNSWConfig {
         self.keep_pruned_connections = keep;
         self
     }
+    pub fn set_keep_all_edges(&mut self, keep: bool) -> &mut Self {
+        self.keep_all_edges = keep;
+        self
+    }
+
     pub fn set_cache_capacity(&mut self, capacity: usize) -> &mut Self {
         self.cache_capacity = capacity;
         self
@@ -132,6 +144,7 @@ impl fmt::Debug for HNSWConfig {
             \x20 proximity_threshold={}, ef_construction={},\n\
             \x20 m={}, m_max={}, m_max0={}, m_l={},\n\
             \x20 ef_init={}, extend_candidates={}, keep_pruned_connections={},\n\
+            \x20 keep_all_edges={},\n\
             \x20 cache_capacity={}, cache_shards={},\n\
             \x20 n_threads={}, shuffle={}, use_heuristic={},\n\
             \x20 strict_ef={}, threshold_based_neighbourhood={}\n\
@@ -139,6 +152,7 @@ impl fmt::Debug for HNSWConfig {
             self.proximity_threshold, self.ef_construction,
             self.m, self.m_max, self.m_max0, self.m_l,
             self.ef_init, self.extend_candidates, self.keep_pruned_connections,
+            self.keep_all_edges,
             self.cache_capacity, self.cache_shards,
             self.n_threads, self.shuffle, self.use_heuristic,
             self.strict_ef, self.threshold_based_neighbourhood,

@@ -7,10 +7,11 @@ use refnd_core::core::exact::{
 };
 use crate::kernels::{
     KernelVariant,
-    protein::sequence::{GlobalAligner, LocalAligner},
-    molecules::{TanimotoBit, TanimotoReal}
+    alignments::{GlobalAligner, LocalAligner},
+    molecules::{TanimotoBit, TanimotoReal},
+    structures::USAlignKernel as _USAlignKernel,
 };
-use crate::utils::{BitFingerprint, RealFingerprint};
+use crate::utils::{BitFingerprint, RealFingerprint, PdbStructure};
 use super::_utils::linear_progress_bar;
 use super::edge_store::EdgeStore;
 
@@ -42,11 +43,11 @@ macro_rules! call_generic {
 /// Extra positional and keyword arguments are forwarded to the kernel constructor.
 ///
 /// Args:
-///     variant: Which kernel to use (``KernelVariant.ProteinGlobal`` or
-///              ``KernelVariant.ProteinLocal``).
+///     variant: Which kernel to use (``KernelVariant.AlignmentGlobal`` or
+///              ``KernelVariant.AlignmentLocal``).
 ///     data: Sequence of data items (e.g. ``list[str]`` for protein sequences).
 ///     proximity_threshold: Maximum distance for an edge to be recorded.
-///     threads: Number of parallel threads. ``0`` uses all available cores.
+///     n_threads: Number of parallel threads. ``0`` uses all available cores.
 ///     progress: Show a progress bar. Defaults to ``True``.
 ///
 /// Returns:
@@ -57,17 +58,17 @@ macro_rules! call_generic {
 ///     from refnd import KernelVariant, exact_edges
 ///
 ///     seqs = ["MKTAYIAK", "MKTAYIAKQR", "ACDEFGHIKLM"]
-///     store = exact_edges(KernelVariant.ProteinGlobal, seqs, proximity_threshold=0.5)
+///     store = exact_edges(KernelVariant.AlignmentGlobal, seqs, proximity_threshold=0.5)
 ///     print(len(store))   # number of similar pairs
 #[gen_stub_pyfunction(module = "refnd.core")]
 #[pyfunction]
-#[pyo3(signature = (variant, data, proximity_threshold = 0.5, threads = 0, progress = true, *args, **kwargs))]
+#[pyo3(signature = (variant, data, proximity_threshold = 0.5, n_threads = 0, progress = true, *args, **kwargs))]
 pub fn exact_edges(
     py: Python,
     variant: KernelVariant,
     data: Py<PyAny>,
     proximity_threshold: f32,
-    threads: usize,
+    n_threads: usize,
     progress: bool,
     args: &Bound<'_, PyTuple>,
     kwargs: Option<&Bound<'_, PyDict>>,
@@ -81,14 +82,16 @@ pub fn exact_edges(
         None
     };
     let edges = match variant {
-        KernelVariant::ProteinGlobal => {call_generic!(exact_edges_core;
-            py, String, GlobalAligner, args, kwargs; data; proximity_threshold, threads, pb.as_ref())}
-        KernelVariant::ProteinLocal => {call_generic!(exact_edges_core;
-            py, String, LocalAligner, args, kwargs; data; proximity_threshold, threads, pb.as_ref())}
+        KernelVariant::AlignmentGlobal => {call_generic!(exact_edges_core;
+            py, String, GlobalAligner, args, kwargs; data; proximity_threshold, n_threads, pb.as_ref())}
+        KernelVariant::AlignmentLocal => {call_generic!(exact_edges_core;
+            py, String, LocalAligner, args, kwargs; data; proximity_threshold, n_threads, pb.as_ref())}
         KernelVariant::TanimotoBit => {call_generic!(exact_edges_core;
-            py, BitFingerprint, TanimotoBit, args, kwargs; data; proximity_threshold, threads, pb.as_ref())}
+            py, BitFingerprint, TanimotoBit, args, kwargs; data; proximity_threshold, n_threads, pb.as_ref())}
         KernelVariant::TanimotoReal => {call_generic!(exact_edges_core;
-            py, RealFingerprint, TanimotoReal, args, kwargs; data; proximity_threshold, threads, pb.as_ref())}
+            py, RealFingerprint, TanimotoReal, args, kwargs; data; proximity_threshold, n_threads, pb.as_ref())}
+        KernelVariant::Structure => {call_generic!(exact_edges_core;
+            py, PdbStructure, _USAlignKernel, args, kwargs; data; proximity_threshold, n_threads, pb.as_ref())}
     };
     if let Some(pb) = pb { pb.finish(); }
     Ok(EdgeStore::new(n, edges))
@@ -104,8 +107,8 @@ pub fn exact_edges(
 /// Extra positional and keyword arguments are forwarded to the kernel constructor.
 ///
 /// Args:
-///     variant: Which kernel to use (e.g. ``KernelVariant.ProteinGlobal`` or
-///              ``KernelVariant.TanimotoBit``).
+///     variant: Which kernel to use (``KernelVariant.AlignmentGlobal`` or
+///              ``KernelVariant.AlignmentsLocal``).
 ///     queries: Sequence of query items.
 ///     references: Sequence of reference items to search over. List of items of the same type of the selected kernel variant.
 ///     k: Number of nearest neighbors to return per query. List of items of the same type of the selected kernel variant.
@@ -123,7 +126,7 @@ pub fn exact_edges(
 ///     queries = ["MKTAYIAK"]
 ///     refs    = ["MKTAYIAKQR", "ACDEFGHIKLM", "MKTAYIAKQRQ"]
 ///     results = exact_nearest_neighbors(
-///         KernelVariant.ProteinGlobal, queries, refs, k=2
+///         KernelVariant.AlignmentGlobal, queries, refs, k=2
 ///     )
 ///     # results[0] -> [(0, 0.20), (2, 0.27)]
 #[gen_stub_pyfunction(module = "refnd.core")]
@@ -151,14 +154,16 @@ pub fn exact_nearest_neighbors(
         None
     };
     let result = match variant {
-        KernelVariant::ProteinGlobal => {call_generic!(exact_nearest_neighbors_core;
+        KernelVariant::AlignmentGlobal => {call_generic!(exact_nearest_neighbors_core;
             py, String, GlobalAligner, args, kwargs; queries, references; k, threads, pb.as_ref())}
-        KernelVariant::ProteinLocal => {call_generic!(exact_nearest_neighbors_core;
+        KernelVariant::AlignmentLocal => {call_generic!(exact_nearest_neighbors_core;
             py, String, LocalAligner, args, kwargs; queries, references; k, threads, pb.as_ref())}
         KernelVariant::TanimotoBit => {call_generic!(exact_nearest_neighbors_core;
             py, BitFingerprint, TanimotoBit, args, kwargs; queries, references; k, threads, pb.as_ref())}
         KernelVariant::TanimotoReal => {call_generic!(exact_nearest_neighbors_core;
             py, RealFingerprint, TanimotoReal, args, kwargs; queries, references; k, threads, pb.as_ref())}
+        KernelVariant::Structure => {call_generic!(exact_nearest_neighbors_core;
+            py, PdbStructure, _USAlignKernel, args, kwargs; queries, references; k, threads, pb.as_ref())}
     };
     if let Some(pb) = pb { pb.finish(); }
     Ok(result)

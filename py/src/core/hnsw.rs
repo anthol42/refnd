@@ -2,19 +2,22 @@ use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyTuple};
 use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pymethods};
 use refnd_core::core::hnsw::{HNSWState as HNSWStateCore, HNSWIndex as HNSWIndexCore, HNSWConfig as HNSWConfigCore};
-use refnd_core::kernels::proteins::parasail::{GlobalAligner, LocalAligner};
+use refnd_core::kernels::alignments::parasail::{GlobalAligner, LocalAligner};
+use refnd_core::kernels::usalign::USAlignKernel as CoreUSAlignKernel;
 use refnd_core::kernels::molecules::tanimoto::Tanimoto;
 use super::edge_store::EdgeStore;
 use super::_utils::{logfacto_progress_bar, linear_progress_bar};
 use super::super::utils::{BitFingerprint, RealFingerprint};
 use super::super::kernels::{
     KernelVariant,
-    protein::sequence::{
+    alignments::{
         GlobalAligner as _GlobalAligner,
         LocalAligner as _LocalAligner,
     },
     molecules::{TanimotoReal as _TanimotoReal, TanimotoBit as _TanimotoBit},
+    structures::USAlignKernel as _USAlignKernel,
 };
+use super::super::utils::PdbStructure;
 
 /// Configuration for the HNSW approximate nearest-neighbour index.
 ///
@@ -34,8 +37,15 @@ use super::super::kernels::{
 ///   a greedy search.
 /// - ``extend_candidates`` *(bool)* — Use neighbors of neighbors as candidates, making search more exhaustive.
 /// - ``keep_pruned_connections`` *(bool)* — Retain discarded candidates to fill up to ``m`` connections when not enough connections are found.
+/// - ``keep_all_edges`` *(bool)* — Record every below-threshold distance computed during build into
+///   the proximity graph returned by ``edges()``. Default ``True``. Setting it to ``False`` makes
+///   ``edges()`` return ``None``, but removes a per-hit locked hashmap insert from the hot path.
+///   Worth doing when the proximity graph is not required.
 /// - ``cache_capacity`` *(int)* — Maximum cached kernel scores. Increasing it increase the memory
 ///   footprint, but also cache hits, which can improve runtime performances for computationally expensive kernels.
+///   Set to ``0`` to disable the cache entirely — every distance is recomputed directly, which is
+///   faster for cheap kernels (e.g. ``TanimotoBit``/``TanimotoReal``) where cache overhead exceeds the
+///   cost of the kernel itself.
 /// - ``cache_shards`` *(int)* — Number of cache shards (reduces lock contention).
 /// - ``n_threads`` *(int)* — Threads used during build. ``0`` = all available cores.
 /// - ``shuffle`` *(bool)* — Shuffle insertion order before building. Can create a less biased
@@ -65,6 +75,7 @@ impl HNSWConfig {
         ef_init = 1,
         extend_candidates = false,
         keep_pruned_connections = true,
+        keep_all_edges = true,
         cache_capacity = 2_000_000,
         cache_shards = 64,
         n_threads = 0,
@@ -79,6 +90,7 @@ impl HNSWConfig {
         m: usize, m_max: usize, m_max0: usize, m_l: f64,
         ef_init: usize,
         extend_candidates: bool, keep_pruned_connections: bool,
+        keep_all_edges: bool,
         cache_capacity: usize, cache_shards: usize, n_threads: usize,
         shuffle: bool, use_heuristic: bool,
         strict_ef: bool, threshold_based_neighbourhood: bool,
@@ -86,7 +98,7 @@ impl HNSWConfig {
         HNSWConfig {
             inner: HNSWConfigCore {
                 m, m_max, m_max0, m_l, ef_init, ef_construction,
-                extend_candidates, keep_pruned_connections,
+                extend_candidates, keep_pruned_connections, keep_all_edges,
                 cache_capacity, cache_shards, proximity_threshold,
                 n_threads, shuffle, use_heuristic,
                 strict_ef, threshold_based_neighbourhood,
@@ -102,6 +114,7 @@ impl HNSWConfig {
     #[getter] fn ef_construction(&self) -> usize { self.inner.ef_construction }
     #[getter] fn extend_candidates(&self) -> bool { self.inner.extend_candidates }
     #[getter] fn keep_pruned_connections(&self) -> bool { self.inner.keep_pruned_connections }
+    #[getter] fn keep_all_edges(&self) -> bool { self.inner.keep_all_edges }
     #[getter] fn cache_capacity(&self) -> usize { self.inner.cache_capacity }
     #[getter] fn cache_shards(&self) -> usize { self.inner.cache_shards }
     #[getter] fn proximity_threshold(&self) -> f32 { self.inner.proximity_threshold }
@@ -122,6 +135,7 @@ impl HNSWConfig {
         d.set_item("ef_construction", self.inner.ef_construction)?;
         d.set_item("extend_candidates", self.inner.extend_candidates)?;
         d.set_item("keep_pruned_connections", self.inner.keep_pruned_connections)?;
+        d.set_item("keep_all_edges", self.inner.keep_all_edges)?;
         d.set_item("cache_capacity", self.inner.cache_capacity)?;
         d.set_item("cache_shards", self.inner.cache_shards)?;
         d.set_item("proximity_threshold", self.inner.proximity_threshold)?;
@@ -162,13 +176,18 @@ pub struct HNSWIndex {
 #[pymethods]
 impl HNSWIndex {
     #[getter] pub fn dataset_size(&self) -> usize { self.inner.dataset_size }
-    #[getter] pub fn layers(&self) -> Vec<Vec<Vec<usize>>> { self.inner.layers.clone() }
-    #[getter] pub fn entry_point(&self) -> Option<(usize, usize)> { self.inner.entry_point }
+    #[getter] pub fn layers(&self) -> Vec<Vec<Vec<u32>>> { self.inner.layers.clone() }
+    #[getter] pub fn entry_point(&self) -> Option<(u32, usize)> { self.inner.entry_point }
     #[getter] pub fn max_layers(&self) -> usize { self.inner.max_layers }
-    #[getter] pub fn proximity_edges(&self) -> Vec<((usize, usize), f32)> { self.inner.proximity_edges.clone() }
+    #[getter] pub fn proximity_edges(&self) -> Vec<((u32, u32), f32)> { self.inner.proximity_edges.clone() }
     #[getter] pub fn config(&self) -> HNSWConfig { HNSWConfig { inner: self.inner.config.clone() } }
 
     /// Save the object to a binary representation (e.g. *.hnsw* file).
+    ///
+    /// The binary format is versioned to the exact package version and is not
+    /// forward or backward compatible. A file saved with version X can only be
+    /// loaded by the exact same version X. Files saved with a different version
+    /// will fail to load with a version mismatch error.
     ///
     /// Args:
     ///     path: Destination file path (recommended with a .hnsw extension)
@@ -182,6 +201,11 @@ impl HNSWIndex {
 
     /// Load an index previously saved with ``HNSWIndex.save``.
     ///
+    /// **Version compatibility:** The binary format is versioned to the exact package version.
+    /// A file saved with a different package version (older or newer) will fail to load with
+    /// a version mismatch error. There is no forward or backward compatibility guarantee during
+    /// the unstable pre-0.1.0 phase.
+    ///
     /// Args:
     ///     path: Path to the saved file.
     ///
@@ -189,7 +213,8 @@ impl HNSWIndex {
     ///     The deserialised ``HNSWIndex``.
     ///
     /// Raises:
-    ///     RuntimeError: If the file cannot be read or the format is invalid.
+    ///     RuntimeError: If the file cannot be read, the format is invalid, or the saved
+    ///                   version does not match the running package version.
     #[staticmethod]
     pub fn load(path: String) -> PyResult<Self> {
         HNSWIndexCore::load(&path)
@@ -202,10 +227,11 @@ impl HNSWIndex {
 }
 
 enum HNSWType {
-    ProteinGlobal(HNSWStateCore<String, GlobalAligner>),
-    ProteinLocal(HNSWStateCore<String, LocalAligner>),
+    AlignmentGlobal(HNSWStateCore<String, GlobalAligner>),
+    AlignmentLocal(HNSWStateCore<String, LocalAligner>),
     TanimotoBit(HNSWStateCore<BitFingerprint, Tanimoto>),
     TanimotoReal(HNSWStateCore<RealFingerprint, Tanimoto>),
+    Structure(HNSWStateCore<PdbStructure, CoreUSAlignKernel>),
 }
 
 /// Expands a `HNSWState::new(data, kernel, config)` constructor for each KernelVariant.
@@ -282,10 +308,10 @@ macro_rules! hnsw_dispatch_mut {
 /// and can be passed directly to the constructor as keyword arguments.
 ///
 /// Args:
-///     variant: Kernel to use (e.g.  ``KernelVariant.ProteinGlobal``, ``KernelVariant.ProteinLocal``, ``KernelVariant.TanimotoBit``, *etc*).
+///     variant: Kernel to use (e.g.  ``KernelVariant.AlignmentGlobal``, ``KernelVariant.AlignmentLocal``, ``KernelVariant.TanimotoBit``, *etc*).
 ///     data: The dataset — a list of items matching the kernel type (e.g. ``list[str]`` or ``list[np.ndarray]``).
 ///     proximity_threshold, ef_construction, m, m_max, m_max0, m_l, ef_init, extend_candidates,
-///         keep_pruned_connections, cache_capacity, cache_shards,
+///         keep_pruned_connections, keep_all_edges, cache_capacity, cache_shards,
 ///         n_threads, shuffle, use_heuristic, strict_ef,
 ///         threshold_based_neighbourhood: See ``HNSWConfig`` for descriptions.
 ///
@@ -298,14 +324,14 @@ macro_rules! hnsw_dispatch_mut {
 ///     from refnd import HNSWState, KernelVariant
 ///
 ///     seqs = ["MKTAYIAK", "MKTAYIAKQR", "ACDEFGHIKLM", "MKTAYIAKQRQIS"]
-///     state = HNSWState(KernelVariant.ProteinGlobal, seqs, proximity_threshold=0.3, ef_construction=64)
+///     state = HNSWState(KernelVariant.AlignmentGlobal, seqs, proximity_threshold=0.3, ef_construction=64)
 ///     state.build()
 ///     results = state.search(["MKTAYIAK"], k=2)
 ///     # results[0] -> [(0, 1.0), (1, 0.88)]
 ///
 ///     store = state.edges()        # EdgeStore for graph-based splitting
 ///     state.save("index.hnsw")
-///     state2 = HNSWState.load(KernelVariant.ProteinGlobal, "index.hnsw", seqs)
+///     state2 = HNSWState.load(KernelVariant.AlignmentGlobal, "index.hnsw", seqs)
 #[gen_stub_pyclass]
 #[pyclass(module = "refnd.core")]
 pub struct HNSWState {
@@ -330,6 +356,7 @@ impl HNSWState {
         ef_init = 1,
         extend_candidates = false,
         keep_pruned_connections = true,
+        keep_all_edges = true,
         cache_capacity = 2_000_000,
         cache_shards = 64,
         n_threads = 0,
@@ -354,6 +381,7 @@ impl HNSWState {
         ef_init: usize,
         extend_candidates: bool,
         keep_pruned_connections: bool,
+        keep_all_edges: bool,
         cache_capacity: usize,
         cache_shards: usize,
         n_threads: usize,
@@ -366,7 +394,7 @@ impl HNSWState {
         let n = data.bind(py).len()?;
         let config = HNSWConfigCore {
             m, m_max, m_max0, m_l, ef_init, ef_construction,
-            extend_candidates, keep_pruned_connections,
+            extend_candidates, keep_pruned_connections, keep_all_edges,
             cache_capacity, cache_shards, proximity_threshold,
             n_threads, shuffle, use_heuristic,
             strict_ef, threshold_based_neighbourhood,
@@ -374,10 +402,11 @@ impl HNSWState {
         let config_py = HNSWConfig { inner: config.clone() };
         let inner = hnsw_new!(
             HNSWStateCore::new; py, variant, data, config, args, kwargs;
-            ProteinGlobal:_GlobalAligner,
-            ProteinLocal:_LocalAligner,
+            AlignmentGlobal:_GlobalAligner,
+            AlignmentLocal:_LocalAligner,
             TanimotoBit:_TanimotoBit,
-            TanimotoReal:_TanimotoReal
+            TanimotoReal:_TanimotoReal,
+            Structure:_USAlignKernel
         );
         Ok(HNSWState { inner, n, config: config_py })
     }
@@ -397,10 +426,11 @@ impl HNSWState {
         let pb = if progress { Some(logfacto_progress_bar(self.n, "Building index")) } else { None };
         hnsw_dispatch_mut!(
             self.inner, build(pb.as_ref());
-            ProteinGlobal:_GlobalAligner,
-            ProteinLocal:_LocalAligner,
+            AlignmentGlobal:_GlobalAligner,
+            AlignmentLocal:_LocalAligner,
             TanimotoBit:_TanimotoBit,
-            TanimotoReal:_TanimotoReal
+            TanimotoReal:_TanimotoReal,
+            Structure:_USAlignKernel
         ).map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
         if let Some(pb) = pb { pb.finish() };
         Ok(())
@@ -436,7 +466,7 @@ impl HNSWState {
         ef: usize,
         threads: usize,
         progress: bool,
-    ) -> PyResult<Vec<Vec<(usize, f32)>>> {
+    ) -> PyResult<Vec<Vec<(u32, f32)>>> {
         let n = queries.bind(py).len()?;
         let pb = if progress { Some(linear_progress_bar(n, "Searching")) } else { None };
         // Direct match: the concrete inner type per arm lets the compiler infer
@@ -445,10 +475,11 @@ impl HNSWState {
         // to rustc's type inference when `extract`'s output type must flow from
         // the arm's `inner: &HNSWState<T, _>`.
         let res = match &self.inner {
-            HNSWType::ProteinGlobal(inner) => inner.parallel_search(queries.extract::<Vec<_>>(py)?.as_slice(), k, ef, threads, pb.as_ref()),
-            HNSWType::ProteinLocal(inner)  => inner.parallel_search(queries.extract::<Vec<_>>(py)?.as_slice(), k, ef, threads, pb.as_ref()),
-            HNSWType::TanimotoBit(inner)   => inner.parallel_search(queries.extract::<Vec<_>>(py)?.as_slice(), k, ef, threads, pb.as_ref()),
-            HNSWType::TanimotoReal(inner)  => inner.parallel_search(queries.extract::<Vec<_>>(py)?.as_slice(), k, ef, threads, pb.as_ref()),
+            HNSWType::AlignmentGlobal(inner) => inner.parallel_search(queries.extract::<Vec<_>>(py)?.as_slice(), k, ef, threads, pb.as_ref()),
+            HNSWType::AlignmentLocal(inner)  => inner.parallel_search(queries.extract::<Vec<_>>(py)?.as_slice(), k, ef, threads, pb.as_ref()),
+            HNSWType::TanimotoBit(inner)     => inner.parallel_search(queries.extract::<Vec<_>>(py)?.as_slice(), k, ef, threads, pb.as_ref()),
+            HNSWType::TanimotoReal(inner)    => inner.parallel_search(queries.extract::<Vec<_>>(py)?.as_slice(), k, ef, threads, pb.as_ref()),
+            HNSWType::Structure(inner)       => inner.parallel_search(queries.extract::<Vec<_>>(py)?.as_slice(), k, ef, threads, pb.as_ref()),
         }.map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
         if let Some(pb) = pb { pb.finish() };
         Ok(res)
@@ -460,16 +491,18 @@ impl HNSWState {
     /// ``proximity_threshold``.
     ///
     /// Returns:
-    ///     An ``EdgeStore`` with ``node_count = dataset_size``.
-    pub fn edges(&self) -> EdgeStore {
+    ///     An ``EdgeStore`` with ``node_count = dataset_size``, or ``None`` if the index was built
+    ///     with ``keep_all_edges=False``.
+    pub fn edges(&self) -> Option<EdgeStore> {
         let edges = hnsw_dispatch!(
             self.inner, edges();
-            ProteinGlobal:_GlobalAligner,
-            ProteinLocal:_LocalAligner,
+            AlignmentGlobal:_GlobalAligner,
+            AlignmentLocal:_LocalAligner,
             TanimotoBit:_TanimotoBit,
-            TanimotoReal:_TanimotoReal
-        );
-        EdgeStore::new(self.n, edges)
+            TanimotoReal:_TanimotoReal,
+            Structure:_USAlignKernel
+        )?;
+        Some(EdgeStore::new(self.n, edges))
     }
 
     /// Return the adjacency lists for a specific HNSW layer.
@@ -483,13 +516,14 @@ impl HNSWState {
     ///
     /// Raises:
     ///     IndexError: If ``layer_idx`` is out of range.
-    pub fn get_layer(&self, layer_idx: usize) -> PyResult<Vec<Vec<usize>>> {
+    pub fn get_layer(&self, layer_idx: usize) -> PyResult<Vec<Vec<u32>>> {
         hnsw_dispatch!(
             self.inner, get_layer(layer_idx);
-            ProteinGlobal:_GlobalAligner,
-            ProteinLocal:_LocalAligner,
+            AlignmentGlobal:_GlobalAligner,
+            AlignmentLocal:_LocalAligner,
             TanimotoBit:_TanimotoBit,
-            TanimotoReal:_TanimotoReal
+            TanimotoReal:_TanimotoReal,
+            Structure:_USAlignKernel
         ).map_err(pyo3::exceptions::PyIndexError::new_err)
     }
 
@@ -498,6 +532,11 @@ impl HNSWState {
     /// The saved file can be loaded back with ``HNSWState.load``. The original
     /// data must be provided again at load time (it is not embedded in the file).
     ///
+    /// **Version compatibility:** The binary format is versioned to the exact package version.
+    /// A file saved with a different package version (older or newer) will fail to load with
+    /// a version mismatch error. There is no forward or backward compatibility guarantee during
+    /// the unstable pre-0.1.0 phase.
+    /// 
     /// Args:
     ///     path: Destination file path.
     ///
@@ -506,15 +545,21 @@ impl HNSWState {
     pub fn save(&self, path: String) -> PyResult<()> {
         hnsw_dispatch!(
             self.inner, save(&path);
-            ProteinGlobal:_GlobalAligner,
-            ProteinLocal:_LocalAligner,
+            AlignmentGlobal:_GlobalAligner,
+            AlignmentLocal:_LocalAligner,
             TanimotoBit:_TanimotoBit,
-            TanimotoReal:_TanimotoReal
+            TanimotoReal:_TanimotoReal,
+            Structure:_USAlignKernel
         )
         .map_err(|e: Box<dyn std::error::Error>| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))
     }
 
     /// Load an HNSWState form a binary file saved with ``HNSWState.save``.
+    ///
+    /// **Version compatibility:** The binary format is versioned to the exact package version.
+    /// A file saved with a different package version (older or newer) will fail to load with
+    /// a version mismatch error. There is no forward or backward compatibility guarantee during
+    /// the unstable pre-0.1.0 phase.
     ///
     /// Args:
     ///     variant: Must match the kernel used during the original build.
@@ -525,7 +570,8 @@ impl HNSWState {
     ///     The restored ``HNSWState``, ready to call ``search`` or ``edges`` if the index was built.
     ///
     /// Raises:
-    ///     RuntimeError: If the file cannot be read or the format is invalid.
+    ///     RuntimeError: If the file cannot be read, the format is invalid, or the saved
+    ///                   version does not match the running package version.
     #[staticmethod]
     #[pyo3(signature = (variant, path, data, *args, **kwargs))]
     pub fn load(
@@ -539,18 +585,20 @@ impl HNSWState {
         let n = data.bind(py).len()?;
         let inner = hnsw_load!(
             py, variant, path, data, None::<HNSWConfigCore>, args, kwargs;
-            ProteinGlobal:_GlobalAligner,
-            ProteinLocal:_LocalAligner,
+            AlignmentGlobal:_GlobalAligner,
+            AlignmentLocal:_LocalAligner,
             TanimotoBit:_TanimotoBit,
-            TanimotoReal:_TanimotoReal
+            TanimotoReal:_TanimotoReal,
+            Structure:_USAlignKernel
         );
         let config = HNSWConfig {
             inner: hnsw_dispatch!(
                 inner, config();
-                ProteinGlobal:_GlobalAligner,
-                ProteinLocal:_LocalAligner,
+                AlignmentGlobal:_GlobalAligner,
+                AlignmentLocal:_LocalAligner,
                 TanimotoBit:_TanimotoBit,
-                TanimotoReal:_TanimotoReal
+                TanimotoReal:_TanimotoReal,
+                Structure:_USAlignKernel
             ).clone(),
         };
         Ok(HNSWState { inner, n, config })
@@ -560,10 +608,11 @@ impl HNSWState {
     #[getter]
     pub fn is_built(&self) -> bool {
         match &self.inner {
-            HNSWType::ProteinGlobal(inner) => inner.has_been_built,
-            HNSWType::ProteinLocal(inner)  => inner.has_been_built,
-            HNSWType::TanimotoBit(inner)   => inner.has_been_built,
-            HNSWType::TanimotoReal(inner)  => inner.has_been_built,
+            HNSWType::AlignmentGlobal(inner) => inner.has_been_built,
+            HNSWType::AlignmentLocal(inner)  => inner.has_been_built,
+            HNSWType::TanimotoBit(inner)     => inner.has_been_built,
+            HNSWType::TanimotoReal(inner)    => inner.has_been_built,
+            HNSWType::Structure(inner)       => inner.has_been_built,
         }
     }
 
@@ -579,10 +628,11 @@ impl HNSWState {
         HNSWIndex {
             inner: hnsw_dispatch!(
                 self.inner, index();
-                ProteinGlobal:_GlobalAligner,
-                ProteinLocal:_LocalAligner,
+                AlignmentGlobal:_GlobalAligner,
+                AlignmentLocal:_LocalAligner,
                 TanimotoBit:_TanimotoBit,
-                TanimotoReal:_TanimotoReal
+                TanimotoReal:_TanimotoReal,
+                Structure:_USAlignKernel
             ),
         }
     }

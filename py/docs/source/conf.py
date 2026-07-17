@@ -16,11 +16,21 @@ _STUB_DIR = _DOCS_DIR.parents[1] / "python"  # py/python/
 sys.path.insert(0, str(_STUB_DIR))
 import refnd  # noqa: E402, F401 — must be importable before autodoc runs
 
+# rdkit types only exist in the .pyi stubs, not in the compiled extension
+# module's namespace — inject them so sphinx-autodoc-typehints can resolve
+# the forward references it parses out of the stubs.
+from rdkit.DataStructs.cDataStructs import ExplicitBitVect, UIntSparseIntVect  # noqa: E402
+
+refnd.utils.ExplicitBitVect = ExplicitBitVect
+refnd.utils.UIntSparseIntVect = UIntSparseIntVect
+
 # ── Extensions ────────────────────────────────────────────────────────────────
 
 extensions = [
+    "sphinx_llm.txt",
     "sphinx.ext.autodoc",
     "sphinx.ext.napoleon",
+    "sphinx.ext.intersphinx",
     "sphinx_autodoc_typehints",
     "myst_parser",
 ]
@@ -47,6 +57,7 @@ autodoc_default_options = {
 }
 autodoc_typehints = "signature"   # put types in the signature, not the body
 autodoc_typehints_format = "short"
+typehints_document_rtype = False  # avoid redundant "Return type:" field (already in signature)
 
 # ── Napoleon ──────────────────────────────────────────────────────────────────
 
@@ -58,6 +69,12 @@ napoleon_use_rtype = False
 # ── Misc ──────────────────────────────────────────────────────────────────────
 
 nitpicky = False   # compiled extension cross-refs are noisy
+
+intersphinx_mapping = {
+    "numpy": ("https://numpy.org/doc/stable/", None),
+}
+# numpy's public alias `numpy.bool` has no inventory entry (only `numpy.bool_` does)
+nitpick_ignore = [("py:class", "numpy.bool")]
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Stub-based signature injection
