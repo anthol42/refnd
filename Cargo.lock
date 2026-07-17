@@ -791,8 +791,8 @@ dependencies = [
 
 [[package]]
 name = "libusalign-sys"
-version = "0.1.0"
-source = "git+https://github.com/JacobCote/libusalign-sys?branch=main#596668f83b00c1dde13ff2bd5713c43bdae734bf"
+version = "0.1.1"
+source = "git+https://github.com/anthol42/libusalign-sys?branch=main#6b1283c6d31a6585f755f5bc1c418e911de124ed"
 dependencies = [
  "bindgen 0.71.1",
  "cc",
