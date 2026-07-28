@@ -791,8 +791,8 @@ dependencies = [
 
 [[package]]
 name = "libusalign-sys"
-version = "0.1.0"
-source = "git+https://github.com/JacobCote/libusalign-sys?branch=main#596668f83b00c1dde13ff2bd5713c43bdae734bf"
+version = "0.1.1"
+source = "git+https://github.com/JacobCote/libusalign-sys?branch=main#70fca575bdd0f3581a19e1c9de925ea288adfc0e"
 dependencies = [
  "bindgen 0.71.1",
  "cc",
@@ -1233,7 +1233,7 @@ dependencies = [
 
 [[package]]
 name = "py-refnd"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "anyhow",
  "fixedbitset 0.5.7",
@@ -1460,7 +1460,7 @@ dependencies = [
 
 [[package]]
 name = "refnd"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "bincode",
  "clap",

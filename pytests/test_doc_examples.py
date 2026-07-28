@@ -56,7 +56,8 @@ def _discover_examples():
         tree = ast.parse(pyi.read_text())
         for qualname, doc in _collect_docstrings(tree):
             for j, code in enumerate(_extract_examples(doc)):
-                cases.append(pytest.param(code, id=f"{pyi.relative_to(_STUB_DIR)}::{qualname}#{j}"))
+                rel = pyi.relative_to(_STUB_DIR).as_posix()
+                cases.append(pytest.param(code, id=f"{rel}::{qualname}#{j}"))
     return cases
 
 

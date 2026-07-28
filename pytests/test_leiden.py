@@ -1,11 +1,11 @@
-from refnd.core import EdgeStore, CsrGraph
+from refnd.core import EdgeStore, CsrGraph, INWeightType
 
 EDGES = [(0, 1, 1.0), (1, 2, 1.0), (2, 3, 1.0), (0, 3, 1.0)]
 
 
 def test_subgraph_reindexes_and_maps_nodes():
     store = EdgeStore(4, EDGES)
-    g = CsrGraph(store, use_weight=True, is_weight_distance=False)
+    g = CsrGraph(store, inweight_type=INWeightType.Similarity)
 
     sub, mapping = g.subgraph([2, 0, 3])
 
@@ -15,7 +15,7 @@ def test_subgraph_reindexes_and_maps_nodes():
 
 def test_subgraph_keeps_only_induced_edges():
     store = EdgeStore(4, EDGES)
-    g = CsrGraph(store, use_weight=True, is_weight_distance=False)
+    g = CsrGraph(store, inweight_type=INWeightType.Similarity)
 
     # Node 1 is excluded, so only the (2,3) and (0,3) edges survive.
     sub, mapping = g.subgraph([0, 2, 3])
