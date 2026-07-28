@@ -7,7 +7,7 @@ that makes naive random splits leak information between train and test.
 
 This is the human-readable doc, but we also have a LLM doc so you favorite chatbot or agent can read the documentation.
 We follow the [llms.txt](https://llmstxt.org) standard, which means you can access the llm doc index with 
-<a href="/llms.txt">llms.txt</a> or the full documentation in one document with <a href="/llms-full.txt">llms-full.txt</a>. 
+<a href="./llms.txt">llms.txt</a> or the full documentation in one document with <a href="./llms-full.txt">llms-full.txt</a>. 
 
 Happy programming!
 ## Modules
