@@ -4,7 +4,7 @@ use std::path::Path;
 const ROOT: &str = env!("CARGO_MANIFEST_DIR");
 
 fn main() -> Result<()> {
-    let stub = refnd::stub_info()
+    let stub = py_refnd::stub_info()
         .map_err(|e| anyhow::anyhow!("stub_info() failed (ROOT={}): {}", ROOT, e))?;
     stub.generate()
         .map_err(|e| anyhow::anyhow!("stub.generate() failed: {}", e))?;

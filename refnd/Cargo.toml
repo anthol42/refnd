@@ -1,6 +1,6 @@
 [package]
 name = "refnd"
-version = "0.0.1"
+version = "0.0.2"
 edition = "2024"
 
 [features]
@@ -26,7 +26,7 @@ ndarray = "0.17.2"
 molprint-core = "0.1.0"
 molprint-fp = "0.1.0"
 molprint-io = "0.1.0"
-libusalign-sys = "0.1.0"
+libusalign-sys = "0.1.1"
 
 [[bin]]
 name = "bench_leiden"
