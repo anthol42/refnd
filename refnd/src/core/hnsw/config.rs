@@ -124,6 +124,14 @@ impl HNSWConfig {
         self.use_heuristic = use_heuristic;
         self
     }
+    pub fn set_strict_ef(&mut self, strict_ef: bool) -> &mut Self {
+        self.strict_ef = strict_ef;
+        self
+    }
+    pub fn set_threshold_based_neighbourhood(&mut self, threshold_based_neighbourhood: bool) -> &mut Self {
+        self.threshold_based_neighbourhood = threshold_based_neighbourhood;
+        self
+    }
 }
 
 impl fmt::Display for HNSWConfig {
