@@ -35,3 +35,7 @@ path = "src/bench_leiden.rs"
 [[bin]]
 name = "bench_fingerprints"
 path = "src/bench_fingerprints.rs"
+
+[[bin]]
+name = "bench_hnsw"
+path = "src/bench_hnsw.rs"
