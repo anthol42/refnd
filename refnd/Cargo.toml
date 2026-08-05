@@ -31,3 +31,7 @@ libusalign-sys = "0.1.1"
 [[bin]]
 name = "bench_leiden"
 path = "src/bench_leiden.rs"
+
+[[bin]]
+name = "bench_fingerprints"
+path = "src/bench_fingerprints.rs"
