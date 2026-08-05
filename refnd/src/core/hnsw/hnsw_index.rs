@@ -1,6 +1,29 @@
 use std::fmt;
 use super::HNSWConfig;
 
+/// One layer's neighbor lists. Layer 0 holds every node (dense); layers above hold an
+/// exponentially shrinking fraction (sparse) -- see `LayerStorage` in `mod.rs` for why.
+/// Keeping that distinction in the *saved* format too matters: naively densifying every
+/// sparse layer back into an `n_nodes`-long `Vec` just to serialize it would recreate the
+/// same multi-GB-per-layer waste the in-memory sparse representation exists to avoid, right
+/// at the point (end of a long build) where peak memory is already at its highest.
+#[derive(bincode::Encode, bincode::Decode, Clone)]
+pub enum LayerData {
+    /// Every node's neighbor list, in node-id order.
+    Dense(Vec<Vec<u32>>),
+    /// Only the `(node, neighbors)` pairs that are actually non-empty.
+    Sparse(Vec<(u32, Vec<u32>)>),
+}
+
+impl LayerData {
+    fn n_non_empty(&self) -> usize {
+        match self {
+            LayerData::Dense(v) => v.iter().filter(|n| !n.is_empty()).count(),
+            LayerData::Sparse(pairs) => pairs.len(),
+        }
+    }
+}
+
 /// Serializable snapshot of an [`super::HNSWState`].
 ///
 /// Contains everything needed to reconstruct the index, minus the data
@@ -17,8 +40,8 @@ pub struct HNSWIndex {
     /// Number of data points the index was built on.
     /// Checked against the dataset length on load to catch mismatches early.
     pub dataset_size: usize,
-    /// `layers[layer][node]` → neighbor list (no `RwLock`).
-    pub layers: Vec<Vec<Vec<u32>>>,
+    /// `layers[layer]` → that layer's neighbor lists, dense or sparse (see `LayerData`).
+    pub layers: Vec<LayerData>,
     /// Global entry point as `(node, layer)`, or `None` if the index is empty.
     pub entry_point: Option<(u32, usize)>,
     pub config: HNSWConfig,
@@ -31,7 +54,7 @@ pub struct HNSWIndex {
 impl fmt::Display for HNSWIndex {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let non_empty_layers = self.layers.iter()
-            .filter(|layer| layer.iter().any(|n| !n.is_empty()))
+            .filter(|layer| layer.n_non_empty() > 0)
             .count();
         write!(
             f,
@@ -44,7 +67,7 @@ impl fmt::Display for HNSWIndex {
 impl fmt::Debug for HNSWIndex {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let layers: Vec<String> = self.layers.iter()
-            .map(|layer| layer.iter().filter(|n| !n.is_empty()).count())
+            .map(|layer| layer.n_non_empty())
             .filter(|&c| c > 0)
             .map(|c| c.to_string())
             .collect();

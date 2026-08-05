@@ -8,6 +8,7 @@ monitor = []
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }
+dashmap = "6"
 fixedbitset = "0.5.7"
 indicatif = "0.17"
 quick_cache = "0.6"
@@ -21,6 +22,7 @@ rich_rust = "0.2.1"
 regex = "1.12.3"
 clap_complete = "4.6.2"
 petgraph = "0.8.3"
+smallvec = "1.15.2"
 bincode = { version = "<3.0", features = ["derive"] }
 ndarray = "0.17.2"
 molprint-core = "0.1.0"

@@ -4,9 +4,8 @@ use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pyfunction, gen_stub_pyme
 use pyo3_stub_gen::{PyStubType, TypeInfo};
 use refnd_core::utils::read_fasta as core_read_fasta;
 use std::path::Path;
-use fixedbitset::FixedBitSet;
 use numpy::{IntoPyArray, PyArray1};
-use refnd_core::utils::{BitFingerprint as CoreBitFP, RealFingerprint as CoreRealFP};
+use refnd_core::utils::{BitFingerprint as CoreBitFP, InlineBitSet, RealFingerprint as CoreRealFP};
 use refnd_core::kernels::usalign::PdbStructure as CorePdbStructure;
 use std::collections::{HashMap, HashSet};
 use refnd_core::core::largest_cluster as largest_cluster_core;
@@ -81,7 +80,7 @@ impl BitFingerprint {
         }
         let n_bits: usize = fp.call_method0("GetNumBits")?.extract()?;
         let on_bits: Vec<usize> = fp.call_method0("GetOnBits")?.extract()?;
-        let mut bits = FixedBitSet::with_capacity(n_bits);
+        let mut bits = InlineBitSet::with_capacity(n_bits);
         for b in on_bits {
             bits.insert(b);
         }
@@ -91,7 +90,7 @@ impl BitFingerprint {
     /// Construct from a list of booleans (or 0/1 ints).
     #[staticmethod]
     pub fn from_list(values: Vec<bool>) -> Self {
-        let mut bits = FixedBitSet::with_capacity(values.len());
+        let mut bits = InlineBitSet::with_capacity(values.len());
         for (i, v) in values.iter().enumerate() {
             if *v { bits.insert(i); }
         }
@@ -99,8 +98,39 @@ impl BitFingerprint {
     }
 
     /// Construct from a numpy boolean or uint8 array.
+    ///
+    /// Reads the array's raw buffer directly for `uint8`/`bool` dtypes (the common
+    /// case) instead of going through `.tolist()` -- `.tolist()` boxes every element as
+    /// an individual Python int/bool and builds a Python list, then that gets extracted
+    /// into a `Vec<u8>`, then mapped into a `Vec<bool>`: three transient allocations
+    /// (list + two Vecs) per fingerprint on top of the numpy array itself. At BELKA scale
+    /// (~98M fingerprints), that's ~100M+ list allocations churned through two separate
+    /// allocators (Python's pymalloc and Rust's global allocator) that don't share freed
+    /// memory with each other -- real-world fragmentation from that churn measurably
+    /// inflated peak RSS beyond what the retained data alone would need. Any other dtype
+    /// falls back to `.tolist()` for full generality.
     #[staticmethod]
     pub fn from_np(arr: &Bound<'_, PyAny>) -> PyResult<Self> {
+        if let Ok(a) = arr.extract::<numpy::PyReadonlyArray1<u8>>() {
+            let slice = a.as_slice()?;
+            let mut bits = InlineBitSet::with_capacity(slice.len());
+            for (i, &v) in slice.iter().enumerate() {
+                if v != 0 {
+                    bits.insert(i);
+                }
+            }
+            return Ok(Self { inner: CoreBitFP::new(bits) });
+        }
+        if let Ok(a) = arr.extract::<numpy::PyReadonlyArray1<bool>>() {
+            let slice = a.as_slice()?;
+            let mut bits = InlineBitSet::with_capacity(slice.len());
+            for (i, &v) in slice.iter().enumerate() {
+                if v {
+                    bits.insert(i);
+                }
+            }
+            return Ok(Self { inner: CoreBitFP::new(bits) });
+        }
         let raw: Vec<u8> = arr.call_method0("tolist")?.extract()?;
         Ok(Self::from_list(raw.iter().map(|&v| v != 0).collect()))
     }
