@@ -8,6 +8,7 @@ monitor = []
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }
+dashmap = "6"
 fixedbitset = "0.5.7"
 indicatif = "0.17"
 quick_cache = "0.6"

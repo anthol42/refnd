@@ -176,7 +176,15 @@ pub struct HNSWIndex {
 #[pymethods]
 impl HNSWIndex {
     #[getter] pub fn dataset_size(&self) -> usize { self.inner.dataset_size }
-    #[getter] pub fn layers(&self) -> Vec<Vec<Vec<u32>>> { self.inner.layers.clone() }
+
+    /// Nested multi-layer adjacency list, `layers[layer][node] = [neighbor_ids]`. Layers
+    /// above 0 may be stored sparsely internally (most nodes aren't present at those
+    /// layers); this densifies them into the full node-id-indexed shape on access.
+    #[getter]
+    pub fn layers(&self) -> Vec<Vec<Vec<u32>>> {
+        let n = self.inner.dataset_size;
+        self.inner.layers.iter().map(|layer| layer.to_dense(n)).collect()
+    }
     #[getter] pub fn entry_point(&self) -> Option<(u32, usize)> { self.inner.entry_point }
     #[getter] pub fn max_layers(&self) -> usize { self.inner.max_layers }
     #[getter] pub fn proximity_edges(&self) -> Vec<((u32, u32), f32)> { self.inner.proximity_edges.clone() }

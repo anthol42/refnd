@@ -6,7 +6,7 @@ mod search_layer;
 mod select_neighbors;
 mod search;
 
-pub use hnsw_index::HNSWIndex;
+pub use hnsw_index::{HNSWIndex, LayerData};
 pub(crate) use hnsw_index::current_crate_version;
 
 // ── Lock contention monitoring ────────────────────────────────────────────────
@@ -75,6 +75,7 @@ use std::cmp::{Reverse, Ordering};
 use std::cell::RefCell;
 use std::hash::{BuildHasher, Hasher};
 use parking_lot::{Mutex, RwLock};
+use dashmap::DashMap;
 use rand::rngs::StdRng;
 use rand::SeedableRng;
 use crate::core::Distance;
@@ -247,46 +248,159 @@ struct Loc {
     pub(super) node: u32,
 }
 
+/// One graph layer's neighbor-list storage: `Dense` for a node-id-indexed `Vec` (used
+/// when most or all node ids in range `0..n_nodes` have an entry), `Sparse` for a hash
+/// map keyed by node id (used when only a small fraction of node ids in range do).
+enum LayerStorage {
+    Dense(Vec<RwLock<Vec<u32>>>),
+    Sparse(DashMap<u32, RwLock<Vec<u32>>>),
+}
+
+impl LayerStorage {
+    /// Clone the neighbor list under a brief read lock into `buffer`, then release.
+    /// A sparse layer with no entry for `node` simply means an empty neighbor list.
+    fn neighbors_snapshot(&self, node: u32, buffer: &mut Vec<u32>) {
+        match self {
+            LayerStorage::Dense(v) => {
+                buffer.clone_from(&*measure!(v[node as usize].read(), STAT_SNAPSHOT));
+            }
+            LayerStorage::Sparse(m) => {
+                buffer.clear();
+                if let Some(entry) = m.get(&node) {
+                    buffer.extend_from_slice(&entry.read());
+                }
+            }
+        }
+    }
+
+    fn neighbors_len(&self, node: u32) -> usize {
+        match self {
+            LayerStorage::Dense(v) => v[node as usize].read().len(),
+            LayerStorage::Sparse(m) => m.get(&node).map(|e| e.read().len()).unwrap_or(0),
+        }
+    }
+
+    /// Add a bidirectional edge between `a` and `b` within this one layer.
+    ///
+    /// Dense storage acquires both nodes' write locks together -- lower node id first,
+    /// so two concurrent `add_edge` calls that target the same pair of nodes in opposite
+    /// order can't deadlock waiting on each other -- and pushes to both while both locks
+    /// are held. A concurrent reader can therefore never observe the edge on one node's
+    /// list without it also being on the other's.
+    ///
+    /// Sparse storage instead locks each side independently, one at a time. Holding two
+    /// `DashMap` entry guards from the same map at once is unsafe in general: two
+    /// different keys can land in the same internal shard, and acquiring a second
+    /// `.entry()` for that shard while the first guard is still held self-deadlocks. A
+    /// concurrent reader can therefore briefly see the edge on one node's list before
+    /// it appears on the other's. This is safe here: `neighbors_snapshot` already clones
+    /// a node's list under a brief read lock and hands back a snapshot that's expected
+    /// to go stale the instant the lock is released, and nothing in the insertion logic
+    /// requires two nodes' lists to agree with each other at any given instant --  only
+    /// that each individual push is itself atomic, which both branches guarantee.
+    fn add_edge(&self, a: u32, b: u32) {
+        match self {
+            LayerStorage::Dense(v) => {
+                let (lo, hi) = if a < b { (a, b) } else { (b, a) };
+                let mut lo_guard = measure!(v[lo as usize].write(), STAT_ADD_EDGE_LO);
+                let mut hi_guard = measure!(v[hi as usize].write(), STAT_ADD_EDGE_HI);
+                lo_guard.push(hi);
+                hi_guard.push(lo);
+            }
+            LayerStorage::Sparse(m) => {
+                measure!(m.entry(a).or_insert_with(|| RwLock::new(Vec::new())).write(), STAT_ADD_EDGE_LO).push(b);
+                measure!(m.entry(b).or_insert_with(|| RwLock::new(Vec::new())).write(), STAT_ADD_EDGE_HI).push(a);
+            }
+        }
+    }
+
+    fn set_neighbourhood(&self, node: u32, neighbourhood: &[u32]) {
+        match self {
+            LayerStorage::Dense(v) => {
+                let mut guard = measure!(v[node as usize].write(), STAT_SET_NEIGHBOURHOOD);
+                guard.clear();
+                guard.extend_from_slice(neighbourhood);
+            }
+            LayerStorage::Sparse(m) => {
+                let entry = m.entry(node).or_insert_with(|| RwLock::new(Vec::new()));
+                let mut guard = entry.write();
+                guard.clear();
+                guard.extend_from_slice(neighbourhood);
+            }
+        }
+    }
+
+    /// Dense, `n_nodes`-long snapshot regardless of storage kind -- the shape the public
+    /// introspection API (`get_layer`/`index()`) exposes, since it's node-id-indexed.
+    fn to_dense(&self, n_nodes: usize) -> Vec<Vec<u32>> {
+        match self {
+            LayerStorage::Dense(v) => v.iter().map(|node| node.read().clone()).collect(),
+            LayerStorage::Sparse(m) => {
+                let mut out = vec![Vec::new(); n_nodes];
+                for entry in m.iter() {
+                    out[*entry.key() as usize] = entry.value().read().clone();
+                }
+                out
+            }
+        }
+    }
+
+    /// Snapshot for serialization. Unlike `to_dense`, a sparse layer stays sparse (only
+    /// non-empty `(node, neighbors)` pairs) -- saving never has to materialize an
+    /// `n_nodes`-long `Vec` for a layer that's mostly empty, which would recreate the
+    /// same waste this type exists to avoid, right when memory is already at its peak
+    /// (end of a long build).
+    fn to_snapshot(&self) -> LayerData {
+        match self {
+            LayerStorage::Dense(v) => LayerData::Dense(v.iter().map(|node| node.read().clone()).collect()),
+            LayerStorage::Sparse(m) => LayerData::Sparse(
+                m.iter().map(|entry| (*entry.key(), entry.value().read().clone())).collect()
+            ),
+        }
+    }
+}
+
 /// Hierarchical Graph with per-node RwLock for concurrent access
 struct HGraph {
-    /// Shape(N_layers, N_nodes): each node's neighbor list is individually locked
-    layers: Vec<Vec<RwLock<Vec<u32>>>>,
+    /// Length N_layers; layer 0 is dense (every node), layers above are sparse.
+    layers: Vec<LayerStorage>,
 }
 
 impl HGraph {
     pub fn with_capacity(n_layers: usize, n_nodes: usize) -> HGraph {
         HGraph {
             layers: (0..n_layers)
-                .map(|_| (0..n_nodes).map(|_| RwLock::new(Vec::new())).collect())
+                .map(|l| {
+                    if l == 0 {
+                        LayerStorage::Dense((0..n_nodes).map(|_| RwLock::new(Vec::new())).collect())
+                    } else {
+                        LayerStorage::Sparse(DashMap::new())
+                    }
+                })
                 .collect(),
         }
     }
 
     /// Clone the neighbor list under a brief read lock into `buffer`, then release.
     pub fn neighbors_snapshot(&self, layer: usize, node: u32, buffer: &mut Vec<u32>) {
-        buffer.clone_from(&*measure!(self.layers[layer][node as usize].read(), STAT_SNAPSHOT));
+        self.layers[layer].neighbors_snapshot(node, buffer);
     }
 
     pub fn neighbors_len(&self, layer: usize, node: u32) -> usize {
-        self.layers[layer][node as usize].read().len()
+        self.layers[layer].neighbors_len(node)
     }
 
-    /// Add a bidirectional edge. Always locks min(from, to) first to prevent deadlocks.
+    /// Add a bidirectional edge. See [`LayerStorage::add_edge`] for the locking guarantee
+    /// this provides (and where it's relaxed) depending on the layer's storage kind.
     pub fn add_edge(&self, layer: usize, from: u32, to: u32) {
         if from == to {
             return;
         }
-        let (lo, hi) = if from < to { (from, to) } else { (to, from) };
-        let mut lo_guard = measure!(self.layers[layer][lo as usize].write(), STAT_ADD_EDGE_LO);
-        let mut hi_guard = measure!(self.layers[layer][hi as usize].write(), STAT_ADD_EDGE_HI);
-        lo_guard.push(hi);
-        hi_guard.push(lo);
+        self.layers[layer].add_edge(from, to);
     }
 
     pub fn set_neighbourhood(&self, layer: usize, node: u32, neighbourhood: &[u32]) {
-        let mut guard = measure!(self.layers[layer][node as usize].write(), STAT_SET_NEIGHBOURHOOD);
-        guard.clear();
-        guard.extend_from_slice(neighbourhood);
+        self.layers[layer].set_neighbourhood(node, neighbourhood);
     }
 }
 
@@ -560,10 +674,7 @@ impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
                 layer_idx, self.hgraph.layers.len(), self.hgraph.layers.len().saturating_sub(1)
             ));
         }
-        Ok(self.hgraph.layers[layer_idx]
-            .iter()
-            .map(|node| node.read().clone())
-            .collect())
+        Ok(self.hgraph.layers[layer_idx].to_dense(self.data.len()))
     }
 
     pub fn config(&self) -> &HNSWConfig {
@@ -574,9 +685,7 @@ impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
         HNSWIndex {
             crate_version: hnsw_index::current_crate_version(),
             dataset_size: self.data.len(),
-            layers: self.hgraph.layers.iter()
-                .map(|layer| layer.iter().map(|node| node.read().clone()).collect())
-                .collect(),
+            layers: self.hgraph.layers.iter().map(|layer| layer.to_snapshot()).collect(),
             entry_point: self.entry_point.get(),
             config: self.config.clone(),
             max_layers: self.max_layers,
@@ -609,8 +718,10 @@ impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
         bincode::encode_into_std_write(self.hgraph.layers.len(), &mut writer, cfg)?;
         for layer in &self.hgraph.layers {
             // Snapshotted and encoded one layer at a time -- `layer_snapshot` is dropped
-            // before the next iteration takes the next layer's snapshot.
-            let layer_snapshot: Vec<Vec<u32>> = layer.iter().map(|node| node.read().clone()).collect();
+            // before the next iteration takes the next layer's snapshot. A sparse layer's
+            // snapshot stays sparse (see `LayerStorage::to_snapshot`), so this never
+            // materializes a dense `n_nodes`-long `Vec` for a layer that's mostly empty.
+            let layer_snapshot: LayerData = layer.to_snapshot();
             bincode::encode_into_std_write(layer_snapshot, &mut writer, cfg)?;
         }
         bincode::encode_into_std_write(self.entry_point.get(), &mut writer, cfg)?;
@@ -675,10 +786,19 @@ impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
         let n_layers: usize = bincode::decode_from_std_read(&mut reader, cfg)?;
         let mut layers = Vec::with_capacity(n_layers);
         for _ in 0..n_layers {
-            // `layer` (the decoded Vec<Vec<u32>>) is consumed into `RwLock`-wrapped
-            // storage and dropped here, before the next layer is read off the wire.
-            let layer: Vec<Vec<u32>> = bincode::decode_from_std_read(&mut reader, cfg)?;
-            layers.push(layer.into_iter().map(RwLock::new).collect());
+            // `layer` (the decoded LayerData) is consumed into `RwLock`-wrapped storage
+            // and dropped here, before the next layer is read off the wire.
+            let layer: LayerData = bincode::decode_from_std_read(&mut reader, cfg)?;
+            layers.push(match layer {
+                LayerData::Dense(v) => LayerStorage::Dense(v.into_iter().map(RwLock::new).collect()),
+                LayerData::Sparse(pairs) => {
+                    let m = DashMap::new();
+                    for (node, nbrs) in pairs {
+                        m.insert(node, RwLock::new(nbrs));
+                    }
+                    LayerStorage::Sparse(m)
+                }
+            });
         }
         let hgraph = HGraph { layers };
 
@@ -755,16 +875,14 @@ mod tests {
         assert_eq!(loaded.has_been_built, state.has_been_built);
         assert_eq!(loaded.max_layers, state.max_layers);
         assert_eq!(loaded.entry_point.get(), state.entry_point.get());
+        let n = data.len();
         assert_eq!(loaded.hgraph.layers.len(), state.hgraph.layers.len());
         for (orig_layer, loaded_layer) in state.hgraph.layers.iter().zip(loaded.hgraph.layers.iter()) {
-            assert_eq!(orig_layer.len(), loaded_layer.len());
-            for (orig_node, loaded_node) in orig_layer.iter().zip(loaded_layer.iter()) {
-                let mut a = orig_node.read().clone();
-                let mut b = loaded_node.read().clone();
-                a.sort_unstable();
-                b.sort_unstable();
-                assert_eq!(a, b);
-            }
+            let mut a_dense = orig_layer.to_dense(n);
+            let mut b_dense = loaded_layer.to_dense(n);
+            for v in a_dense.iter_mut() { v.sort_unstable(); }
+            for v in b_dense.iter_mut() { v.sort_unstable(); }
+            assert_eq!(a_dense, b_dense);
         }
 
         // Also readable through the separate HNSWIndex::load() introspection path (used
@@ -772,20 +890,17 @@ mod tests {
         let index = HNSWIndex::load(&tmp).unwrap();
         std::fs::remove_file(&tmp).ok();
 
-        assert_eq!(index.dataset_size, data.len());
+        assert_eq!(index.dataset_size, n);
         assert_eq!(index.max_layers, state.max_layers);
         assert_eq!(index.has_been_built, state.has_been_built);
         assert_eq!(index.entry_point, state.entry_point.get());
         assert_eq!(index.layers.len(), state.hgraph.layers.len());
         for (orig_layer, index_layer) in state.hgraph.layers.iter().zip(index.layers.iter()) {
-            assert_eq!(orig_layer.len(), index_layer.len());
-            for (orig_node, index_nbrs) in orig_layer.iter().zip(index_layer.iter()) {
-                let mut a = orig_node.read().clone();
-                let mut b = index_nbrs.clone();
-                a.sort_unstable();
-                b.sort_unstable();
-                assert_eq!(a, b);
-            }
+            let mut a_dense = orig_layer.to_dense(n);
+            let mut b_dense = index_layer.to_dense(n);
+            for v in a_dense.iter_mut() { v.sort_unstable(); }
+            for v in b_dense.iter_mut() { v.sort_unstable(); }
+            assert_eq!(a_dense, b_dense);
         }
     }
 
@@ -804,6 +919,7 @@ mod tests {
         let tmp = std::env::temp_dir().join(format!("hnsw_reverse_test_{}.bin", std::process::id()));
         state.index().save(&tmp).unwrap();
 
+        let n = data.len();
         let loaded = HNSWState::load(&tmp, data, Some(config), AbsDiff).unwrap();
         std::fs::remove_file(&tmp).ok();
 
@@ -812,14 +928,11 @@ mod tests {
         assert_eq!(loaded.entry_point.get(), state.entry_point.get());
         assert_eq!(loaded.hgraph.layers.len(), state.hgraph.layers.len());
         for (orig_layer, loaded_layer) in state.hgraph.layers.iter().zip(loaded.hgraph.layers.iter()) {
-            assert_eq!(orig_layer.len(), loaded_layer.len());
-            for (orig_node, loaded_node) in orig_layer.iter().zip(loaded_layer.iter()) {
-                let mut a = orig_node.read().clone();
-                let mut b = loaded_node.read().clone();
-                a.sort_unstable();
-                b.sort_unstable();
-                assert_eq!(a, b);
-            }
+            let mut a_dense = orig_layer.to_dense(n);
+            let mut b_dense = loaded_layer.to_dense(n);
+            for v in a_dense.iter_mut() { v.sort_unstable(); }
+            for v in b_dense.iter_mut() { v.sort_unstable(); }
+            assert_eq!(a_dense, b_dense);
         }
     }
 }
