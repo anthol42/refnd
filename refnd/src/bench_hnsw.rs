@@ -78,9 +78,48 @@ fn load_fingerprints(path: &str, n_limit: Option<usize>) -> Vec<BitFingerprint> 
     out
 }
 
+/// Load-only mode: reads fingerprints + an already-saved index, calls `HNSWState::load()`,
+/// and reports its time and RSS. Run as a separate process invocation (not right after a
+/// build+save in the same process) so the measurement reflects a genuinely fresh process
+/// reading a saved index -- the realistic scenario -- rather than being muddied by
+/// allocator fragmentation left over from a just-built graph still resident in the same
+/// process.
+fn run_load_only(fp_path: &str, index_path: &str, n_limit: Option<usize>) {
+    eprintln!("=== bench_hnsw --load (BELKA params) ===");
+    eprintln!("fp cache: {fp_path}");
+    eprintln!("index:    {index_path}");
+    eprintln!("RSS at start: {:.3} GB", rss_gb());
+
+    let t0 = Instant::now();
+    let data = load_fingerprints(fp_path, n_limit);
+    eprintln!(
+        "Loaded {} fingerprints in {:.1}s",
+        data.len(),
+        t0.elapsed().as_secs_f64()
+    );
+    eprintln!("RSS after fingerprint load: {:.3} GB", rss_gb());
+
+    let t0 = Instant::now();
+    let state = HNSWState::load(index_path, data, None, Tanimoto).expect("HNSWState::load() failed");
+    eprintln!("HNSWState::load() took {:.1}s", t0.elapsed().as_secs_f64());
+    eprintln!("RSS after HNSWState::load(): {:.3} GB", rss_gb());
+    eprintln!("Peak RSS (VmHWM): {:.3} GB", peak_rss_gb());
+    let _ = state;
+}
+
 fn main() {
     let mut args = env::args().skip(1);
-    let fp_path = args.next().expect("usage: bench_hnsw <fp_cache.bin> [n_limit]");
+    let first = args.next().expect(
+        "usage: bench_hnsw <fp_cache.bin> [n_limit] [save_path]\n   or: bench_hnsw --load <fp_cache.bin> <index_path> [n_limit]"
+    );
+    if first == "--load" {
+        let fp_path = args.next().expect("--load requires <fp_cache.bin> <index_path>");
+        let index_path = args.next().expect("--load requires <fp_cache.bin> <index_path>");
+        let n_limit: Option<usize> = args.next().and_then(|s| s.parse().ok());
+        run_load_only(&fp_path, &index_path, n_limit);
+        return;
+    }
+    let fp_path = first;
     let n_limit: Option<usize> = args.next().and_then(|s| s.parse().ok());
 
     eprintln!("=== bench_hnsw (BELKA params) ===");

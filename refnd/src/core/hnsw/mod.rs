@@ -631,6 +631,12 @@ impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
     /// `data` must be the same dataset used during the original build.
     /// `distance` must be the same kernel. A size mismatch between the
     /// saved index and `data` is returned as an error.
+    ///
+    /// Reads `path` through a buffered reader field by field, one graph layer at a time,
+    /// mirroring [`Self::save`]'s write order exactly: only one layer's decoded neighbor
+    /// lists are held in memory at once, immediately wrapped in `RwLock` and moved into the
+    /// growing `HGraph` before the next layer is decoded. Neither the raw file bytes nor
+    /// the full graph structure are ever materialized as one whole-file/whole-index copy.
     pub fn load(
         path:     impl AsRef<std::path::Path>,
         data:     Vec<T>,
@@ -638,65 +644,81 @@ impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
         distance: D,
     ) -> Result<Self, Box<dyn std::error::Error>>
     {
-        let index = HNSWIndex::load(path)?;
+        let file = std::fs::File::open(path)?;
+        let mut reader = std::io::BufReader::new(file);
+        let cfg = bincode::config::standard();
 
         // Sanity checks
         // The on-disk format is stable from v0.1.0 onward; reject if either the file
         // or the running crate predates that (pre the u32 node-id refactor).
+        let crate_version: (u16, u16, u16) = bincode::decode_from_std_read(&mut reader, cfg)?;
         let running_version = hnsw_index::current_crate_version();
-        if index.crate_version != running_version {
+        if crate_version != running_version {
             return Err(format!(
                 "index format mismatch: saved with refnd v{}.{}.{}, running v{}.{}.{} — \
                  one of them predates the stable index format. Rebuild the index.",
-                index.crate_version.0, index.crate_version.1, index.crate_version.2,
+                crate_version.0, crate_version.1, crate_version.2,
                 running_version.0, running_version.1, running_version.2,
             ).into());
         }
-        if index.dataset_size != data.len() {
+
+        let dataset_size: usize = bincode::decode_from_std_read(&mut reader, cfg)?;
+        if dataset_size != data.len() {
             return Err(format!(
                 "dataset size mismatch: index was built on {} points, got {}. Consider\
                  deleting the current index to refresh it, or changing the index filepath.",
-                index.dataset_size,
+                dataset_size,
                 data.len()
             ).into());
         }
-        if let Some(cfg) = config && cfg != index.config{
+
+        let n_layers: usize = bincode::decode_from_std_read(&mut reader, cfg)?;
+        let mut layers = Vec::with_capacity(n_layers);
+        for _ in 0..n_layers {
+            // `layer` (the decoded Vec<Vec<u32>>) is consumed into `RwLock`-wrapped
+            // storage and dropped here, before the next layer is read off the wire.
+            let layer: Vec<Vec<u32>> = bincode::decode_from_std_read(&mut reader, cfg)?;
+            layers.push(layer.into_iter().map(RwLock::new).collect());
+        }
+        let hgraph = HGraph { layers };
+
+        let loaded_entry_point: Option<(u32, usize)> = bincode::decode_from_std_read(&mut reader, cfg)?;
+        let loaded_config: HNSWConfig = bincode::decode_from_std_read(&mut reader, cfg)?;
+        if let Some(requested_config) = config && requested_config != loaded_config {
             return Err(format!(
                 "Config mismatch: The current config and index config are not the same. Consider \
                  deleting the current index to refresh it, or changing the index filepath.",
             ).into());
         }
-
-        let hgraph = HGraph {
-            layers: index.layers.into_iter()
-                .map(|layer| layer.into_iter().map(|nbrs| RwLock::new(nbrs)).collect())
-                .collect(),
-        };
+        let max_layers: usize = bincode::decode_from_std_read(&mut reader, cfg)?;
+        let loaded_proximity_edges: Vec<((u32, u32), f32)> = bincode::decode_from_std_read(&mut reader, cfg)?;
+        let has_been_built: bool = bincode::decode_from_std_read(&mut reader, cfg)?;
 
         let entry_point = EntryPoint::new();
-        if let Some((node, layer)) = index.entry_point {
+        if let Some((node, layer)) = loaded_entry_point {
             entry_point.try_update(layer, node);
         }
 
-        let proximity_edges = ShardedEdgeSet::new(index.config.cache_shards);
-        for (key, val) in index.proximity_edges {
+        let proximity_edges = ShardedEdgeSet::new(loaded_config.cache_shards);
+        for (key, val) in loaded_proximity_edges {
             proximity_edges.insert(key, val);
         }
 
-        let dist_cache = ShardedCache::new(index.config.cache_capacity, index.config.cache_shards);
+        let dist_cache = ShardedCache::new(loaded_config.cache_capacity, loaded_config.cache_shards);
 
         Ok(Self {
             data,
             hgraph,
             entry_point,
-            max_layers: index.max_layers,
+            max_layers,
             distance,
             dist_cache,
             proximity_edges,
-            config: index.config,
-            has_been_built: index.has_been_built,
+            config: loaded_config,
+            has_been_built,
         })
     }
+
 }
 
 #[cfg(test)]
@@ -760,6 +782,40 @@ mod tests {
             for (orig_node, index_nbrs) in orig_layer.iter().zip(index_layer.iter()) {
                 let mut a = orig_node.read().clone();
                 let mut b = index_nbrs.clone();
+                a.sort_unstable();
+                b.sort_unstable();
+                assert_eq!(a, b);
+            }
+        }
+    }
+
+    /// The reverse direction of the same compatibility guarantee: a file written by the
+    /// older whole-snapshot `HNSWIndex::save()` path is still readable by the new
+    /// streaming `HNSWState::load()`.
+    #[test]
+    fn streaming_load_reads_index_save_format() {
+        let data: Vec<i32> = (0..500).collect();
+        let mut config = HNSWConfig::default();
+        config.proximity_threshold = 50.0;
+
+        let mut state = HNSWState::new(data.clone(), AbsDiff, config.clone());
+        state.build(None).unwrap();
+
+        let tmp = std::env::temp_dir().join(format!("hnsw_reverse_test_{}.bin", std::process::id()));
+        state.index().save(&tmp).unwrap();
+
+        let loaded = HNSWState::load(&tmp, data, Some(config), AbsDiff).unwrap();
+        std::fs::remove_file(&tmp).ok();
+
+        assert_eq!(loaded.has_been_built, state.has_been_built);
+        assert_eq!(loaded.max_layers, state.max_layers);
+        assert_eq!(loaded.entry_point.get(), state.entry_point.get());
+        assert_eq!(loaded.hgraph.layers.len(), state.hgraph.layers.len());
+        for (orig_layer, loaded_layer) in state.hgraph.layers.iter().zip(loaded.hgraph.layers.iter()) {
+            assert_eq!(orig_layer.len(), loaded_layer.len());
+            for (orig_node, loaded_node) in orig_layer.iter().zip(loaded_layer.iter()) {
+                let mut a = orig_node.read().clone();
+                let mut b = loaded_node.read().clone();
                 a.sort_unstable();
                 b.sort_unstable();
                 assert_eq!(a, b);
