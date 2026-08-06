@@ -590,8 +590,39 @@ impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
     /// The data and distance function are not stored — pass them back to
     /// [`HNSWState::load`]. The distance cache is discarded; it repopulates
     /// on demand.
+    ///
+    /// Writes each field directly to `path` in sequence, one graph layer at a time: only
+    /// one layer's neighbor-list snapshot is ever held in memory alongside the live graph,
+    /// dropped before the next layer's snapshot is taken. The bytes written are identical
+    /// to `HNSWIndex`'s derived encoding (same fields, same order, same per-field
+    /// encoding), so a file written here is still readable by [`HNSWIndex::load`], and
+    /// [`HNSWState::load`] can read a file written by [`HNSWIndex::save`].
     pub fn save(&self, path: impl AsRef<std::path::Path>) -> Result<(), Box<dyn std::error::Error>> {
-        self.index().save(path)
+        use std::io::Write;
+
+        let file = std::fs::File::create(path)?;
+        let mut writer = std::io::BufWriter::new(file);
+        let cfg = bincode::config::standard();
+
+        bincode::encode_into_std_write(hnsw_index::current_crate_version(), &mut writer, cfg)?;
+        bincode::encode_into_std_write(self.data.len(), &mut writer, cfg)?;
+        bincode::encode_into_std_write(self.hgraph.layers.len(), &mut writer, cfg)?;
+        for layer in &self.hgraph.layers {
+            // Snapshotted and encoded one layer at a time -- `layer_snapshot` is dropped
+            // before the next iteration takes the next layer's snapshot.
+            let layer_snapshot: Vec<Vec<u32>> = layer.iter().map(|node| node.read().clone()).collect();
+            bincode::encode_into_std_write(layer_snapshot, &mut writer, cfg)?;
+        }
+        bincode::encode_into_std_write(self.entry_point.get(), &mut writer, cfg)?;
+        bincode::encode_into_std_write(&self.config, &mut writer, cfg)?;
+        bincode::encode_into_std_write(self.max_layers, &mut writer, cfg)?;
+        bincode::encode_into_std_write(
+            self.proximity_edges.iter_all().collect::<Vec<_>>(), &mut writer, cfg,
+        )?;
+        bincode::encode_into_std_write(self.has_been_built, &mut writer, cfg)?;
+
+        writer.flush()?;
+        Ok(())
     }
 
     /// Deserialize an index written by [`HNSWState::save`] and reconstruct
@@ -665,5 +696,74 @@ impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
             config: index.config,
             has_been_built: index.has_been_built,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[derive(Clone)]
+    struct AbsDiff;
+    impl Distance<i32> for AbsDiff {
+        fn call(&self, a: &i32, b: &i32) -> f32 {
+            (a - b).abs() as f32
+        }
+    }
+
+    /// Builds a small index, saves it, loads it back, and checks the reconstructed graph
+    /// matches the original layer-by-layer. Exercises `save()`/`load()`'s on-disk format
+    /// end to end -- both are actively being changed as part of the HNSW scaling work, so
+    /// this catches a format mismatch between them immediately rather than only at BELKA
+    /// scale.
+    #[test]
+    fn save_load_roundtrip() {
+        let data: Vec<i32> = (0..500).collect();
+        let mut config = HNSWConfig::default();
+        config.proximity_threshold = 50.0;
+
+        let mut state = HNSWState::new(data.clone(), AbsDiff, config.clone());
+        state.build(None).unwrap();
+
+        let tmp = std::env::temp_dir().join(format!("hnsw_roundtrip_test_{}.bin", std::process::id()));
+        state.save(&tmp).unwrap();
+
+        let loaded = HNSWState::load(&tmp, data.clone(), Some(config), AbsDiff).unwrap();
+
+        assert_eq!(loaded.has_been_built, state.has_been_built);
+        assert_eq!(loaded.max_layers, state.max_layers);
+        assert_eq!(loaded.entry_point.get(), state.entry_point.get());
+        assert_eq!(loaded.hgraph.layers.len(), state.hgraph.layers.len());
+        for (orig_layer, loaded_layer) in state.hgraph.layers.iter().zip(loaded.hgraph.layers.iter()) {
+            assert_eq!(orig_layer.len(), loaded_layer.len());
+            for (orig_node, loaded_node) in orig_layer.iter().zip(loaded_layer.iter()) {
+                let mut a = orig_node.read().clone();
+                let mut b = loaded_node.read().clone();
+                a.sort_unstable();
+                b.sort_unstable();
+                assert_eq!(a, b);
+            }
+        }
+
+        // Also readable through the separate HNSWIndex::load() introspection path (used
+        // e.g. by the `.index` property), not just HNSWState::load().
+        let index = HNSWIndex::load(&tmp).unwrap();
+        std::fs::remove_file(&tmp).ok();
+
+        assert_eq!(index.dataset_size, data.len());
+        assert_eq!(index.max_layers, state.max_layers);
+        assert_eq!(index.has_been_built, state.has_been_built);
+        assert_eq!(index.entry_point, state.entry_point.get());
+        assert_eq!(index.layers.len(), state.hgraph.layers.len());
+        for (orig_layer, index_layer) in state.hgraph.layers.iter().zip(index.layers.iter()) {
+            assert_eq!(orig_layer.len(), index_layer.len());
+            for (orig_node, index_nbrs) in orig_layer.iter().zip(index_layer.iter()) {
+                let mut a = orig_node.read().clone();
+                let mut b = index_nbrs.clone();
+                a.sort_unstable();
+                b.sort_unstable();
+                assert_eq!(a, b);
+            }
+        }
     }
 }

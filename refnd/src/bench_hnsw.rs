@@ -11,7 +11,10 @@
 //! cache_capacity=0, strict_ef=true (see refnd-paper's src/datasets.py DATASETS["belka"]
 //! and belka.py) -- everything else is HNSWConfig::default().
 //!
-//! Usage: bench_hnsw <fp_cache.bin> [n_limit]
+//! Usage: bench_hnsw <fp_cache.bin> [n_limit] [save_path]
+//!
+//! If `save_path` is given, also runs `save()` after `build()` and reports its time and
+//! RSS.
 
 use std::env;
 use std::fs::File;
@@ -112,6 +115,13 @@ fn main() {
     state.build(None).expect("build() failed");
     eprintln!("build() took {:.1}s", t0.elapsed().as_secs_f64());
     eprintln!("RSS after build(): {:.3} GB", rss_gb());
+
+    if let Some(save_path) = args.next() {
+        let t0 = Instant::now();
+        state.save(&save_path).expect("save() failed");
+        eprintln!("save() took {:.1}s", t0.elapsed().as_secs_f64());
+        eprintln!("RSS after save(): {:.3} GB", rss_gb());
+    }
 
     eprintln!("Peak RSS (VmHWM): {:.3} GB", peak_rss_gb());
 }
