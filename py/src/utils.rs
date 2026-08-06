@@ -4,9 +4,8 @@ use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pyfunction, gen_stub_pyme
 use pyo3_stub_gen::{PyStubType, TypeInfo};
 use refnd_core::utils::read_fasta as core_read_fasta;
 use std::path::Path;
-use fixedbitset::FixedBitSet;
 use numpy::{IntoPyArray, PyArray1};
-use refnd_core::utils::{BitFingerprint as CoreBitFP, RealFingerprint as CoreRealFP};
+use refnd_core::utils::{BitFingerprint as CoreBitFP, InlineBitSet, RealFingerprint as CoreRealFP};
 use refnd_core::kernels::usalign::PdbStructure as CorePdbStructure;
 use std::collections::{HashMap, HashSet};
 use refnd_core::core::largest_cluster as largest_cluster_core;
@@ -81,7 +80,7 @@ impl BitFingerprint {
         }
         let n_bits: usize = fp.call_method0("GetNumBits")?.extract()?;
         let on_bits: Vec<usize> = fp.call_method0("GetOnBits")?.extract()?;
-        let mut bits = FixedBitSet::with_capacity(n_bits);
+        let mut bits = InlineBitSet::with_capacity(n_bits);
         for b in on_bits {
             bits.insert(b);
         }
@@ -91,7 +90,7 @@ impl BitFingerprint {
     /// Construct from a list of booleans (or 0/1 ints).
     #[staticmethod]
     pub fn from_list(values: Vec<bool>) -> Self {
-        let mut bits = FixedBitSet::with_capacity(values.len());
+        let mut bits = InlineBitSet::with_capacity(values.len());
         for (i, v) in values.iter().enumerate() {
             if *v { bits.insert(i); }
         }

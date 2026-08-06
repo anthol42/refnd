@@ -1,6 +1,5 @@
-use crate::utils::fingerprints::BitFingerprint;
+use crate::utils::fingerprints::{BitFingerprint, InlineBitSet};
 use clap::ValueEnum;
-use fixedbitset::FixedBitSet;
 use molprint_core::{MolGraph, smiles::parse_smiles};
 use molprint_fp::{maccs::Maccs166, morgan::Morgan, traits::Fingerprinter};
 use molprint_io::sdf::open_sdf;
@@ -114,7 +113,7 @@ fn compute_fp(mol: &MolGraph, fp_type: &FingerprintType) -> BitFingerprint {
         FingerprintType::Morgan => Morgan::new(2, 2048).fingerprint(mol),
         FingerprintType::Maccs => Maccs166::new().fingerprint(mol),
     };
-    let mut fbs = FixedBitSet::with_capacity(fp.nbits());
+    let mut fbs = InlineBitSet::with_capacity(fp.nbits());
     for i in 0..fp.nbits() {
         if fp.get(i) {
             fbs.set(i, true);

@@ -23,17 +23,16 @@ use std::time::Instant;
 
 use mimalloc::MiMalloc;
 
-use fixedbitset::FixedBitSet;
 use refnd::core::hnsw::{HNSWConfig, HNSWState};
 use refnd::kernels::molecules::tanimoto::Tanimoto;
-use refnd::utils::BitFingerprint;
+use refnd::utils::{BitFingerprint, InlineBitSet};
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
 
 const FP_BITS: usize = 2048;
 const FP_BYTES: usize = FP_BITS / 8; // 256
-const WORDS_PER_FP: usize = FP_BITS / (usize::BITS as usize); // 32 on 64-bit
+const WORDS_PER_FP: usize = FP_BITS / 64;
 
 fn rss_gb() -> f64 {
     proc_status_field("VmRSS:")
@@ -56,7 +55,7 @@ fn proc_status_field(prefix: &str) -> f64 {
 
 /// Reads packed fingerprints (as written by `bench_fingerprints`: 256 bytes each,
 /// `Morgan::fingerprint(..).words()` little-endian, no header) straight into
-/// `FixedBitSet`'s block storage -- one `read_exact` + one `with_capacity_and_blocks`
+/// `InlineBitSet`'s block storage -- one `read_exact` + one `with_capacity_and_blocks`
 /// per record, no bit-by-bit unpacking.
 fn load_fingerprints(path: &str, n_limit: Option<usize>) -> Vec<BitFingerprint> {
     let file_len = std::fs::metadata(path).expect("failed to stat fp cache").len() as usize;
@@ -68,11 +67,11 @@ fn load_fingerprints(path: &str, n_limit: Option<usize>) -> Vec<BitFingerprint> 
     let mut buf = [0u8; FP_BYTES];
     for _ in 0..n {
         reader.read_exact(&mut buf).expect("failed to read fp record");
-        let mut words = [0usize; WORDS_PER_FP];
+        let mut words = [0u64; WORDS_PER_FP];
         for (i, w) in words.iter_mut().enumerate() {
-            *w = usize::from_le_bytes(buf[i * 8..i * 8 + 8].try_into().unwrap());
+            *w = u64::from_le_bytes(buf[i * 8..i * 8 + 8].try_into().unwrap());
         }
-        let bits = FixedBitSet::with_capacity_and_blocks(FP_BITS, words);
+        let bits = InlineBitSet::with_capacity_and_blocks(FP_BITS, words);
         out.push(BitFingerprint::new(bits));
     }
     out

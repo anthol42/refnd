@@ -1256,7 +1256,6 @@ name = "py-refnd"
 version = "0.0.3"
 dependencies = [
  "anyhow",
- "fixedbitset 0.5.7",
  "indicatif",
  "numpy",
  "pyo3",
@@ -1503,6 +1502,7 @@ dependencies = [
  "regex",
  "rich_rust",
  "rustc-hash 2.1.2",
+ "smallvec",
 ]
 
 [[package]]
