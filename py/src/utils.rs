@@ -98,8 +98,34 @@ impl BitFingerprint {
     }
 
     /// Construct from a numpy boolean or uint8 array.
+    ///
+    /// For `uint8`/`bool` dtypes, reads the array's raw buffer directly -- a zero-copy
+    /// view into memory numpy already owns -- and sets bits from it in one pass, with no
+    /// per-element Python object boxing. Any other dtype falls back to `.tolist()` +
+    /// `from_list`, which does box each element as an individual Python object along the
+    /// way; this covers arbitrary array-likes at the cost of that boxing.
     #[staticmethod]
     pub fn from_np(arr: &Bound<'_, PyAny>) -> PyResult<Self> {
+        if let Ok(a) = arr.extract::<numpy::PyReadonlyArray1<u8>>() {
+            let slice = a.as_slice()?;
+            let mut bits = InlineBitSet::with_capacity(slice.len());
+            for (i, &v) in slice.iter().enumerate() {
+                if v != 0 {
+                    bits.insert(i);
+                }
+            }
+            return Ok(Self { inner: CoreBitFP::new(bits) });
+        }
+        if let Ok(a) = arr.extract::<numpy::PyReadonlyArray1<bool>>() {
+            let slice = a.as_slice()?;
+            let mut bits = InlineBitSet::with_capacity(slice.len());
+            for (i, &v) in slice.iter().enumerate() {
+                if v {
+                    bits.insert(i);
+                }
+            }
+            return Ok(Self { inner: CoreBitFP::new(bits) });
+        }
         let raw: Vec<u8> = arr.call_method0("tolist")?.extract()?;
         Ok(Self::from_list(raw.iter().map(|&v| v != 0).collect()))
     }
