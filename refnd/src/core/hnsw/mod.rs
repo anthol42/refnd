@@ -70,7 +70,6 @@ pub static STAT_ALIGNMENT:            LockStat = LockStat::new();
 pub static STAT_CACHE_GET:            LockStat = LockStat::new();
 pub static STAT_CACHE_INSERT:         LockStat = LockStat::new();
 
-use fixedbitset::FixedBitSet;
 use std::collections::BinaryHeap;
 use std::cmp::{Reverse, Ordering};
 use std::cell::RefCell;
@@ -318,8 +317,109 @@ impl EntryPoint {
     }
 }
 
+/// Per-thread "has this node been visited in the current search pass" tracker.
+///
+/// Both greedy-descent and ef-bounded layer search mark nodes visited as they explore the
+/// graph, then reset that state before the next layer/pass. A bitset sized to the full
+/// node-id range works fine for the marking itself, but resetting it with
+/// `FixedBitSet::clear()` costs O(capacity) -- a full sweep regardless of how few bits were
+/// actually set. `search_layer` calls `clear()` once per layer traversed, and a single node
+/// insertion traverses every layer from the entry point down to 0 -- so one insertion pays
+/// that O(capacity) sweep several times, where capacity is the *final* dataset size, not
+/// the (much smaller) number of nodes actually in the graph at that point in the build.
+/// Summed over all N insertions, that's an O(N) cost repeated O(N) times: an O(N^2) term
+/// hiding inside an algorithm that should be O(N log N) -- the dominant cost once N gets
+/// large enough (BELKA's ~98M-molecule scale, for instance).
+///
+/// Fix: instead of one bit per node, keep a per-node "last visited in generation G" stamp.
+/// A node reads as visited only if its stamp equals the current generation, so starting a
+/// new pass is just bumping the generation counter -- every previous stamp goes stale
+/// without being touched, so `clear()` becomes O(1) instead of O(capacity).
+///
+/// Stamps are `u16` rather than `u32` to bound the per-thread memory cost: this lives in a
+/// thread-local `ScratchBuffers`, one per worker thread, each sized to the full dataset --
+/// at ~98M nodes across ~24 threads, `u32` stamps would cost ~9.4GB in aggregate versus
+/// ~4.7GB for `u16`. The tradeoff is that the generation counter wraps every 65536 `clear()`
+/// calls and needs a real O(capacity) reset at that point -- negligible in aggregate, since
+/// a full build issues clear() on the order of hundreds of millions of times.
+struct VisitedSet {
+    stamps: Vec<u16>,
+    generation: u16,
+    /// Count of stamps currently equal to `generation`. Lets `is_clear()` -- which backs
+    /// real `debug_assert!`s that a caller cleared its scratch buffers before reuse -- stay
+    /// an exact O(1) check instead of either an O(capacity) scan or (worse) an unconditional
+    /// `true` that would silently defeat those assertions.
+    n_visited: usize,
+}
+
+impl VisitedSet {
+    fn with_capacity(n_nodes: usize) -> Self {
+        // Generation starts at 1 so a zero-initialized stamps vec already reads as
+        // "unvisited" everywhere, with no need to touch it before first use.
+        VisitedSet { stamps: vec![0; n_nodes], generation: 1, n_visited: 0 }
+    }
+
+    #[allow(dead_code)]
+    fn len(&self) -> usize {
+        self.stamps.len()
+    }
+
+    /// Extend the stamp array to cover at least `n_nodes`. New slots start at stamp 0,
+    /// which never equals a valid (>=1) generation, so they read as unvisited immediately.
+    fn grow(&mut self, n_nodes: usize) {
+        if self.stamps.len() < n_nodes {
+            self.stamps.resize(n_nodes, 0);
+        }
+    }
+
+    /// Same semantics as `FixedBitSet::set`.
+    #[inline]
+    fn set(&mut self, idx: usize, visited: bool) {
+        let was_visited = self.stamps[idx] == self.generation;
+        if visited {
+            if !was_visited { self.n_visited += 1; }
+            self.stamps[idx] = self.generation;
+        } else {
+            if was_visited { self.n_visited -= 1; }
+            self.stamps[idx] = 0;
+        }
+    }
+
+    /// Same semantics as `FixedBitSet::put`: marks `idx` visited in the current generation,
+    /// returns whether it was already visited this generation.
+    #[inline]
+    fn put(&mut self, idx: usize) -> bool {
+        let was_visited = self.stamps[idx] == self.generation;
+        if !was_visited {
+            self.stamps[idx] = self.generation;
+            self.n_visited += 1;
+        }
+        was_visited
+    }
+
+    /// Amortized O(1): normally just advances the generation, which makes every
+    /// previously-set stamp implicitly stale without touching the underlying storage.
+    /// Only falls back to a real O(capacity) zero-fill when the u16 generation counter
+    /// wraps back to 0, once every 65535 calls.
+    fn clear(&mut self) {
+        self.generation = self.generation.wrapping_add(1);
+        if self.generation == 0 {
+            self.stamps.fill(0);
+            self.generation = 1;
+        }
+        self.n_visited = 0;
+    }
+
+    /// O(1) exact check (not an assumed-true shortcut): true only if no stamp currently
+    /// matches the live generation. Backs `debug_assert!`s in the search/select_neighbors
+    /// code that catch a caller reusing scratch buffers without clearing them first.
+    fn is_clear(&self) -> bool {
+        self.n_visited == 0
+    }
+}
+
 pub struct ScratchBuffers {
-    visited: FixedBitSet,
+    visited: VisitedSet,
     candidates: MinHeap<Candidate>,
     discarded_candidates: MinHeap<Candidate>,
     nearest_neighbors: MaxHeap<Candidate>,
@@ -334,7 +434,7 @@ pub struct ScratchBuffers {
 impl ScratchBuffers {
     pub fn with_capacity(n_nodes: usize, ef: usize, m_max: usize) -> Self {
         ScratchBuffers {
-            visited: FixedBitSet::with_capacity(n_nodes),
+            visited: VisitedSet::with_capacity(n_nodes),
             candidates: MinHeap::with_capacity(ef),
             discarded_candidates: MinHeap::with_capacity(ef),
             nearest_neighbors: MaxHeap::with_capacity(ef),
@@ -345,11 +445,9 @@ impl ScratchBuffers {
         }
     }
 
-    /// Grow the visited bitset if it is smaller than `n_nodes`.
+    /// Grow the visited set if it is smaller than `n_nodes`.
     fn ensure_capacity(&mut self, n_nodes: usize) {
-        if self.visited.len() < n_nodes {
-            self.visited.grow(n_nodes);
-        }
+        self.visited.grow(n_nodes);
     }
 
     fn clear(&mut self) {

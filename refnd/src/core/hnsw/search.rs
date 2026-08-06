@@ -1,9 +1,8 @@
 use std::{cmp::Reverse,cell::RefCell};
 use rayon::prelude::*;
-use fixedbitset::FixedBitSet;
 use indicatif::ProgressBar;
 use crate::core::Distance;
-use super::{HNSWState, Candidate, ScratchBuffers, MinHeap, MaxHeap};
+use super::{HNSWState, Candidate, ScratchBuffers, MinHeap, MaxHeap, VisitedSet};
 
 thread_local! {
     static SCRATCH: RefCell<Option<ScratchBuffers>> = const { RefCell::new(None) };
@@ -93,7 +92,7 @@ impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
         threshold: f32,
         strict_ef: bool,
         // Scratch buffers
-        visited: &mut FixedBitSet,
+        visited: &mut VisitedSet,
         candidates: &mut MinHeap<Candidate>,
         // Input/Output
         nearest_neighbors: &mut MaxHeap<Candidate>,

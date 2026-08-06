@@ -1,7 +1,6 @@
 use std::cmp::Reverse;
-use fixedbitset::FixedBitSet;
 use crate::core::Distance;
-use super::{HNSWState, Candidate, MinHeap, MaxHeap};
+use super::{HNSWState, Candidate, MinHeap, MaxHeap, VisitedSet};
 
 impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
     /// Scratch buffers should be empty when passed to this function.
@@ -15,7 +14,7 @@ impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
         threshold: f32,
         strict_ef: bool,
         // Scratch buffers
-        visited: &mut FixedBitSet,
+        visited: &mut VisitedSet,
         candidates: &mut MinHeap<Candidate>,
         // Input/Output
         nearest_neighbors: &mut MaxHeap<Candidate>,
