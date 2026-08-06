@@ -11,7 +11,23 @@ const INLINE_BLOCKS: usize = 32;
 /// A bitset whose storage lives inline (alongside its length, no separate heap
 /// allocation) for bit lengths up to `INLINE_BLOCKS * 64`, and spills to the heap
 /// transparently above that -- so callers never need to think about which case they're
-/// in, only `BitFingerprint`'s memory profile at scale changes.
+/// in to get correct behavior.
+///
+/// Memory cost is *not* transparent above the inline threshold, though: `SmallVec`'s
+/// inline and heap representations share one `union`-like layout, sized for the larger
+/// of the two, so the struct keeps reserving the full `INLINE_BLOCKS * 8` bytes of inline
+/// space even once spilled -- on top of the separate heap allocation the spilled data
+/// itself needs. A spilled `InlineBitSet` therefore costs *more* per fingerprint than a
+/// plain heap-backed bitset would (measured ~46% more at 4096 bits, narrowing to ~23% at
+/// 8192 bits as the real data comes to dominate the fixed reserved-but-unused overhead).
+///
+/// This is a good tradeoff only because every fingerprint in this codebase's actual usage
+/// is exactly 2048 bits (standard Morgan/RDKit fingerprint size, matching
+/// `INLINE_BLOCKS`). If a caller needs fingerprints wider than 2048 bits and is under
+/// memory pressure, the right fix is to raise `INLINE_BLOCKS` here to match that width
+/// (a recompile, not a runtime option) rather than accept the spill penalty -- e.g.
+/// `INLINE_BLOCKS = 64` covers 4096-bit fingerprints inline with no heap allocation at
+/// all, restoring the same tradeoff this type already makes for the 2048-bit case.
 #[derive(Clone)]
 pub struct InlineBitSet {
     blocks: SmallVec<[Block; INLINE_BLOCKS]>,
