@@ -244,7 +244,13 @@ enum HNSWType {
 
 /// Expands a `HNSWState::new(data, kernel, config)` constructor for each KernelVariant.
 /// The kernel is instantiated from Python with forwarded *args/**kwargs.
-/// `data.extract(py)?` is inlined per-arm so the type is inferred from the constructor signature.
+///
+/// Always drains `data` through the iterator protocol (`try_iter()`), one item at a time
+/// -- see the class docstring for why this is a single path rather than a sized/unsized
+/// split. `data.len()` is tried first for an exact capacity hint; `try_iter().size_hint()`
+/// is the fallback for anything that doesn't support `len()` but still tracks its own
+/// remaining length via `__length_hint__`. Also yields the item count (used by the caller
+/// for progress bars).
 macro_rules! hnsw_new {
     ($ctor:path; $py:expr, $which:expr, $data:expr, $config:expr, $args:expr, $kwargs:expr;
      $($variant:ident : $kernel:ty),+ $(,)?) => {
@@ -253,32 +259,20 @@ macro_rules! hnsw_new {
                 KernelVariant::$variant => {
                     let _obj = $py.get_type::<$kernel>().call($args, $kwargs)?;
                     let _aligner: ::pyo3::PyRef<$kernel> = _obj.extract()?;
-                    HNSWType::$variant($ctor($data.extract($py)?, _aligner.inner.clone(), $config))
-                }
-            )+
-        }
-    };
-}
-
-/// Like `hnsw_new!`, but builds the internal `Vec<T>` by pulling one item at a time from a
-/// Python iterable instead of bulk-extracting a `Vec<T>` from a sized sequence. `HNSWState::new`
-/// falls back to this when `data` doesn't support `len()` (e.g. a generator), so a Python-side
-/// generator can drop each item as soon as it's consumed instead of first materializing a full
-/// list — halving the Python-side peak for large datasets, since the Rust-owned copy this macro
-/// builds is unavoidable either way. Unlike `hnsw_new!`, this arm also yields the item count
-/// (unknown upfront since the source isn't sized) alongside the built `HNSWType`.
-macro_rules! hnsw_new_iter {
-    ($ctor:path; $py:expr, $which:expr, $data:expr, $config:expr, $args:expr, $kwargs:expr;
-     $($variant:ident : $kernel:ty),+ $(,)?) => {
-        match $which {
-            $(
-                KernelVariant::$variant => {
-                    let _obj = $py.get_type::<$kernel>().call($args, $kwargs)?;
-                    let _aligner: ::pyo3::PyRef<$kernel> = _obj.extract()?;
-                    let mut _items = Vec::new();
-                    for _item in $data.bind($py).try_iter()? {
+                    let _bound = $data.bind($py);
+                    let _iter = _bound.try_iter()?;
+                    let _cap = match _bound.len() {
+                        Ok(_n) => _n,
+                        Err(_) => {
+                            let (_lo, _hi) = _iter.size_hint();
+                            _hi.unwrap_or(_lo)
+                        }
+                    };
+                    let mut _items = Vec::with_capacity(_cap);
+                    for _item in _iter {
                         _items.push(_item?.extract()?);
                     }
+                    _items.shrink_to_fit();
                     let _n = _items.len();
                     (HNSWType::$variant($ctor(_items, _aligner.inner.clone(), $config)), _n)
                 }
@@ -288,6 +282,7 @@ macro_rules! hnsw_new_iter {
 }
 
 /// Expands a `HNSWState::load(path, data, config, kernel)` call for each KernelVariant.
+/// Same always-iterator draining and capacity handling as `hnsw_new!`, for the same reason.
 macro_rules! hnsw_load {
     ($py:expr, $which:expr, $path:expr, $data:expr, $config:expr, $args:expr, $kwargs:expr;
      $($variant:ident : $kernel:ty),+ $(,)?) => {
@@ -296,9 +291,27 @@ macro_rules! hnsw_load {
                 KernelVariant::$variant => {
                     let _obj = $py.get_type::<$kernel>().call($args, $kwargs)?;
                     let _aligner: ::pyo3::PyRef<$kernel> = _obj.extract()?;
-                    HNSWType::$variant(
-                        HNSWStateCore::load($path, $data.extract($py)?, $config, _aligner.inner.clone())
-                            .map_err(|e| ::pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?
+                    let _bound = $data.bind($py);
+                    let _iter = _bound.try_iter()?;
+                    let _cap = match _bound.len() {
+                        Ok(_n) => _n,
+                        Err(_) => {
+                            let (_lo, _hi) = _iter.size_hint();
+                            _hi.unwrap_or(_lo)
+                        }
+                    };
+                    let mut _items = Vec::with_capacity(_cap);
+                    for _item in _iter {
+                        _items.push(_item?.extract()?);
+                    }
+                    _items.shrink_to_fit();
+                    let _n = _items.len();
+                    (
+                        HNSWType::$variant(
+                            HNSWStateCore::load($path, _items, $config, _aligner.inner.clone())
+                                .map_err(|e| ::pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?
+                        ),
+                        _n,
                     )
                 }
             )+
@@ -342,13 +355,13 @@ macro_rules! hnsw_dispatch_mut {
 /// HNSW parameters (``proximity_threshold``, ``ef_construction``, …) are the same as ``HNSWConfig``
 /// and can be passed directly to the constructor as keyword arguments.
 ///
-/// ``data`` may be a sized sequence (e.g. a ``list``) or any other Python iterable (e.g. a
-/// generator) — checked at runtime via ``len()``. The constructor always builds its own
-/// Rust-owned copy of the data either way; the only difference is that a non-sized iterable is
-/// drained one item at a time instead of requiring the caller to first materialize a full
-/// Python-side list, so both copies never need to coexist at once. That matters when a single
-/// item's Python representation is large enough that two full-dataset copies don't fit in
-/// memory together.
+/// ``data`` may be any Python iterable — a ``list``, a ``tuple``, a generator, anything with
+/// ``__iter__``. It's drained one item at a time into the constructor's own Rust-owned copy,
+/// so a generator never needs to be fully materialized into a Python-side list first — both
+/// copies never need to coexist at once. That matters when a single item's Python
+/// representation is large enough that two full-dataset copies wouldn't fit in memory
+/// together. When ``data`` supports ``len()`` (a ``list``/``tuple``), that's used to
+/// pre-size the Rust-owned copy exactly; it doesn't change how ``data`` is walked.
 ///
 /// Args:
 ///     variant: Kernel to use (e.g.  ``KernelVariant.AlignmentGlobal``, ``KernelVariant.AlignmentLocal``, ``KernelVariant.TanimotoBit``, *etc*).
@@ -444,33 +457,17 @@ impl HNSWState {
         };
         let config_py = HNSWConfig { inner: config.clone() };
 
-        // `data` may be a sized sequence (list, tuple, ...) or a generic iterable (e.g. a
-        // generator) — checked at runtime via `len()`. Sized sequences use the existing bulk
-        // path; unsized iterables are drained one item at a time so a Python-side generator
-        // can drop each item as soon as it's consumed instead of requiring a fully
-        // materialized list to exist alongside the Rust-owned copy this constructor builds
-        // either way — halving the Python-side peak for large datasets.
-        let (inner, n) = match data.bind(py).len() {
-            Ok(n) => {
-                let inner = hnsw_new!(
-                    HNSWStateCore::new; py, variant, data, config, args, kwargs;
-                    AlignmentGlobal:_GlobalAligner,
-                    AlignmentLocal:_LocalAligner,
-                    TanimotoBit:_TanimotoBit,
-                    TanimotoReal:_TanimotoReal,
-                    Structure:_USAlignKernel
-                );
-                (inner, n)
-            }
-            Err(_) => hnsw_new_iter!(
-                HNSWStateCore::new; py, variant, data, config, args, kwargs;
-                AlignmentGlobal:_GlobalAligner,
-                AlignmentLocal:_LocalAligner,
-                TanimotoBit:_TanimotoBit,
-                TanimotoReal:_TanimotoReal,
-                Structure:_USAlignKernel
-            ),
-        };
+        // `data` may be any Python iterable — a list, tuple, generator, anything with
+        // `__iter__`. See the class docstring for why it's always drained through the
+        // iterator protocol rather than a sized/unsized split.
+        let (inner, n) = hnsw_new!(
+            HNSWStateCore::new; py, variant, data, config, args, kwargs;
+            AlignmentGlobal:_GlobalAligner,
+            AlignmentLocal:_LocalAligner,
+            TanimotoBit:_TanimotoBit,
+            TanimotoReal:_TanimotoReal,
+            Structure:_USAlignKernel
+        );
         Ok(HNSWState { inner, n, config: config_py })
     }
 
@@ -624,6 +621,9 @@ impl HNSWState {
     /// a version mismatch error. There is no forward or backward compatibility guarantee during
     /// the unstable pre-0.1.0 phase.
     ///
+    /// ``data`` accepts any Python iterable, same as the constructor (see ``HNSWState``'s
+    /// class docstring) — including a generator re-reading a cache file.
+    ///
     /// Args:
     ///     variant: Must match the kernel used during the original build.
     ///     path: Path to the saved file.
@@ -645,8 +645,8 @@ impl HNSWState {
         args: &Bound<'_, PyTuple>,
         kwargs: Option<&Bound<'_, PyDict>>,
     ) -> PyResult<Self> {
-        let n = data.bind(py).len()?;
-        let inner = hnsw_load!(
+        // Same always-iterator draining as `new()` (see `hnsw_new!`'s doc comment for why).
+        let (inner, n) = hnsw_load!(
             py, variant, path, data, None::<HNSWConfigCore>, args, kwargs;
             AlignmentGlobal:_GlobalAligner,
             AlignmentLocal:_LocalAligner,
