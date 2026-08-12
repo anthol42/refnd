@@ -455,7 +455,7 @@ impl LeidenState {
             aggregated_membership[c] = membership[refined_cluster[0] as usize];
         }
 
-        (CsrGraph::new(nb_refined_clusters, &aggregated_edges, INWeightType::Unweighted),
+        (CsrGraph::new(nb_refined_clusters, &aggregated_edges, INWeightType::Similarity),
         aggregated_membership,
         aggregated_node_weights)
     }

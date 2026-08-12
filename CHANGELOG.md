@@ -22,3 +22,5 @@
   without first materializing it as a full list.
 - Constructing a `BitFingerprint` from a numpy array (`BitFingerprint.from_np(...)`) is up
   to 15x faster.
+- Fix a bug in Leiden algorithm, now should return much better partitions
+
