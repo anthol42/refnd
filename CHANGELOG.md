@@ -22,6 +22,6 @@
   without first materializing it as a full list.
 - Constructing a `BitFingerprint` from a numpy array (`BitFingerprint.from_np(...)`) is up
   to 15x faster.
-- HNSW's `.get_layer()` No returns a EdgeList for consistency and lower memory usage.
+- HNSW's `.get_layer()` No returns a EdgeStore for consistency and lower memory usage.
 - Changed default proximity threshold to 0.
 - Fix a bug in Leiden algorithm, now should return much better partitions

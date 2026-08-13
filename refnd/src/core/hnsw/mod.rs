@@ -78,7 +78,7 @@ use std::cmp::{Reverse, Ordering};
 use std::cell::RefCell;
 use std::hash::{BuildHasher, Hasher};
 use parking_lot::{Mutex, RwLock};
-use dashmap::DashMap;
+use dashmap::{DashMap, DashSet};
 use rand::rngs::StdRng;
 use rand::SeedableRng;
 use crate::core::Distance;
@@ -356,44 +356,42 @@ impl LayerStorage {
     ///   (so it appears twice, once in each direction), and duplicate
     ///   entries are kept as-is. If `false`, every pair is canonicalized to
     ///   `(min, max)` and deduplicated on insertion (via a `PairHasher`-keyed
-    ///   `HashSet`), so each undirected pair appears exactly once.
+    ///   `DashSet`), so each undirected pair appears exactly once.
+    ///
+    /// Iterates nodes with a rayon parallel iterator -- runs on whichever pool the
+    /// caller has `.install()`-ed (or the global pool otherwise).
     fn to_edge_pairs(&self, directed: bool) -> Vec<(u32, u32)> {
         if directed {
-            let mut pairs = Vec::new();
             match self {
-                LayerStorage::Dense(v) => {
-                    for (i, node) in v.iter().enumerate() {
-                        let nbrs = node.read();
-                        pairs.extend(nbrs.iter().map(|&j| (i as u32, j)));
-                    }
-                }
-                LayerStorage::Sparse(m) => {
-                    for entry in m.iter() {
+                LayerStorage::Dense(v) => v.par_iter().enumerate()
+                    .flat_map_iter(|(i, node)| {
+                        node.read().iter().map(|&j| (i as u32, j)).collect::<Vec<_>>().into_iter()
+                    })
+                    .collect(),
+                LayerStorage::Sparse(m) => m.par_iter()
+                    .flat_map_iter(|entry| {
                         let node = *entry.key();
-                        pairs.extend(entry.value().read().iter().map(|&j| (node, j)));
-                    }
-                }
+                        entry.value().read().iter().map(|&j| (node, j)).collect::<Vec<_>>().into_iter()
+                    })
+                    .collect(),
             }
-            pairs
         } else {
-            let mut seen: std::collections::HashSet<(u32, u32), PairBuildHasher> =
-                std::collections::HashSet::with_hasher(PairBuildHasher);
+            let seen: DashSet<(u32, u32), PairBuildHasher> = DashSet::with_hasher(PairBuildHasher);
             match self {
                 LayerStorage::Dense(v) => {
-                    for (i, node) in v.iter().enumerate() {
-                        let nbrs = node.read();
-                        for &j in nbrs.iter() {
+                    v.par_iter().enumerate().for_each(|(i, node)| {
+                        for &j in node.read().iter() {
                             seen.insert(if (i as u32) <= j { (i as u32, j) } else { (j, i as u32) });
                         }
-                    }
+                    });
                 }
                 LayerStorage::Sparse(m) => {
-                    for entry in m.iter() {
+                    m.par_iter().for_each(|entry| {
                         let node = *entry.key();
                         for &j in entry.value().read().iter() {
                             seen.insert(if node <= j { (node, j) } else { (j, node) });
                         }
-                    }
+                    });
                 }
             }
             seen.into_iter().collect()
@@ -742,20 +740,32 @@ impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
                 layer_idx, self.hgraph.layers.len(), self.hgraph.layers.len().saturating_sub(1)
             ));
         }
-        let pairs = self.hgraph.layers[layer_idx].to_edge_pairs(directed);
-        Ok(if weights {
-            if let Some(p) = pb {
-                p.set_length(pairs.len() as u64);
-            }
-            pairs.par_iter().map(|&(u, v)| {
-                let d = self.distance(u, v);
+        let run = || {
+            let pairs = self.hgraph.layers[layer_idx].to_edge_pairs(directed);
+            if weights {
                 if let Some(p) = pb {
-                    p.inc(1);
+                    p.set_length(pairs.len() as u64);
                 }
-                (u, v, d)
-            }).collect()
+                pairs.par_iter().map(|&(u, v)| {
+                    let d = self.distance(u, v);
+                    if let Some(p) = pb {
+                        p.inc(1);
+                    }
+                    (u, v, d)
+                }).collect()
+            } else {
+                pairs.into_iter().map(|(u, v)| (u, v, 1.0f32)).collect()
+            }
+        };
+
+        Ok(if self.config.n_threads == 0 {
+            run()
         } else {
-            pairs.into_iter().map(|(u, v)| (u, v, 1.0f32)).collect()
+            rayon::ThreadPoolBuilder::new()
+                .num_threads(self.config.n_threads)
+                .build()
+                .expect("failed to build thread pool")
+                .install(run)
         })
     }
 
