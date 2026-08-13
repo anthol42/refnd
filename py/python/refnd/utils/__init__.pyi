@@ -52,6 +52,12 @@ class BitFingerprint:
     def from_np(arr: numpy.typing.NDArray[numpy.bool_]) -> BitFingerprint:
         r"""
         Construct from a numpy boolean or uint8 array.
+        
+        For `uint8`/`bool` dtypes, reads the array's raw buffer directly -- a zero-copy
+        view into memory numpy already owns -- and sets bits from it in one pass, with no
+        per-element Python object boxing. Any other dtype falls back to `.tolist()` +
+        `from_list`, which does box each element as an individual Python object along the
+        way; this covers arbitrary array-likes at the cost of that boxing.
         """
     def to_rdkit(self) -> ExplicitBitVect:
         r"""

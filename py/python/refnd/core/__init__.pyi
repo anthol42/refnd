@@ -128,6 +128,9 @@ class EdgeStore:
         print(store[0])       # (0, 1, 0.9)
         for src, dst, w in store:
             print(src, dst, w)
+    
+        # numpy-style boolean masking: keep only the edges where mask[i] is True
+        store[[True, False]]   # EdgeStore with only (0, 1, 0.9)
     """
     def __new__(cls, node_count: builtins.int, edges: typing.Sequence[tuple[builtins.int, builtins.int, builtins.float]]) -> EdgeStore:
         r"""
@@ -205,7 +208,13 @@ class EdgeStore:
                      the saved version does not match the running package version.
         """
     def __len__(self) -> builtins.int: ...
-    def __getitem__(self, idx: builtins.int) -> tuple[builtins.int, builtins.int, builtins.float]: ...
+    def __getitem__(self, idx: builtins.int | typing.Sequence[builtins.bool]) -> tuple[builtins.int, builtins.int, builtins.float]  |  EdgeStore:
+        r"""
+        Index by position (``store[3]``, supports negative indices) or by a boolean
+        mask (``store[mask]``, one bool per edge), analogous to numpy's ``arr[mask]``.
+        A mask keeps only the edges where ``mask[i]`` is ``True``; ``node_count`` is
+        left unchanged.
+        """
     def __iter__(self) -> EdgeStoreIter: ...
     def __str__(self) -> builtins.str: ...
     def __repr__(self) -> builtins.str: ...
@@ -286,7 +295,7 @@ class HNSWConfig:
     def strict_ef(self) -> builtins.bool: ...
     @property
     def threshold_based_neighbourhood(self) -> builtins.bool: ...
-    def __new__(cls, proximity_threshold: builtins.float = 0.5, ef_construction: builtins.int = 64, m: builtins.int = 16, m_max: builtins.int = 16, m_max0: builtins.int = 32, m_l: builtins.float = 0.36, ef_init: builtins.int = 1, extend_candidates: builtins.bool = False, keep_pruned_connections: builtins.bool = True, keep_all_edges: builtins.bool = True, cache_capacity: builtins.int = 2000000, cache_shards: builtins.int = 64, n_threads: builtins.int = 0, shuffle: builtins.bool = False, use_heuristic: builtins.bool = True, strict_ef: builtins.bool = False, threshold_based_neighbourhood: builtins.bool = False) -> HNSWConfig:
+    def __new__(cls, proximity_threshold: builtins.float = 0.0, ef_construction: builtins.int = 64, m: builtins.int = 16, m_max: builtins.int = 16, m_max0: builtins.int = 32, m_l: builtins.float = 0.36, ef_init: builtins.int = 1, extend_candidates: builtins.bool = False, keep_pruned_connections: builtins.bool = True, keep_all_edges: builtins.bool = True, cache_capacity: builtins.int = 2000000, cache_shards: builtins.int = 64, n_threads: builtins.int = 0, shuffle: builtins.bool = False, use_heuristic: builtins.bool = True, strict_ef: builtins.bool = False, threshold_based_neighbourhood: builtins.bool = False) -> HNSWConfig:
         r"""
         Create an HNSWConfig. See class docstring for parameter descriptions.
         """
@@ -317,7 +326,12 @@ class HNSWIndex:
     @property
     def dataset_size(self) -> builtins.int: ...
     @property
-    def layers(self) -> builtins.list[builtins.list[builtins.list[builtins.int]]]: ...
+    def layers(self) -> builtins.list[builtins.list[builtins.list[builtins.int]]]:
+        r"""
+        Nested multi-layer adjacency list, `layers[layer][node] = [neighbor_ids]`. Layers
+        above 0 may be stored sparsely internally (most nodes aren't present at those
+        layers); this densifies them into the full node-id-indexed shape on access.
+        """
     @property
     def entry_point(self) -> typing.Optional[tuple[builtins.int, builtins.int]]: ...
     @property
@@ -382,9 +396,18 @@ class HNSWState:
     HNSW parameters (``proximity_threshold``, ``ef_construction``, …) are the same as ``HNSWConfig``
     and can be passed directly to the constructor as keyword arguments.
     
+    ``data`` may be any Python iterable — a ``list``, a ``tuple``, a generator, anything with
+    ``__iter__``. It's drained one item at a time into the constructor's own Rust-owned copy,
+    so a generator never needs to be fully materialized into a Python-side list first — both
+    copies never need to coexist at once. That matters when a single item's Python
+    representation is large enough that two full-dataset copies wouldn't fit in memory
+    together. When ``data`` supports ``len()`` (a ``list``/``tuple``), that's used to
+    pre-size the Rust-owned copy exactly; it doesn't change how ``data`` is walked.
+    
     Args:
         variant: Kernel to use (e.g.  ``KernelVariant.AlignmentGlobal``, ``KernelVariant.AlignmentLocal``, ``KernelVariant.TanimotoBit``, *etc*).
-        data: The dataset — a list of items matching the kernel type (e.g. ``list[str]`` or ``list[np.ndarray]``).
+        data: The dataset — a list of items matching the kernel type (e.g. ``list[str]`` or
+            ``list[np.ndarray]``), or any other Python iterable of such items (e.g. a generator).
         proximity_threshold, ef_construction, m, m_max, m_max0, m_l, ef_init, extend_candidates,
             keep_pruned_connections, keep_all_edges, cache_capacity, cache_shards,
             n_threads, shuffle, use_heuristic, strict_ef,
@@ -423,7 +446,7 @@ class HNSWState:
         r"""
         HNSWIndex snapshot.
         """
-    def __new__(cls, variant: kernels.KernelVariant, data: typing.Any, *args: typing.Any, proximity_threshold: builtins.float = 0.5, ef_construction: builtins.int = 64, m: builtins.int = 16, m_max: builtins.int = 16, m_max0: builtins.int = 32, m_l: builtins.float = 0.36, ef_init: builtins.int = 1, extend_candidates: builtins.bool = False, keep_pruned_connections: builtins.bool = True, keep_all_edges: builtins.bool = True, cache_capacity: builtins.int = 2000000, cache_shards: builtins.int = 64, n_threads: builtins.int = 0, shuffle: builtins.bool = False, use_heuristic: builtins.bool = True, strict_ef: builtins.bool = False, threshold_based_neighbourhood: builtins.bool = False, **kwargs: typing.Any) -> HNSWState: ...
+    def __new__(cls, variant: kernels.KernelVariant, data: typing.Any, *args: typing.Any, proximity_threshold: builtins.float = 0.0, ef_construction: builtins.int = 64, m: builtins.int = 16, m_max: builtins.int = 16, m_max0: builtins.int = 32, m_l: builtins.float = 0.36, ef_init: builtins.int = 1, extend_candidates: builtins.bool = False, keep_pruned_connections: builtins.bool = True, keep_all_edges: builtins.bool = True, cache_capacity: builtins.int = 2000000, cache_shards: builtins.int = 64, n_threads: builtins.int = 0, shuffle: builtins.bool = False, use_heuristic: builtins.bool = True, strict_ef: builtins.bool = False, threshold_based_neighbourhood: builtins.bool = False, **kwargs: typing.Any) -> HNSWState: ...
     def build(self, progress: builtins.bool = True) -> None:
         r"""
         Build the HNSW index by inserting all data items.
@@ -472,7 +495,7 @@ class HNSWState:
             An ``EdgeStore`` with ``node_count = dataset_size``, or ``None`` if the index was built
             with ``keep_all_edges=False``.
         """
-    def get_layer(self, layer_idx: builtins.int) -> builtins.list[builtins.list[builtins.int]]:
+    def get_layer(self, layer_idx: builtins.int = 0, directed: builtins.bool = False, weights: builtins.bool = True, progress: builtins.bool = True) -> EdgeStore:
         r"""
         Return the adjacency lists for a specific HNSW layer.
         
@@ -482,6 +505,27 @@ class HNSWState:
         Returns:
             A list of length ``dataset_size`` where element ``i`` is the list of
             neighbour IDs of node ``i`` at this layer. Node IDs are their index in the original dataset.
+        
+        Raises:
+            IndexError: If ``layer_idx`` is out of range.
+        Edges of one HNSW layer, as an ``EdgeStore``.
+        
+        Args:
+            layer_idx: Zero-based layer index (0 = base layer with most nodes).
+            directed: If ``True``, every edge is returned exactly as internally
+                recorded -- an undirected connection contributes one entry per
+                endpoint, i.e. ``(x, y)`` is distinct from ``(y, x)``. If
+                ``False`` (default), edges are canonicalized and deduplicated,
+                so each undirected pair appears exactly once.
+            weights: If ``True`` (default), each edge's weight is its real
+                distance, computed on the fly since not stored in the hierarchical graph.
+                If ``False``, every edge gets weight
+                ``1.0`` -- much cheaper when the real distance isn't needed.
+            progress: Display a progress bar while distances are computed.
+                Only meaningful when ``weights=True``. Defaults to ``False``.
+        
+        Returns:
+            An ``EdgeStore`` with ``node_count = dataset_size``.
         
         Raises:
             IndexError: If ``layer_idx`` is out of range.
@@ -513,6 +557,9 @@ class HNSWState:
         A file saved with a different package version (older or newer) will fail to load with
         a version mismatch error. There is no forward or backward compatibility guarantee during
         the unstable pre-0.1.0 phase.
+        
+        ``data`` accepts any Python iterable, same as the constructor (see ``HNSWState``'s
+        class docstring) — including a generator re-reading a cache file.
         
         Args:
             variant: Must match the kernel used during the original build.

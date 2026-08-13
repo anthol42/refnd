@@ -1,6 +1,8 @@
 use pyo3::prelude::*;
-use pyo3::exceptions::{PyIndexError, PyIOError};
+use pyo3::exceptions::{PyIndexError, PyIOError, PyValueError};
+use pyo3::Borrowed;
 use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pymethods};
+use pyo3_stub_gen::impl_stub_type;
 use refnd_core::core::EdgeStore as CoreEdgeStore;
 use super::leiden::{CsrGraph, INWeightType};
 
@@ -23,6 +25,9 @@ use super::leiden::{CsrGraph, INWeightType};
 ///     print(store[0])       # (0, 1, 0.9)
 ///     for src, dst, w in store:
 ///         print(src, dst, w)
+///
+///     # numpy-style boolean masking: keep only the edges where mask[i] is True
+///     store[[True, False]]   # EdgeStore with only (0, 1, 0.9)
 #[gen_stub_pyclass]
 #[pyclass(module = "refnd.core", from_py_object)]
 #[derive(Clone)]
@@ -122,13 +127,29 @@ impl EdgeStore {
         self.inner.len()
     }
 
-    fn __getitem__(&self, idx: isize) -> PyResult<(u32, u32, f32)> {
-        let n = self.inner.len();
-        let i = if idx < 0 { n as isize + idx } else { idx } as usize;
-        if i >= n {
-            return Err(PyIndexError::new_err(format!("index {idx} out of range for EdgeStore of length {n}")));
+    /// Index by position (``store[3]``, supports negative indices) or by a boolean
+    /// mask (``store[mask]``, one bool per edge), analogous to numpy's ``arr[mask]``.
+    /// A mask keeps only the edges where ``mask[i]`` is ``True``; ``node_count`` is
+    /// left unchanged.
+    fn __getitem__(&self, idx: EdgeIndex) -> PyResult<EdgeOrStore> {
+        match idx {
+            EdgeIndex::Position(idx) => {
+                let n = self.inner.len();
+                let i = if idx < 0 { n as isize + idx } else { idx };
+                if i < 0 || i as usize >= n {
+                    return Err(PyIndexError::new_err(format!("index {idx} out of range for EdgeStore of length {n}")));
+                }
+                Ok(EdgeOrStore::Edge(self.inner.get(i as usize)))
+            }
+            EdgeIndex::Mask(mask) => {
+                if mask.len() != self.inner.len() {
+                    return Err(PyValueError::new_err(format!(
+                        "boolean mask length {} does not match EdgeStore length {}", mask.len(), self.inner.len()
+                    )));
+                }
+                Ok(EdgeOrStore::Store(Self { inner: self.inner.mask(&mask) }))
+            }
         }
-        Ok(self.inner.get(i))
     }
 
     fn __iter__(slf: PyRef<'_, Self>) -> EdgeStoreIter {
@@ -141,6 +162,60 @@ impl EdgeStore {
 
     fn __repr__(&self) -> String {
         format!("{:?}", self.inner)
+    }
+}
+
+// ── `__getitem__` index / return types ──────────────────────────────────────
+//
+// Mirrors numpy's `arr[idx]` overload: an int returns a single element, a
+// boolean mask returns a filtered copy of the array.
+
+/// Either a position (`store[3]`) or a boolean mask (`store[[True, False]]`).
+enum EdgeIndex {
+    Position(isize),
+    Mask(Vec<bool>),
+}
+
+impl_stub_type!(EdgeIndex = isize | Vec<bool>);
+
+impl<'a, 'py> FromPyObject<'a, 'py> for EdgeIndex {
+    type Error = PyErr;
+
+    fn extract(ob: Borrowed<'a, 'py, PyAny>) -> Result<Self, Self::Error> {
+        if let Ok(i) = ob.extract::<isize>() {
+            return Ok(EdgeIndex::Position(i));
+        }
+        // numpy bool array — extract via its buffer rather than as a Vec<bool> directly
+        if ob.hasattr("dtype")? {
+            let arr: numpy::PyReadonlyArray1<bool> = ob.extract()?;
+            return Ok(EdgeIndex::Mask(arr.as_slice()?.to_vec()));
+        }
+        let mask: Vec<bool> = ob.extract().map_err(|_| {
+            PyValueError::new_err(
+                "expected an int or a boolean mask (list, numpy bool array) for EdgeStore indexing",
+            )
+        })?;
+        Ok(EdgeIndex::Mask(mask))
+    }
+}
+
+enum EdgeOrStore {
+    Edge((u32, u32, f32)),
+    Store(EdgeStore),
+}
+
+impl_stub_type!(EdgeOrStore = (u32, u32, f32) | EdgeStore);
+
+impl<'py> IntoPyObject<'py> for EdgeOrStore {
+    type Target = PyAny;
+    type Output = Bound<'py, PyAny>;
+    type Error = PyErr;
+
+    fn into_pyobject(self, py: Python<'py>) -> Result<Self::Output, Self::Error> {
+        match self {
+            EdgeOrStore::Edge(e) => Ok(e.into_pyobject(py).unwrap().into_any()),
+            EdgeOrStore::Store(s) => Ok(Py::new(py, s)?.into_bound(py).into_any()),
+        }
     }
 }
 
