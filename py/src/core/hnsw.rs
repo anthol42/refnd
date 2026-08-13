@@ -66,7 +66,7 @@ impl HNSWConfig {
     /// Create an HNSWConfig. See class docstring for parameter descriptions.
     #[new]
     #[pyo3(signature = (
-        proximity_threshold = 0.5,
+        proximity_threshold = 0.,
         ef_construction = 64,
         m = 16,
         m_max = 16,
@@ -404,7 +404,7 @@ impl HNSWState {
     #[pyo3(signature = (
         variant, data,
         *args,
-        proximity_threshold = 0.5,
+        proximity_threshold = 0.,
         ef_construction = 64,
         m = 16,
         m_max = 16,
@@ -576,15 +576,40 @@ impl HNSWState {
     ///
     /// Raises:
     ///     IndexError: If ``layer_idx`` is out of range.
-    pub fn get_layer(&self, layer_idx: usize) -> PyResult<Vec<Vec<u32>>> {
-        hnsw_dispatch!(
-            self.inner, get_layer(layer_idx);
+    /// Edges of one HNSW layer, as an ``EdgeStore``.
+    ///
+    /// Args:
+    ///     layer_idx: Zero-based layer index (0 = base layer with most nodes).
+    ///     directed: If ``True``, every edge is returned exactly as internally
+    ///         recorded -- an undirected connection contributes one entry per
+    ///         endpoint, i.e. ``(x, y)`` is distinct from ``(y, x)``. If
+    ///         ``False`` (default), edges are canonicalized and deduplicated,
+    ///         so each undirected pair appears exactly once.
+    ///     weights: If ``True`` (default), each edge's weight is its real
+    ///         distance, computed on the fly since not stored in the hierarchical graph.
+    ///         If ``False``, every edge gets weight
+    ///         ``1.0`` -- much cheaper when the real distance isn't needed.
+    ///     progress: Display a progress bar while distances are computed.
+    ///         Only meaningful when ``weights=True``. Defaults to ``False``.
+    ///
+    /// Returns:
+    ///     An ``EdgeStore`` with ``node_count = dataset_size``.
+    ///
+    /// Raises:
+    ///     IndexError: If ``layer_idx`` is out of range.
+    #[pyo3(signature = (layer_idx = 0, directed = false, weights = true, progress = true))]
+    pub fn get_layer(&self, layer_idx: usize, directed: bool, weights: bool, progress: bool) -> PyResult<EdgeStore> {
+        let pb = if progress { Some(linear_progress_bar(0, "Computing edge weights")) } else { None };
+        let edges = hnsw_dispatch!(
+            self.inner, get_layer(layer_idx, directed, weights, pb.as_ref());
             AlignmentGlobal:_GlobalAligner,
             AlignmentLocal:_LocalAligner,
             TanimotoBit:_TanimotoBit,
             TanimotoReal:_TanimotoReal,
             Structure:_USAlignKernel
-        ).map_err(pyo3::exceptions::PyIndexError::new_err)
+        ).map_err(pyo3::exceptions::PyIndexError::new_err)?;
+        if let Some(pb) = pb { pb.finish() };
+        Ok(EdgeStore::new(self.n, edges))
     }
 
     /// Serialize the full state (index + config) to a binary file.

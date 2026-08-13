@@ -1,3 +1,6 @@
+use rayon::prelude::*;
+use indicatif::ProgressBar;
+
 mod build;
 mod config;
 mod hnsw_index;
@@ -330,8 +333,9 @@ impl LayerStorage {
         }
     }
 
-    /// Dense, `n_nodes`-long snapshot regardless of storage kind -- the shape the public
-    /// introspection API (`get_layer`/`index()`) exposes, since it's node-id-indexed.
+    /// Dense, `n_nodes`-long, node-id-indexed snapshot regardless of storage kind.
+    /// Only used by tests currently; kept for future introspection use.
+    #[allow(dead_code)]
     fn to_dense(&self, n_nodes: usize) -> Vec<Vec<u32>> {
         match self {
             LayerStorage::Dense(v) => v.iter().map(|node| node.read().clone()).collect(),
@@ -342,6 +346,57 @@ impl LayerStorage {
                 }
                 out
             }
+        }
+    }
+
+    /// Flat, directed `(src, dst)` edge pairs for this layer.
+    ///
+    /// - `directed`: if `true`, every entry is returned exactly as internally
+    ///   recorded -- each undirected link contributes one entry per endpoint
+    ///   (so it appears twice, once in each direction), and duplicate
+    ///   entries are kept as-is. If `false`, every pair is canonicalized to
+    ///   `(min, max)` and deduplicated on insertion (via a `PairHasher`-keyed
+    ///   `HashSet`), so each undirected pair appears exactly once.
+    fn to_edge_pairs(&self, directed: bool) -> Vec<(u32, u32)> {
+        if directed {
+            let mut pairs = Vec::new();
+            match self {
+                LayerStorage::Dense(v) => {
+                    for (i, node) in v.iter().enumerate() {
+                        let nbrs = node.read();
+                        pairs.extend(nbrs.iter().map(|&j| (i as u32, j)));
+                    }
+                }
+                LayerStorage::Sparse(m) => {
+                    for entry in m.iter() {
+                        let node = *entry.key();
+                        pairs.extend(entry.value().read().iter().map(|&j| (node, j)));
+                    }
+                }
+            }
+            pairs
+        } else {
+            let mut seen: std::collections::HashSet<(u32, u32), PairBuildHasher> =
+                std::collections::HashSet::with_hasher(PairBuildHasher);
+            match self {
+                LayerStorage::Dense(v) => {
+                    for (i, node) in v.iter().enumerate() {
+                        let nbrs = node.read();
+                        for &j in nbrs.iter() {
+                            seen.insert(if (i as u32) <= j { (i as u32, j) } else { (j, i as u32) });
+                        }
+                    }
+                }
+                LayerStorage::Sparse(m) => {
+                    for entry in m.iter() {
+                        let node = *entry.key();
+                        for &j in entry.value().read().iter() {
+                            seen.insert(if node <= j { (node, j) } else { (j, node) });
+                        }
+                    }
+                }
+            }
+            seen.into_iter().collect()
         }
     }
 
@@ -667,14 +722,41 @@ impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
         }else { None }
     }
 
-    pub fn get_layer(&self, layer_idx: usize) -> Result<Vec<Vec<u32>>, String> {
+    /// Edges of one HNSW layer, as `(src, dst, weight)` triples.
+    ///
+    /// - `layer_idx`:  The hierarchy index of the graph layer to retrieve. 0 is the lowest level.
+    /// - `directed`: if `true`, every entry is returned exactly as internally
+    ///   recorded, so (x, y) is not the same as (y, x). If `false`, edges are
+    ///   canonicalized and deduplicated, so each undirected pair appears
+    ///   exactly once.
+    /// - `weights`: if `true`, each edge's weight is its real distance. If `false`, every edge gets weight `1.0`.
+    ///   Since distances are not stored in the hierarchical graph, this requires computing all distances for all edges.
+    /// - `pb`: optional progress bar, advanced once per edge while distances are being computed
+    ///   (`weights = true` only -- with `weights = false` there is nothing to report progress on).
+    pub fn get_layer(
+        &self, layer_idx: usize, directed: bool, weights: bool, pb: Option<&ProgressBar>,
+    ) -> Result<Vec<(u32, u32, f32)>, String> {
         if layer_idx >= self.hgraph.layers.len() {
             return Err(format!(
                 "layer index {} out of range: index has {} layers (0..{})",
                 layer_idx, self.hgraph.layers.len(), self.hgraph.layers.len().saturating_sub(1)
             ));
         }
-        Ok(self.hgraph.layers[layer_idx].to_dense(self.data.len()))
+        let pairs = self.hgraph.layers[layer_idx].to_edge_pairs(directed);
+        Ok(if weights {
+            if let Some(p) = pb {
+                p.set_length(pairs.len() as u64);
+            }
+            pairs.par_iter().map(|&(u, v)| {
+                let d = self.distance(u, v);
+                if let Some(p) = pb {
+                    p.inc(1);
+                }
+                (u, v, d)
+            }).collect()
+        } else {
+            pairs.into_iter().map(|(u, v)| (u, v, 1.0f32)).collect()
+        })
     }
 
     pub fn config(&self) -> &HNSWConfig {
