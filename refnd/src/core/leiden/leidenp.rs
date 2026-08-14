@@ -31,6 +31,14 @@ thread_local! {
     /// so concurrent clusters never alias the same slots -- resized (never
     /// shrunk) lazily to the current level's node count on first use.
     static MERGE_SCRATCH: RefCell<Vec<u32>> = RefCell::new(Vec::new());
+
+    /// Per-thread scratch reused across all `aggregate` per-cluster calls handled
+    /// by this worker: `weight_to_cluster[c2]` accumulates edge weight to
+    /// candidate neighbour super-node `c2`, `is_neighbor_cluster` dedupes it.
+    /// Indexed by refined-cluster id (the *new*, coarser graph's node count),
+    /// resized (never shrunk) lazily on first use -- same reasoning as
+    /// `MERGE_SCRATCH`.
+    static AGGREGATE_SCRATCH: RefCell<(Vec<f32>, FixedBitSet)> = RefCell::new((Vec::new(), FixedBitSet::new()));
 }
 
 struct LeidenConfig {
@@ -452,48 +460,63 @@ impl LeidenState {
         let mut refined_clusters: Vec<Vec<u32>> = vec![Vec::new(); nb_refined_clusters];
         self.retrieve_clusters(&mut refined_clusters, refined_membership);
 
+        // Each super-node `c`'s work (scan its members' edges, sum their weight,
+        // pick a representative) only reads shared state and writes to its own
+        // `c`-indexed output slot -- independent across clusters, so runs in
+        // parallel. Each task returns its own local edge list instead of pushing
+        // into one shared `aggregated_edges`; concatenated below.
+        let results: Vec<(Vec<(u32, u32, f32)>, f32, u32)> = self.pool.install(|| {
+            refined_clusters.par_iter().enumerate().map(|(c, refined_cluster)| {
+                AGGREGATE_SCRATCH.with(|scratch| {
+                    let (weight_to_cluster, is_neighbor_cluster) = &mut *scratch.borrow_mut();
+                    if weight_to_cluster.len() < nb_refined_clusters {
+                        weight_to_cluster.resize(nb_refined_clusters, 0.0);
+                        is_neighbor_cluster.grow(nb_refined_clusters);
+                    }
+                    let mut neighbor_clusters: Vec<u32> = Vec::new();
+
+                    let mut local_edges = Vec::new();
+                    let mut node_weight_sum = 0.0f32;
+                    // Iterate on all nodes in refined cluster to get neighbour cluster and weights
+                    for &v in refined_cluster {
+                        let v = v as usize;
+                        // Then iterate on edges to find neighbour clusters
+                        for &(u, w) in graph.neighbors(v) {
+                            let c2 = refined_membership[u as usize] as usize;
+                            // To consider each edge once
+                            if c2 > c {
+                                if !is_neighbor_cluster.put(c2) {
+                                    neighbor_clusters.push(c2 as u32);
+                                }
+                                weight_to_cluster[c2] += w;
+                            }
+                        }
+                        node_weight_sum += node_weights[v];
+                    }
+
+                    // Actually add edges
+                    for &c2 in &neighbor_clusters {
+                        let c2 = c2 as usize;
+                        local_edges.push((c as u32, c2 as u32, weight_to_cluster[c2]));
+
+                        // Reset scratch buffer
+                        weight_to_cluster[c2] = 0.0;
+                        is_neighbor_cluster.set(c2, false);
+                    }
+
+                    // Representative membership of super node
+                    (local_edges, node_weight_sum, membership[refined_cluster[0] as usize])
+                })
+            }).collect()
+        });
+
         let mut aggregated_edges: Vec<(u32, u32, f32)> = Vec::new();
         let mut aggregated_node_weights: Vec<f32> = vec![0.0; nb_refined_clusters];
         let mut aggregated_membership: Vec<u32> = vec![0; nb_refined_clusters];
-
-        // Preallocate scratch buffers
-        // Contains the total weight of nodes going to cluster at index c
-        let mut weight_to_cluster: Vec<f32> = vec![0.0; nb_refined_clusters];
-        let mut is_neighbor_cluster = FixedBitSet::with_capacity(nb_refined_clusters); // neighbor_cluster_added
-        let mut neighbor_clusters: Vec<u32> = Vec::with_capacity(nb_refined_clusters);
-
-        for (c, refined_cluster) in refined_clusters.iter().enumerate() {
-            // Iterate on all nodes in refined cluster to get neighbour cluster and weights
-            for &v in refined_cluster {
-                let v = v as usize;
-                // Then iterate on edges to find neighbour clusters
-                for &(u, w) in graph.neighbors(v) {
-                    let c2 = refined_membership[u as usize] as usize;
-                    // To consider each edge once
-                    if c2 > c {
-                        if !is_neighbor_cluster.put(c2) {
-                            neighbor_clusters.push(c2 as u32);
-                        }
-                        weight_to_cluster[c2] += w;
-                    }
-                }
-
-                aggregated_node_weights[c] += node_weights[v];
-            }
-
-            // Actually add edges
-            for &c2 in &neighbor_clusters {
-                let c2 = c2 as usize;
-                aggregated_edges.push((c as u32, c2 as u32, weight_to_cluster[c2]));
-
-                // Reset scratch buffer
-                weight_to_cluster[c2] = 0.0;
-                is_neighbor_cluster.set(c2, false);
-            }
-            neighbor_clusters.clear();
-
-            // Set membership of super node
-            aggregated_membership[c] = membership[refined_cluster[0] as usize];
+        for (c, (local_edges, node_weight_sum, representative)) in results.into_iter().enumerate() {
+            aggregated_edges.extend(local_edges);
+            aggregated_node_weights[c] = node_weight_sum;
+            aggregated_membership[c] = representative;
         }
 
         (CsrGraph::new(nb_refined_clusters, &aggregated_edges, INWeightType::Similarity),
