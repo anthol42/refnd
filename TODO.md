@@ -9,7 +9,7 @@
 - [X] Refactor HNSW: Change usize to u32, and if the speedup is meaningful, merge it.
 - [X] Move structure US score outside of alignment in core 
 - [X] Use `sphinx-llm` to build LLM-friendly docs
-- [ ] Implement a Prot-SpaM kernel in pure Rust for faster protein distance calculation.
+- [ ] Implement a Prot-SpaM kernel in pure Rust for faster protein distance calculation. (Prot-SpaM: fast alignment-free phylogeny reconstruction based on whole-proteome sequences)
 - [ ] Implement a Vector kernel l2, cosine distance and dot product
 - [ ] Add a way to export CSRGraph to iGraph / NetworkX. Inspire from iGraph import/export methods.
 - [ ] Add to ablation: Test if scaling ef_construction with nlog(n) is enough to maintain recall
