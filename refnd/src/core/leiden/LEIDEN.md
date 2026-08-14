@@ -37,6 +37,14 @@ It must be written at *every* level where the loop continues (`continue_clusteri
 **`fastmove_nodes`'s stay-in-place baseline must use the same penalized diff formula as every candidate cluster.**
 The gain formula is `diff = E(v, C) - resolution * node_weight(v) * cluster_weight(C)`. The initial `max_diff` (representing "leave `v` in `current_cluster`") has to be computed with that same formula applied to `current_cluster`, exactly like every other candidate in the `neighbor_clusters` loop -- matching igraph's `leiden_fastmove_vertices`, which computes its pre-loop baseline the identical way (`leiden.c`, "Calculate maximum diff"). Using the raw, un-penalized `weight_to_cluster[current_cluster]` as the baseline (as an earlier version of this code did) gives staying put a discount no other candidate gets, biasing the local search toward staying in worse clusters. The effect isn't visible on trivial/well-separated graphs (any real improvement clears the inflated bar anyway) but shows up as a measurable, consistent quality gap on anything with real optimization difficulty -- caught by comparing achieved objective values (not partition identity) against igraph over repeated runs, see `pytests/test_leiden_accuracy.py`.
 
+**`leidenp.rs` is a parallel fork of `leiden.rs`, kept algorithmically identical except where noted below.**
+`leiden.rs` is the sequential reference implementation and is never modified as part of the parallelization work; `leidenp.rs` (`fast_find_communities`) is being incrementally rewritten phase-by-phase to use `rayon`, capped at 8 threads via a dedicated `rayon::ThreadPool` built once in `fast_find_communities` and stored on `LeidenState`. Progress so far:
+
+- **`merge_nodes` -- parallelized.** Clusters partition the node set, so each cluster's local refinement is independent and runs concurrently via `cluster_scratch.par_iter_mut()`. Two things needed redesigning versus the sequential version: (1) the shared `refined_membership` scratch buffer (indexed by global node id) is now a per-thread `thread_local!` (`MERGE_SCRATCH`), since a single shared buffer would alias across threads -- reused across all calls on that worker thread, resized (never shrunk) lazily to the current level's node count; (2) each cluster now returns its own locally-compacted refined ids ([0, k_i)) instead of writing directly into a globally-offset shared counter, since threading one running offset through concurrent calls isn't possible -- a cheap sequential prefix-sum over the per-cluster counts afterward reconciles these into one globally-contiguous id range. This is the only serial part of the phase.
+- `aggregate`, `fastmove_nodes` -- not yet parallelized; still identical to `leiden.rs`.
+
+See `LEIDEN_IMPROVEMENTS.md` (repo root) for the full parallelization plan and benchmark results.
+
 ## Structure
 ```
 src/
@@ -44,6 +52,7 @@ src/
     leiden/
       mod.rs
       csr_graph.rs        # CsrGraph: CSR sparse graph representation
-      leiden.rs           # find_communities(): Leiden community detection
+      leiden.rs           # find_communities(): Leiden community detection (sequential reference)
+      leidenp.rs           # fast_find_communities(): parallel fork of leiden.rs, phase-by-phase
       utils.rs            # reindex_membership() helper
 ```
