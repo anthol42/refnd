@@ -66,13 +66,20 @@ impl LeidenState {
 
             continue_clustering = nb_clusters < aggregated_graph.n;
             if continue_clustering {
-                // Flatten membership
+                // Flatten membership. At level 0, `super_node_map` is still the identity
+                // mapping ((0..n).collect(), set before this loop and only ever mutated
+                // further down in this same iteration), so `aggregated_membership[super_node_map[v]]`
+                // degenerates to `aggregated_membership[v]` for every node -- a straight copy.
+                // Doing it as a copy instead of the general indexed gather lets the compiler
+                // emit a single memcpy instead of a per-node indirect load.
                 measure!({
                     if level > 0 {
                         for node_id in 0..self.graph.n {
                             let super_node_id = super_node_map[node_id] as usize;
                             self.membership[node_id] = aggregated_membership[super_node_id];
                         }
+                    } else {
+                        self.membership.copy_from_slice(&aggregated_membership);
                     }
                     self.retrieve_clusters(&mut cluster_scratch, &aggregated_membership);
                 }, STAT_FLATTEN);

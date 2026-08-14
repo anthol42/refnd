@@ -31,6 +31,9 @@ In `merge_nodes`, cluster choices are weighted by `exp(diff / beta)`, where `dif
 **Cluster ID reindexing and compaction.**
 After `fastmove_nodes` and `merge_nodes`, cluster IDs are reindexed to [0..k) to ensure dense numbering (no gaps). This simplifies downstream aggregation and memory use.
 
+**`self.membership` is only ever written by the flatten step in `find_partition`.**
+It must be written at *every* level where the loop continues (`continue_clustering`), including level 0. Reference implementations (e.g. igraph's C `community_leiden`) alias their output `membership` pointer directly onto the level-0 working buffer, so `fastmove_vertices`'s in-place writes are automatically visible with no copy needed -- that's why they can special-case level 0 as a no-op. This port instead clones `self.membership` into `aggregated_membership` up front, so level 0's result has no other path back to `self.membership`; skipping that write (as a naive line-for-line port of the C guard would) silently discards the whole clustering whenever the hierarchy happens to converge in exactly two levels. Level 0's copy is a plain `copy_from_slice` rather than the general indexed gather used for level > 0, since `super_node_map` is still the identity mapping at that point in the loop -- if that ordering ever changes, this shortcut needs revisiting.
+
 ## Structure
 ```
 src/
