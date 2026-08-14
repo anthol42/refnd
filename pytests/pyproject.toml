@@ -24,4 +24,5 @@ dev = [
     "seaborn>=0.13.2",
     "requests>=2.34.2",
     "tqdm>=4.70.0",
+    "networkx>=3.6.1",
 ]

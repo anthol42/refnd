@@ -204,8 +204,8 @@ impl LeidenState {
 
             // Calculate the score for each cluster to find the best one
             let mut best_cluster = current_cluster;
-            // ΔH = E(v, C) - γ(k_v * k_C)
-            let mut max_diff = weight_to_cluster[current_cluster];
+            let mut max_diff = weight_to_cluster[current_cluster] -
+                config.resolution * (node_weights[v] * cluster_weights[current_cluster]);
             for &c in &neighbor_clusters {
                 let c = c as usize;
                 let diff = weight_to_cluster[c] -

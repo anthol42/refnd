@@ -26,6 +26,7 @@
 - Changed default proximity threshold to 0.
 - Fix a bug in Leiden algorithm, now should return much better partitions
 - Fix another bug in Leiden algorithm, now it should converge when iteration is set to 0, and partition should be even better.
+- Fix a third bug in Leiden algorithm: the local-moving phase unfairly favored leaving a node in its current cluster over moving it, even when moving was a genuine improvement, biasing results toward worse partitions on anything but the most trivially-separated graphs. Verified against igraph's reference Leiden implementation on Karate Club and several Stochastic Block Model graphs (`pytests/test_leiden_accuracy.py`).
 - `EdgeStore` now supports numpy-style boolean-mask indexing: `store.mask(&mask)` in Rust,
   `store[mask]` in Python (accepts a `list[bool]` or a numpy bool array), keeping only the
   edges where the mask is `True`.
