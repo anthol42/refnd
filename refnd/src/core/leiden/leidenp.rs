@@ -4,7 +4,7 @@ use crate::core::hnsw::measure;
 use crate::core::hnsw::LockStat;
 use fixedbitset::FixedBitSet;
 use std::cell::RefCell;
-use std::collections::VecDeque;
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use rand::prelude::*;
 use rand::rng;
 use rayon::prelude::*;
@@ -12,6 +12,21 @@ use super::leiden::LeidenObjective;
 
 /// Parallel sections never spawn more than this many worker threads.
 const MAX_THREADS: usize = 8;
+
+/// Round cap for `fastmove_nodes`'s parallel local-moving loop. Even with
+/// near-real-time atomic visibility between threads (see `fastmove_nodes`),
+/// synchronous parallel local-moving can still settle into a small persistent
+/// back-and-forth that never reaches a literal fixed point (confirmed
+/// empirically on a toy graph: raising this cap 20x didn't shrink the
+/// residual further, so it's a genuine steady-state cycle, not slow
+/// convergence). This bounds the wasted work on that residual rather than
+/// looping forever. Not a workaround specific to this port: both NetworKit's
+/// PLM and the published GVE-Leiden design (github.com/puzzlef/leiden-
+/// communities-openmp, arxiv.org/abs/2312.13936) cap their own move phase the
+/// same way, for the same reason -- losing the sequential algorithm's
+/// monotonic-improvement guarantee under concurrent updates is a known,
+/// accepted property of the technique, not a bug to eliminate outright.
+const MAX_FASTMOVE_ROUNDS: usize = 100;
 
 #[cfg(feature = "monitor")]
 pub static STAT_FASTMOVE:   LockStat = LockStat::new();
@@ -39,6 +54,20 @@ thread_local! {
     /// resized (never shrunk) lazily on first use -- same reasoning as
     /// `MERGE_SCRATCH`.
     static AGGREGATE_SCRATCH: RefCell<(Vec<f32>, FixedBitSet)> = RefCell::new((Vec::new(), FixedBitSet::new()));
+
+    /// Per-thread scratch reused across all `decide_move` calls handled by this
+    /// worker, indexed by cluster id. Sized to `2*graph.n` (not `graph.n`) --
+    /// see `fastmove_nodes` for why the id space is doubled.
+    static FASTMOVE_SCRATCH: RefCell<(Vec<f32>, FixedBitSet)> = RefCell::new((Vec::new(), FixedBitSet::new()));
+}
+
+/// Atomically adds `val` to the f32 stored (as bits) in `cell` -- std has no
+/// `AtomicF32`. Used for `fastmove_nodes`'s cluster-weight bookkeeping, which
+/// multiple threads update concurrently.
+fn atomic_f32_add(cell: &AtomicU32, val: f32) {
+    cell.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |bits| {
+        Some((f32::from_bits(bits) + val).to_bits())
+    }).unwrap();
 }
 
 struct LeidenConfig {
@@ -172,62 +201,135 @@ impl LeidenState {
         }
     }
 
+    /// Local-moving phase, redesigned around a fused parallel decide+apply loop
+    /// instead of the sequential version's async FIFO queue (every move
+    /// immediately visible to the next) -- following the design used by real
+    /// parallel Louvain/Leiden implementations (NetworKit's PLM; the published
+    /// GVE-Leiden, github.com/puzzlef/leiden-communities-openmp): every node is
+    /// swept in parallel each round; each thread scans its own node's
+    /// neighbours, decides the best move, and commits it immediately via
+    /// atomics, all within the same pass -- no separate frozen-snapshot decide
+    /// phase followed by a serial apply/reconciliation phase. This matters
+    /// operationally, not just architecturally: an earlier version of this
+    /// function *did* freeze a snapshot and reconcile in a serial pass, and its
+    /// serial apply cost scaled with the size of the active set each round --
+    /// which is the *entire graph* on round 1. At production scale (50M
+    /// nodes) that serial pass alone dominated the whole call, leaving 7 of 8
+    /// worker threads idle and making the "parallel" version slower than the
+    /// sequential one. The fused design keeps every round's work -- including
+    /// the neighbour scan needed to find requeue candidates -- inside the
+    /// parallel sweep.
+    ///
+    /// Instead of an explicit shrinking active-node list, an `affected` flag
+    /// (one per node, cleared when processed, set on a mover's neighbours)
+    /// tracks who needs reconsidering -- same technique both reference
+    /// implementations use. `membership`/`cluster_weights` become atomic for
+    /// the duration of this call so concurrent threads can read/update them
+    /// safely; updates are `Relaxed` since nothing here needs stronger
+    /// ordering than "eventually visible to other threads" -- there's no
+    /// synchronization-dependent invariant beyond the atomics' own
+    /// read-modify-write correctness. (Unlike the sequential version, there's
+    /// no `cluster_degree`/empty-cluster-recycling bookkeeping to maintain
+    /// here -- see the singleton-id note below for why.)
+    ///
+    /// "Become a new singleton" needs a cluster id nobody else could possibly
+    /// claim at the same time, without a shared/serial allocator -- solved by
+    /// reserving `graph.n + v` as node `v`'s own private singleton id: unique
+    /// by construction, so claiming it needs no synchronization at all. Hence
+    /// cluster ids in this function range over `[0, 2*graph.n)`, not
+    /// `[0, graph.n)`.
+    ///
+    /// Trade-off: two nodes can still race to move into the same cluster (or
+    /// swap into each other's) based on a momentarily-stale read, since
+    /// there's no per-decision re-validation here -- accepted rather than
+    /// guarded against, same as both reference implementations, because with
+    /// atomics the staleness window is tiny (a handful of concurrent
+    /// instructions) rather than a full round, so it self-corrects almost
+    /// immediately via the next round's `affected` wake-ups instead of
+    /// settling into a sustained oscillation. `MAX_FASTMOVE_ROUNDS` bounds the
+    /// residual either way. `pytests/test_leiden_accuracy.py` is there to
+    /// catch it if any of this ever drifts quality beyond normal stochastic
+    /// noise.
     fn fastmove_nodes(&self, graph: &CsrGraph,
                       node_weights: &Vec<f32>,
                       config: &LeidenConfig,
                       membership: &mut Vec<u32>) -> (bool, usize){
-        let mut changed = false;
-        // 1 if node is NOT in the queue. 0 otherwise. All initialized to 0 as they are all in the queue
-        let mut is_node_stable = FixedBitSet::with_capacity(graph.n);
+        // Cluster ids [0, graph.n) are real clusters; [graph.n, 2*graph.n) are
+        // each node's reserved private singleton id (node v -> graph.n + v).
+        let id_space = 2 * graph.n;
 
-        // Shuffle nodes, then add to the queue
-        let mut nodes: Vec<u32> = (0..graph.n as u32).collect();
-        nodes.shuffle(&mut rng());
-        let mut unstable_nodes = VecDeque::from_iter(nodes.into_iter());
-
-        // This contains the weight of the cluster, the sum of weights of each node
-        let mut cluster_weights = vec![0.0f32; graph.n]; // cluster_out_weights
-        let mut cluster_degree = vec![0u32; graph.n]; // nb_vertices_per_cluster
+        let cluster_weights: Vec<AtomicU32> = (0..id_space).map(|_| AtomicU32::new(0.0f32.to_bits())).collect();
         for v in 0..graph.n {
             let c = membership[v] as usize;
-            cluster_weights[c] += node_weights[v];
-            cluster_degree[c] += 1;
+            atomic_f32_add(&cluster_weights[c], node_weights[v]);
+        }
+        let membership_atomic: Vec<AtomicU32> = membership.iter().map(|&m| AtomicU32::new(m)).collect();
+        let affected: Vec<AtomicBool> = (0..graph.n).map(|_| AtomicBool::new(true)).collect();
+
+        let changed = AtomicBool::new(false);
+        let mut round = 0;
+        loop {
+            round += 1;
+            let any_moved = AtomicBool::new(false);
+            self.pool.install(|| {
+                (0..graph.n).into_par_iter().for_each(|v| {
+                    if !affected[v].swap(false, Ordering::Relaxed) { return; }
+                    let Some(target) = self.decide_move(graph, node_weights, config, id_space, &membership_atomic, &cluster_weights, v) else { return; };
+
+                    // decide_move only ever returns a target different from v's
+                    // current cluster, and v is owned by exactly one task per
+                    // round, so membership_atomic[v] can't have changed since.
+                    let current = membership_atomic[v].load(Ordering::Relaxed) as usize;
+                    atomic_f32_add(&cluster_weights[current], -node_weights[v]);
+                    atomic_f32_add(&cluster_weights[target], node_weights[v]);
+                    membership_atomic[v].store(target as u32, Ordering::Relaxed);
+                    changed.store(true, Ordering::Relaxed);
+                    any_moved.store(true, Ordering::Relaxed);
+
+                    for &(u, _) in graph.neighbors(v) {
+                        affected[u as usize].store(true, Ordering::Relaxed);
+                    }
+                });
+            });
+            if !any_moved.load(Ordering::Relaxed) || round >= MAX_FASTMOVE_ROUNDS { break; }
         }
 
-        // This vector is used as a stack (FILO). It contains the idx of empty clusters for id recycling
-        let mut empty_clusters: Vec<u32> = Vec::with_capacity(graph.n);
-        for c in 0..graph.n {
-            if cluster_degree[c] == 0 {
-                empty_clusters.push(c as u32);
-            }
+        for (m, a) in membership.iter_mut().zip(&membership_atomic) {
+            *m = a.load(Ordering::Relaxed);
         }
-        // Preallocate scratch buffers for the hot main loop
-        // Contains the total weight of nodes going to cluster at index c
-        let mut weight_to_cluster = vec![0.0f32; graph.n]; // edge_weights_per_cluster or E(v, C)
-        let mut is_neighbor_cluster = FixedBitSet::with_capacity(graph.n); // neighbor_cluster_added
-        let mut neighbor_clusters: Vec<u32> = Vec::with_capacity(graph.n);
+        let nb_clusters = reindex_membership(membership, id_space);
+        (changed.load(Ordering::Relaxed), nb_clusters)
+    }
 
-        while let Some(v) = unstable_nodes.pop_front() {
-            let v = v as usize;
-            let current_cluster = membership[v] as usize;
-            // Remove node from current cluster
-            cluster_weights[current_cluster] -= node_weights[v];
-            cluster_degree[current_cluster] -= 1;
-            if cluster_degree[current_cluster] == 0 {
-                empty_clusters.push(current_cluster as u32);
+    /// Scores node `v`'s candidate moves against the current (concurrently
+    /// updated, not frozen) cluster state, returning the best target cluster
+    /// id, or `None` to stay. Safe to call concurrently for different `v`:
+    /// every shared read is atomic, and the only mutable state is the
+    /// per-thread `FASTMOVE_SCRATCH` buffer, which different nodes on the same
+    /// thread reuse sequentially and different threads never share.
+    fn decide_move(&self, graph: &CsrGraph,
+                   node_weights: &Vec<f32>,
+                   config: &LeidenConfig,
+                   id_space: usize,
+                   membership: &Vec<AtomicU32>,
+                   cluster_weights: &Vec<AtomicU32>,
+                   v: usize) -> Option<usize> {
+        let current_cluster = membership[v].load(Ordering::Relaxed) as usize;
+        let singleton_cluster = graph.n + v;
+        let weight = |c: usize| f32::from_bits(cluster_weights[c].load(Ordering::Relaxed));
+
+        FASTMOVE_SCRATCH.with(|scratch| {
+            let (weight_to_cluster, is_neighbor_cluster) = &mut *scratch.borrow_mut();
+            if weight_to_cluster.len() < id_space {
+                weight_to_cluster.resize(id_space, 0.0);
+                is_neighbor_cluster.grow(id_space);
             }
-
-            // Find neighboring clusters, and weights to them from current node v
-            // We also need to consider the case to moving the node v to a new empty cluster, so
-            // let's do that first
-            let empty_cluster = empty_clusters.pop().unwrap() as usize;
-            neighbor_clusters.push(empty_cluster as u32);
-            is_neighbor_cluster.set(empty_cluster, true);
+            let mut neighbor_clusters: Vec<u32> = Vec::new();
 
             for &(u, w) in graph.neighbors(v) {
                 let u = u as usize;
                 if u != v {
-                    let c = membership[u] as usize;
+                    let c = membership[u].load(Ordering::Relaxed) as usize;
                     if !is_neighbor_cluster.put(c) {
                         neighbor_clusters.push(c as u32);
                     }
@@ -235,54 +337,38 @@ impl LeidenState {
                 }
             }
 
-            // Calculate the score for each cluster to find the best one
-            let mut best_cluster = current_cluster;
+            // Calculate the score for each cluster to find the best one. Every
+            // candidate is scored against a cluster weight that EXCLUDES v's
+            // own contribution -- v isn't a member of any other candidate
+            // cluster, so `current_cluster` must be treated the same way for a
+            // fair comparison. "Become a new singleton" is evaluated first
+            // (matching the sequential version's ordering, for the same
+            // tie-breaking behaviour) -- its diff is always exactly 0, since an
+            // empty cluster has no weight and no edges point to it yet.
+            let current_cluster_weight = weight(current_cluster) - node_weights[v];
+            let mut best: Option<usize> = None;
             let mut max_diff = weight_to_cluster[current_cluster] -
-                config.resolution * (node_weights[v] * cluster_weights[current_cluster]);
+                config.resolution * (node_weights[v] * current_cluster_weight);
+            if 0.0 > max_diff && current_cluster != singleton_cluster {
+                best = Some(singleton_cluster);
+                max_diff = 0.0;
+            }
             for &c in &neighbor_clusters {
                 let c = c as usize;
+                let cw = if c == current_cluster { current_cluster_weight } else { weight(c) };
                 let diff = weight_to_cluster[c] -
-                    config.resolution * (node_weights[v] * cluster_weights[c]);
+                    config.resolution * (node_weights[v] * cw);
                 // Only consider positive improvements
                 if diff > max_diff {
-                    best_cluster = c;
+                    best = if c == current_cluster { None } else { Some(c) };
                     max_diff = diff;
                 }
                 weight_to_cluster[c] = 0.0;
                 is_neighbor_cluster.set(c, false);
             }
-            neighbor_clusters.clear();
 
-            // Move node to best cluster
-            cluster_weights[best_cluster] += node_weights[v];
-            cluster_degree[best_cluster] += 1;
-
-            // If we did not use the empty cluster, put it back on the stack for a later reuse
-            if best_cluster != empty_cluster {
-                empty_clusters.push(empty_cluster as u32);
-            }
-
-            // Mark node as stable as it is not in the queue anymore
-            is_node_stable.set(v, true);
-
-            // Add stable neighbors (not in queue) that are not part of the new cluster to the queue to check them again
-            if best_cluster != current_cluster {
-                changed = true;
-                membership[v] = best_cluster as u32;
-
-                for &(u, _) in graph.neighbors(v) {
-                    let u = u as usize;
-                    if is_node_stable.contains(u) && membership[u] as usize != best_cluster {
-                        unstable_nodes.push_back(u as u32);
-                        is_node_stable.set(u, false);
-                    }
-                }
-            }
-
-        }
-
-        let nb_clusters = reindex_membership(membership, graph.n);
-        (changed, nb_clusters)
+            best
+        })
     }
 
     /// Refines one (disjoint) cluster's members in isolation and returns the
