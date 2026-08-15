@@ -28,6 +28,26 @@ const MAX_THREADS: usize = 8;
 /// accepted property of the technique, not a bug to eliminate outright.
 const MAX_FASTMOVE_ROUNDS: usize = 100;
 
+/// Upper bound on how many original clusters rayon batches into one
+/// `merge_nodes` dispatch task (`par_iter().with_min_len(..)`). At production
+/// scale most clusters are tiny/singleton, so one task per cluster makes
+/// rayon's own per-task dispatch overhead dominate the real work -- batching
+/// consecutive clusters into a task amortizes that overhead without changing
+/// what each cluster's `merge_nodes` call actually does.
+///
+/// The actual `min_len` passed at the call site is this value clamped down to
+/// `nb_clusters / (MAX_THREADS * 4)`, not used directly -- rayon's splitter
+/// only splits a range while `len / 2 >= min_len`, so a fixed `min_len` this
+/// large would fully serialize (onto a single thread) any level with fewer
+/// than `2 * MERGE_TASK_MAX_BATCH` clusters. That's not a rare edge case:
+/// `nb_clusters` shrinks every level as aggregation proceeds, so later,
+/// more-aggregated levels -- exactly the ones with fewer but individually
+/// costlier clusters -- would be hit hardest. Scaling `min_len` down with
+/// `nb_clusters` keeps enough splits available for full 8-way distribution at
+/// every level while still capping batch size at this value once there's
+/// plenty of clusters to batch.
+const MERGE_TASK_MAX_BATCH: usize = 1024;
+
 #[cfg(feature = "monitor")]
 pub static STAT_FASTMOVE:   LockStat = LockStat::new();
 #[cfg(feature = "monitor")]
@@ -138,10 +158,14 @@ impl LeidenState {
                 // spaces into one globally-contiguous range (`nb_refined_clusters`),
                 // which is the only genuinely serial part of this phase.
                 let state = &*self;
+                // See `MERGE_TASK_MAX_BATCH` for why this is scaled down from
+                // that cap rather than used directly.
+                let merge_min_len = (nb_clusters / (MAX_THREADS * 4)).clamp(1, MERGE_TASK_MAX_BATCH);
                 let cluster_results: Vec<(Vec<u32>, usize)> = state.pool.install(|| {
                     cluster_scratch[..nb_clusters]
                         .par_iter_mut()
                         .enumerate()
+                        .with_min_len(merge_min_len)
                         .map(|(cluster_idx, members)| measure!(
                             state.merge_nodes(
                                 &aggregated_graph,
