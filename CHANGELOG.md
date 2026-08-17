@@ -24,7 +24,7 @@
   to 15x faster.
 - HNSW's `.get_layer()` No returns a EdgeStore for consistency and lower memory usage.
 - Changed default proximity threshold to 0.
-- Fix a bug in Leiden algorithm, now should return much better partitions
+- Fix few bugs in Leiden algorithm, now should return much better partitions
 - `EdgeStore` now supports numpy-style boolean-mask indexing: `store.mask(&mask)` in Rust,
   `store[mask]` in Python (accepts a `list[bool]` or a numpy bool array), keeping only the
   edges where the mask is `True`.
