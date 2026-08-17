@@ -6,3 +6,12 @@ resolver = "2"
 libparasail-sys = { git = "https://github.com/anthol42/libparasail-sys", branch = "main" }
 libusalign-sys  = { git = "https://github.com/JacobCote/libusalign-sys",  branch = "main" }
 
+# Default release profile (codegen-units=16, no LTO) leaves cross-function
+# inlining on the table within a single crate's hot loops -- unlike the GVE
+# C++ reference, which is one translation unit under g++ -O3 and gets full
+# inlining for free. Not a correctness-affecting change (panic strategy
+# untouched, since pyo3's FFI boundary relies on unwinding).
+[profile.release]
+lto = true
+codegen-units = 1
+
