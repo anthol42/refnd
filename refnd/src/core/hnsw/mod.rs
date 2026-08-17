@@ -311,8 +311,10 @@ impl LayerStorage {
                 hi_guard.push(lo);
             }
             LayerStorage::Sparse(m) => {
-                measure!(m.entry(a).or_insert_with(|| RwLock::new(Vec::new())).write(), STAT_ADD_EDGE_LO).push(b);
-                measure!(m.entry(b).or_insert_with(|| RwLock::new(Vec::new())).write(), STAT_ADD_EDGE_HI).push(a);
+                let lo_entry = m.entry(a).or_insert_with(|| RwLock::new(Vec::new()));
+                measure!(lo_entry.write(), STAT_ADD_EDGE_LO).push(b);
+                let hi_entry = m.entry(b).or_insert_with(|| RwLock::new(Vec::new()));
+                measure!(hi_entry.write(), STAT_ADD_EDGE_HI).push(a);
             }
         }
     }

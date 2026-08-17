@@ -6,18 +6,20 @@ use rustc_hash::FxHashMap;
 static GLOBAL: MiMalloc = MiMalloc;
 
 use refnd::core::EdgeStore;
-use refnd::core::leiden::{find_communities, fast_find_communities, CsrGraph, INWeightType, LeidenObjective};
+use refnd::core::leiden::{find_communities, fast_find_communities, gve_find_communities, CsrGraph, INWeightType, LeidenObjective};
 
-/// Usage: bench_leiden <file.edgestr> [modularity|cpm] [gamma] [beta] [iterations] [seq|par]
+/// Usage: bench_leiden <file.edgestr> [modularity|cpm] [gamma] [beta] [iterations] [seq|par|gve]
 ///
 /// `gamma` is the resolution parameter (modularity resolution, or CPM resolution
 /// directly). `iterations` is the max number of top-level Leiden restarts passed
 /// to `find_communities` (0 = run until the partition stops changing). The final
-/// `seq|par` arg picks the sequential (`leiden::find_communities`) or parallel
-/// (`leidenp::fast_find_communities`) implementation; defaults to `seq`.
+/// arg picks the implementation: sequential (`leiden::find_communities`), parallel
+/// (`leidenp::fast_find_communities`), or the GVE-Leiden port
+/// (`gveleiden::gve_find_communities`, ignores `beta` -- its refinement is
+/// deterministic); defaults to `seq`.
 fn main() {
     let mut args = std::env::args().skip(1);
-    let path = args.next().expect("usage: bench_leiden <file.edgestr> [modularity|cpm] [gamma] [beta] [iterations] [seq|par]");
+    let path = args.next().expect("usage: bench_leiden <file.edgestr> [modularity|cpm] [gamma] [beta] [iterations] [seq|par|gve]");
     let objective = match args.next().as_deref() {
         None | Some("modularity") => LeidenObjective::Modularity,
         Some("cpm") => LeidenObjective::CPM,
@@ -26,10 +28,11 @@ fn main() {
     let gamma: f32 = args.next().map(|s| s.parse().expect("gamma must be a f32")).unwrap_or(1.0);
     let beta: f64 = args.next().map(|s| s.parse().expect("beta must be a f64")).unwrap_or(0.01);
     let n_iterations: usize = args.next().map(|s| s.parse().expect("iterations must be a usize")).unwrap_or(2);
-    let parallel = match args.next().as_deref() {
-        None | Some("seq") => false,
-        Some("par") => true,
-        Some(other) => panic!("unknown implementation {other:?}: expected 'seq' or 'par'"),
+    let impl_name = match args.next().as_deref() {
+        None | Some("seq") => "seq",
+        Some("par") => "par",
+        Some("gve") => "gve",
+        Some(other) => panic!("unknown implementation {other:?}: expected 'seq', 'par', or 'gve'"),
     };
 
     eprint!("Loading {path} ... ");
@@ -42,14 +45,13 @@ fn main() {
     let graph = edges.graph(INWeightType::SimilarityComplement);
     eprintln!("done in {:.2}s", t.elapsed().as_secs_f64());
 
-    let impl_name = if parallel { "par" } else { "seq" };
     eprintln!("Running Leiden ({impl_name}, {objective:?}, γ={gamma}, β={beta}, iterations={n_iterations}) ...");
     let t = Instant::now();
     let stats_graph = graph.clone();
-    let membership = if parallel {
-        fast_find_communities(graph, gamma, beta, n_iterations, objective.clone())
-    } else {
-        find_communities(graph, gamma, beta, n_iterations, objective.clone())
+    let membership = match impl_name {
+        "par" => fast_find_communities(graph, gamma, beta, n_iterations, objective.clone()),
+        "gve" => gve_find_communities(graph, gamma, n_iterations, objective.clone()),
+        _ => find_communities(graph, gamma, beta, n_iterations, objective.clone()),
     };
     let elapsed = t.elapsed().as_secs_f64();
     eprintln!("Leiden finished in {elapsed:.3}s");

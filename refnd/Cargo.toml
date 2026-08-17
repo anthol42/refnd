@@ -41,3 +41,7 @@ path = "src/bench_fingerprints.rs"
 [[bin]]
 name = "bench_hnsw"
 path = "src/bench_hnsw.rs"
+
+[[bin]]
+name = "bin_export_mtx"
+path = "src/bin_export_mtx.rs"
