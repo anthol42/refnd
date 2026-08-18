@@ -42,30 +42,74 @@ struct BlockBest {
 pub enum ProtSpamDistance {
     /// The raw mismatch rate itself (fraction of don't-care positions that mismatch,
     /// pooled across every pattern's accepted spaced-word matches) -- always in
-    /// `[0, 1]`. `1.0` if no spaced word matched at all or all don't care position mismatch.
+    /// `[0, 1]`. `1.0` if no spaced word matched at all or if every accepted match's don't-care
+    /// positions mismatched outright.
     MismatchRate,
     /// The mismatch rate corrected into a distance via the Kimura two-parameter
-    /// formula -- always in `[0, inf]`.
+    /// formula -- in `[0, inf]`. `f32::INFINITY` if the mismatch rate is undefined (no
+    /// match at all) or high enough (`>~0.8541`) that the correction's log argument is
+    /// non-positive.
     Evolutionary,
 }
 
 /// Distance between two [`SWSequence`]s, ProtSpaM-style: for each pattern in a shared
 /// [`SWPatternSet`], match spaced words by key (grouping ties into "blocks"), score the
-/// best-aligned pair within each matching block against BLOSUM62, and pool mismatches
-/// at don't-care positions across all accepted matches into a mismatch rate. Reports
+/// best-aligned spaced word pair within each matching block against BLOSUM62, and pool mismatches
+/// at don't-care positions into a mismatch rate. Reports
 /// either that raw rate or a Kimura-corrected evolutionary distance, per
 /// [`ProtSpamDistance`].
+///
+/// **Every [`SWSequence`] passed to [`Self::call`] must have been built from the same
+/// [`SWPatternSet`] as `self.patterns`** (or an equal clone of it) -- see the
+/// same-pattern-set requirement documented on [`SWSequence`].
+///
+/// # Examples
+///
+/// Building patterns, encoding sequences, and comparing a pair directly:
+///
+/// ```
+/// use refnd::core::Distance;
+/// use refnd::kernels::protspam::{ProtSpamDistance, ProtSpamKernel};
+/// use refnd::utils::{SWPatternSet, SWSequence};
+///
+/// let sequences = vec![
+///     "MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQAPILSRVGDGTQDNLSGAEK".to_string(),
+///     "MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQAPILSRVGDGTQDNLSGAEA".to_string(),
+/// ];
+///
+/// // A RasBhari-optimized pattern set, shared by every SWSequence and the kernel.
+/// let patterns = SWPatternSet::new(5, 6, 20);
+///
+/// let swseqs: Vec<SWSequence> = sequences
+///     .into_iter()
+///     .map(|s| SWSequence::new(s, &patterns).expect("valid amino acids"))
+///     .collect();
+///
+/// let kernel = ProtSpamKernel::new(patterns, 0, ProtSpamDistance::Evolutionary);
+/// let distance = kernel.call(&swseqs[0], &swseqs[1]);
+/// assert!(distance >= 0.0);
+/// ```
 pub struct ProtSpamKernel {
+    /// The pattern set spaced words are matched against. Must be the same set every
+    /// [`SWSequence`] passed to [`Self::call`] was built with.
     pub patterns: SWPatternSet,
     /// Minimum BLOSUM62 score (over don't-care positions) for a spaced-word match to be
     /// considered homologous. ProtSpaM's own default is 0.
-    pub threshold: i32,
+    pub significance_threshold: i32,
+    /// Which value [`Self::call`] reports; see [`ProtSpamDistance`].
     pub distance: ProtSpamDistance,
 }
 
 impl ProtSpamKernel {
-    pub fn new(patterns: SWPatternSet, threshold: i32, distance: ProtSpamDistance) -> Self {
-        Self { patterns, threshold, distance }
+    /// Builds a kernel over `patterns` -- the same PatternSet [`SWSequence`]s have been built from.
+    ///
+    /// # Parameters
+    /// - `patterns`: the shared pattern set (see the type-level docs).
+    /// - `significance_threshold`: minimum BLOSUM62 score for a spaced-word match to be considered
+    ///   homologous. ProtSpaM's own default is `0`.
+    /// - `distance`: which value [`Self::call`] reports; see [`ProtSpamDistance`].
+    pub fn new(patterns: SWPatternSet, significance_threshold: i32, distance: ProtSpamDistance) -> Self {
+        Self { patterns, significance_threshold, distance }
     }
 
     /// Number of consecutive words starting at `start` that share the same key
@@ -119,11 +163,11 @@ impl ProtSpamKernel {
         block_length2: usize,
         pattern: &SWPattern,
     ) -> BlockBest {
-        let mut best = BlockBest { score: self.threshold - 1, mismatches: 0 };
+        let mut best = BlockBest { score: self.significance_threshold - 1, mismatches: 0 };
         for a in pos1..pos1 + block_length1 {
             for b in pos2..pos2 + block_length2 {
                 let (score, mismatches) = Self::score_pair(seq1, seq2, words1[a].pos(), words2[b].pos(), pattern);
-                if score >= self.threshold && score > best.score {
+                if score >= self.significance_threshold && score > best.score {
                     best = BlockBest { score, mismatches };
                 }
             }
@@ -154,7 +198,7 @@ impl ProtSpamKernel {
                 }
                 // Here, SW1 == SW2
                 let best = self.best_over_block_pair(seq1, seq2, words1, i, block_length1, words2, j, block_length2, pattern);
-                if best.score >= self.threshold {
+                if best.score >= self.significance_threshold {
                     total_mismatches += best.mismatches as u64;
                     total_dc += dc;
                 }
@@ -184,6 +228,16 @@ impl ProtSpamKernel {
 }
 
 impl Distance<SWSequence> for ProtSpamKernel {
+    /// Computes the distance between `ref_sample` and `query`, per `self.distance`
+    /// (see [`ProtSpamDistance`]).
+    ///
+    /// # Panics
+    /// `ref_sample`/`query` must have been built from the same [`SWPatternSet`] as
+    /// `self.patterns` (see the type-level docs on [`ProtSpamKernel`] and on
+    /// [`SWSequence`]). If they weren't, this can panic (index out of range, if the
+    /// mismatched set has fewer patterns) or -- more insidiously -- silently compare the
+    /// wrong patterns' spaced words against each other with no panic at all, if the
+    /// mismatched set merely has a different pattern at the same index.
     fn call(&self, ref_sample: &SWSequence, query: &SWSequence) -> f32 {
         let mmr = self.mismatch_rate(ref_sample, query);
         match self.distance {
@@ -221,7 +275,7 @@ mod tests {
     #[test]
     fn multi_match_counts_consecutive_equal_keys() {
         let patterns = SWPatternSet::from_patterns(vec![pattern()]);
-        let seq = SWSequence::new("AAAAAAAAAAAA".to_string(), &patterns).unwrap();
+        let seq = SWSequence::new(&"AAAAAAAAAAAA".to_string(), &patterns).unwrap();
         let words = seq.sorted_words(0);
         // every window is all-'A' -> one giant block sharing the same key
         assert_eq!(ProtSpamKernel::count_consecutive(words, 0), words.len());
@@ -252,8 +306,8 @@ mod tests {
     #[test]
     fn call_is_zero_for_identical_sequences() {
         let patterns = SWPatternSet::from_patterns(vec![pattern()]);
-        let s1 = SWSequence::new("MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQAPILSRVGDGTQDNLSGAEK".to_string(), &patterns).unwrap();
-        let s2 = SWSequence::new("MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQAPILSRVGDGTQDNLSGAEK".to_string(), &patterns).unwrap();
+        let s1 = SWSequence::new(&"MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQAPILSRVGDGTQDNLSGAEK".to_string(), &patterns).unwrap();
+        let s2 = SWSequence::new(&"MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQAPILSRVGDGTQDNLSGAEK".to_string(), &patterns).unwrap();
         let k = ProtSpamKernel::new(patterns, 0, ProtSpamDistance::Evolutionary);
         assert_eq!(k.mismatch_rate(&s1, &s2), 0.0);
         assert_eq!(k.call(&s1, &s2), 0.0);
@@ -262,8 +316,8 @@ mod tests {
     #[test]
     fn call_is_infinite_when_no_spaced_word_matches() {
         let patterns = SWPatternSet::from_patterns(vec![pattern()]);
-        let s1 = SWSequence::new("A".repeat(52), &patterns).unwrap();
-        let s2 = SWSequence::new("W".repeat(52), &patterns).unwrap();
+        let s1 = SWSequence::new(&"A".repeat(52), &patterns).unwrap();
+        let s2 = SWSequence::new(&"W".repeat(52), &patterns).unwrap();
         let k = ProtSpamKernel::new(patterns, 0, ProtSpamDistance::Evolutionary);
         assert!(k.mismatch_rate(&s1, &s2).is_nan());
         assert_eq!(k.call(&s1, &s2), f32::INFINITY);
@@ -277,8 +331,8 @@ mod tests {
         let s2 = String::from_utf8(s2_bytes).unwrap();
 
         let patterns = SWPatternSet::from_patterns(vec![pattern()]);
-        let seq1 = SWSequence::new(s1.to_string(), &patterns).unwrap();
-        let seq2 = SWSequence::new(s2, &patterns).unwrap();
+        let seq1 = SWSequence::new(&s1.to_string(), &patterns).unwrap();
+        let seq2 = SWSequence::new(&s2, &patterns).unwrap();
         let k = ProtSpamKernel::new(patterns, 0, ProtSpamDistance::MismatchRate);
 
         assert_eq!(k.call(&seq1, &seq2), (1.0 / 42.0) as f32);
@@ -287,8 +341,8 @@ mod tests {
     #[test]
     fn mismatch_rate_mode_is_one_when_no_spaced_word_matches() {
         let patterns = SWPatternSet::from_patterns(vec![pattern()]);
-        let s1 = SWSequence::new("A".repeat(52), &patterns).unwrap();
-        let s2 = SWSequence::new("W".repeat(52), &patterns).unwrap();
+        let s1 = SWSequence::new(&"A".repeat(52), &patterns).unwrap();
+        let s2 = SWSequence::new(&"W".repeat(52), &patterns).unwrap();
         let k = ProtSpamKernel::new(patterns, 0, ProtSpamDistance::MismatchRate);
         assert_eq!(k.call(&s1, &s2), 1.0);
     }
@@ -306,8 +360,8 @@ mod tests {
         let s2 = String::from_utf8(s2_bytes).unwrap();
 
         let patterns = SWPatternSet::from_patterns(vec![pattern()]);
-        let seq1 = SWSequence::new(s1.to_string(), &patterns).unwrap();
-        let seq2 = SWSequence::new(s2, &patterns).unwrap();
+        let seq1 = SWSequence::new(&s1.to_string(), &patterns).unwrap();
+        let seq2 = SWSequence::new(&s2, &patterns).unwrap();
         let k = ProtSpamKernel::new(patterns, 0, ProtSpamDistance::Evolutionary);
 
         assert_eq!(k.mismatch_rate(&seq1, &seq2), 1.0 / 42.0);

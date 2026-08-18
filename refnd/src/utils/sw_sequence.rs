@@ -3,11 +3,12 @@ use super::sw_pattern::{SWPattern, SWPatternSet};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SWWordError {
-    /// `add_match` was called after all `weight` matches were already added.
+    /// A match was added after the word already had all `weight` of them.
     AlreadyComplete,
-    /// A residue code didn't fit in 5 bits (must be < 32).
+    /// A residue code didn't fit in 5 bits (must be `< 32`).
     ResidueTooLarge(u8),
-    /// `word()` was called before all `weight` matches were added.
+    /// The word was finished (via the builder's `word()`) before it had all `weight`
+    /// matches added.
     Incomplete { added: u8, weight: u8 },
 }
 
@@ -30,7 +31,7 @@ impl std::error::Error for SWWordError {}
 /// [`SWWord`].
 ///
 /// Residues pack 5 bits each into a `u64` key, which caps pattern weight at 12 (`12 * 5 = 60` bits).
-pub struct SWPartialWord {
+struct SWPartialWord {
     key: u64,
     pos: usize,
     matches_added: u8,
@@ -68,8 +69,7 @@ impl SWPartialWord {
     }
 }
 
-/// Contains the residues at a pattern's match positions packed 5 bits into a `u64` key.
-/// Only buildable via [`SWPartialWord::word`]
+/// A Spaced Word: the residues at a pattern's match positions
 #[derive(Clone, Copy, Debug)]
 pub struct SWWord {
     key: u64,
@@ -77,10 +77,14 @@ pub struct SWWord {
 }
 
 impl SWWord {
+    /// The packed key: the pattern's match-position residues, 5 bits each,
+    /// most-significant residue first. Two words with equal keys have identical
+    /// residues at every match position.
     pub fn key(&self) -> u64 {
         self.key
     }
 
+    /// Start position of this word's window in the sequence it came from.
     pub fn pos(&self) -> usize {
         self.pos
     }
@@ -142,8 +146,15 @@ fn encode_residue(c: u8) -> Option<u8> {
 }
 
 /// A sequence prepared for spaced-word comparison (ProtSpaM-style). Its residues
-/// are pre-encoded as 5-bit amino-acid codes (see [`encode_residue`]). It also contains
+/// are pre-encoded as 5-bit amino-acid codes. It also contains
 /// the sorted Spaced Words per patterns.
+///
+/// Two `SWSequence`s must be built from the same [`SWPatternSet`] (or two equal clones
+/// of it) to be compared meaningfully: [`Self::sorted_words`] is indexed positionally
+/// by pattern index, not by pattern identity, so a mismatched pattern set won't
+/// necessarily panic -- it can silently compare the wrong patterns' words against each
+/// other. `refnd::kernels::protspam::ProtSpamKernel`, which is what actually compares
+/// two of these, relies on this invariant.
 #[derive(Clone, Debug)]
 pub struct SWSequence {
     seq: Vec<u8>,
@@ -152,9 +163,31 @@ pub struct SWSequence {
 }
 
 impl SWSequence {
-    /// Errors if `seq` contains a character outside ProtSpaM's amino-acid alphabet
-    /// (see [`encode_residue`]).
-    pub fn new(seq: String, patterns: &SWPatternSet) -> Result<Self, String> {
+    /// Encodes `seq` and computes its sorted spaced words for every pattern in
+    /// `patterns`.
+    ///
+    /// # Parameters
+    /// - `seq`: the amino-acid sequence
+    /// - `patterns`: the pattern set to compute spaced words for. Must be the same set
+    ///   (or an equal clone) used for every other `SWSequence` this one will be
+    ///   compared against, and for the kernel doing the comparing.
+    ///
+    /// # Errors
+    /// Returns `Err` if `seq` contains a character outside ProtSpaM's amino-acid
+    /// alphabet (see [`encode_residue`]: the 20 standard amino acids, ambiguity codes
+    /// B/Z/X, stop `*`, and J; case-insensitive).
+    ///
+    /// # Examples
+    /// ```
+    /// use refnd::utils::{SWPatternSet, SWSequence};
+    ///
+    /// let patterns = SWPatternSet::random(3, 6, 10);
+    /// let seq = SWSequence::new("MKTAYIAKQRQISFVKSHFSRQ".to_string(), &patterns).unwrap();
+    /// assert_eq!(seq.len(), 22);
+    ///
+    /// assert!(SWSequence::new("MK?AY".to_string(), &patterns).is_err()); // '?' isn't a residue
+    /// ```
+    pub fn new(seq: &String, patterns: &SWPatternSet) -> Result<Self, String> {
         let seq: Vec<u8> = seq
             .bytes()
             .map(|c| encode_residue(c).ok_or_else(|| format!("invalid amino acid character '{}'", c as char)))
@@ -163,11 +196,13 @@ impl SWSequence {
         Ok(Self { seq, sorted_words })
     }
 
-    /// Residues as 5-bit amino-acid codes (see [`encode_residue`]), not raw ASCII.
+    /// Residues as 5-bit amino-acid codes (see [`encode_residue`]), not raw ASCII --
+    /// e.g. `'A'` reads back as `0`, not `65`.
     pub fn seq(&self) -> &[u8] {
         &self.seq
     }
 
+    /// Sequence length in residues.
     pub fn len(&self) -> usize {
         self.seq.len()
     }
@@ -177,7 +212,13 @@ impl SWSequence {
     }
 
     /// Sorted spaced words for `patterns.patterns()[pattern_idx]`, where `patterns` is
-    /// the set this sequence was built with.
+    /// the set this sequence was built with (see the type-level docs on the
+    /// same-pattern-set requirement). Empty if this sequence is shorter than that
+    /// pattern (no window fits).
+    ///
+    /// # Panics
+    /// Panics if `pattern_idx` is out of range for the pattern set this sequence was
+    /// built with (i.e. `pattern_idx >= ` that set's `len()`).
     pub fn sorted_words(&self, pattern_idx: usize) -> &[SWWord] {
         &self.sorted_words[pattern_idx]
     }
@@ -271,7 +312,7 @@ mod tests {
     #[test]
     fn new_rejects_invalid_characters() {
         let patterns = SWPatternSet::random(1, 2, 0);
-        assert!(SWSequence::new("AC?E".to_string(), &patterns).is_err());
+        assert!(SWSequence::new(&"AC?E".to_string(), &patterns).is_err());
     }
 
     #[test]
@@ -280,7 +321,7 @@ mod tests {
         let pattern = &patterns.patterns()[0];
         assert_eq!(pattern.length(), 3);
 
-        let seq = SWSequence::new("ACDE".to_string(), &patterns).unwrap();
+        let seq = SWSequence::new(&"ACDE".to_string(), &patterns).unwrap();
         let words = seq.sorted_words(0);
         assert_eq!(words.len(), 2); // windows at pos 0 and pos 1
 
@@ -298,7 +339,7 @@ mod tests {
     #[test]
     fn spaced_words_are_sorted_by_key() {
         let patterns = SWPatternSet::random(3, 6, 10);
-        let seq = SWSequence::new("MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQAPILSRVGDGTQDNLSGAEK".to_string(), &patterns).unwrap();
+        let seq = SWSequence::new(&"MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQAPILSRVGDGTQDNLSGAEK".to_string(), &patterns).unwrap();
         for i in 0..patterns.len() {
             let words = seq.sorted_words(i);
             assert!(words.windows(2).all(|w| w[0].key() <= w[1].key()));
@@ -308,7 +349,7 @@ mod tests {
     #[test]
     fn spaced_words_count_matches_window_count() {
         let patterns = SWPatternSet::random(2, 6, 10); // length 16
-        let seq = SWSequence::new("A".repeat(40), &patterns).unwrap();
+        let seq = SWSequence::new(&"A".repeat(40), &patterns).unwrap();
         for (i, pattern) in patterns.patterns().iter().enumerate() {
             assert_eq!(seq.sorted_words(i).len(), 40 - pattern.length() + 1);
         }
@@ -317,14 +358,14 @@ mod tests {
     #[test]
     fn spaced_words_empty_when_sequence_shorter_than_pattern() {
         let patterns = SWPatternSet::random(1, 6, 10); // length 16
-        let seq = SWSequence::new("SHRT".to_string(), &patterns).unwrap();
+        let seq = SWSequence::new(&"SHRT".to_string(), &patterns).unwrap();
         assert!(seq.sorted_words(0).is_empty());
     }
 
     #[test]
     fn seq_accessors_expose_encoded_codes() {
         let patterns = SWPatternSet::random(1, 2, 0);
-        let seq = SWSequence::new("ACDE".to_string(), &patterns).unwrap();
+        let seq = SWSequence::new(&"ACDE".to_string(), &patterns).unwrap();
         assert_eq!(seq.seq(), &[0, 4, 3, 6]); // A, C, D, E
         assert_eq!(seq.len(), 4);
         assert!(!seq.is_empty());

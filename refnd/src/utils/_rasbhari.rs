@@ -15,7 +15,7 @@ impl SWPattern {
     /// don't-care position, keeping weight and don't-care count unchanged. No-op if
     /// there's no don't-care position to swap in, or fewer than 3 match positions
     /// (nothing interior to give up).
-    pub fn random_swap(&mut self) {
+    fn random_swap(&mut self) {
         if self.dontcare() == 0 || self.weight() < 3 {
             return;
         }
@@ -103,10 +103,26 @@ impl SWPatternSet {
     /// Optimizes this pattern set in place with RasBhari's overlap-complexity hill
     /// climbing (the `Oc` variant, ProtSpaM's default): repeatedly picks a pattern
     /// round-robin, swaps one of its interior match positions for a don't-care position
-    /// (via [`SWPattern::random_swap`], rejecting swaps that collide with another
-    /// pattern in the set), and keeps the change only if it strictly lowers the set's
-    /// total pairwise overlap-complexity score. Runs for `limit` steps and returns the
-    /// achieved score (lower is better).
+    /// (rejecting swaps that collide with another pattern in the set), and keeps the
+    /// change only if it strictly lowers the set's total pairwise overlap-complexity
+    /// score.
+    ///
+    /// # Parameters
+    /// - `limit`: number of hill-climbing steps to run. Pass `0` to just compute and
+    ///   return the current score without changing anything.
+    ///
+    /// # Returns
+    /// The achieved overlap-complexity score after optimizing (lower is better).
+    ///
+    /// # Examples
+    /// ```
+    /// use refnd::utils::SWPatternSet;
+    ///
+    /// let mut set = SWPatternSet::random(6, 6, 20);
+    /// let unoptimized_score = set.optimize(0); // limit=0: score only, no changes
+    /// let optimized_score = set.optimize(2000);
+    /// assert!(optimized_score <= unoptimized_score);
+    /// ```
     pub fn optimize(&mut self, limit: usize) -> f64 {
         let n = self.patterns.len();
         let mut state = RasbhariState::new(&self.patterns);
@@ -137,6 +153,23 @@ impl SWPatternSet {
     /// Builds a RasBhari-optimized pattern set: `n` distinct random patterns of the
     /// given `weight`/`dont_care` (see [`SWPatternSet::random`]), refined by
     /// [`Self::optimize`] for `limit` steps.
+    ///
+    /// # Parameters
+    /// - `n`, `weight`, `dont_care`: passed to [`SWPatternSet::random`] to build the
+    ///   starting set.
+    /// - `limit`: hill-climbing steps, passed to [`Self::optimize`].
+    ///
+    /// # Panics
+    /// Same as [`SWPatternSet::random`]: hangs if `n` isn't well below the number of
+    /// distinct patterns possible for `weight`/`dont_care`.
+    ///
+    /// # Examples
+    /// ```
+    /// use refnd::utils::SWPatternSet;
+    ///
+    /// let patterns = SWPatternSet::with_limit(5, 6, 20, 2000); // a smaller budget than new()'s default
+    /// assert_eq!(patterns.len(), 5);
+    /// ```
     pub fn with_limit(n: usize, weight: usize, dont_care: usize, limit: usize) -> Self {
         let mut set = Self::random(n, weight, dont_care);
         set.optimize(limit);
@@ -144,8 +177,30 @@ impl SWPatternSet {
     }
 
     /// The default way to build a pattern set: [`Self::with_limit`] with ProtSpaM's
-    /// default step budget (25_000). Use [`SWPatternSet::random`] directly if you want
-    /// an unoptimized set instead (e.g. as a cheap baseline).
+    /// default step budget (25,000). Use
+    /// [`SWPatternSet::random`] directly if you want an unoptimized set instead (e.g.
+    /// as a cheap baseline, or as a starting point to call [`Self::optimize`] on
+    /// yourself with a custom step budget).
+    ///
+    /// # Parameters
+    /// - `n`: number of distinct patterns to build.
+    /// - `weight`, `dont_care`: shape of each pattern (see [`SWPattern::random`]).
+    ///   ProtSpaM's own defaults are `weight = 6`, `dont_care = 40`.
+    ///
+    /// # Panics
+    /// Same as [`SWPatternSet::random`]: hangs if `n` isn't well below the number of
+    /// distinct patterns possible for `weight`/`dont_care`.
+    ///
+    /// # Examples
+    /// ```
+    /// use refnd::utils::SWPatternSet;
+    ///
+    /// let patterns = SWPatternSet::new(5, 6, 20);
+    /// assert_eq!(patterns.len(), 5);
+    /// for pattern in patterns.patterns() {
+    ///     assert_eq!(pattern.length(), 26);
+    /// }
+    /// ```
     pub fn new(n: usize, weight: usize, dont_care: usize) -> Self {
         Self::with_limit(n, weight, dont_care, RASBHARI_DEFAULT_LIMIT)
     }

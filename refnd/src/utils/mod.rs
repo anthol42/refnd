@@ -9,4 +9,4 @@ pub use read_fasta::read_fasta;
 pub use fingerprints::{BitFingerprint, InlineBitSet, RealFingerprint};
 pub use read_sdf::{read_sdf, read_smi, read_csv_mol, read_molecule_file, FingerprintType};
 pub use sw_pattern::{SWPattern, SWPatternSet};
-pub use sw_sequence::{SWPartialWord, SWSequence, SWWord, SWWordError};
+pub use sw_sequence::{SWSequence, SWWord};
