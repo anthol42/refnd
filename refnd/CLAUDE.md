@@ -39,6 +39,7 @@ src/
     read_fasta.rs                FASTA parser
     sw_pattern.rs                SWPattern / SWPatternSet: spaced-word patterns (ProtSpaM-style)
     _rasbhari.rs                 RasBhari hill-climbing optimizer for SWPatternSet (Oc variant)
+    sw_sequence.rs                SWSequence / SWWord: sequence + sorted spaced words per pattern
 ../libusalign-sys/               Sys-crate: compiles USalign C++ + bindgen bindings
 ```
 

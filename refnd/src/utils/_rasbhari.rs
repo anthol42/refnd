@@ -194,10 +194,9 @@ mod tests {
     /// Cross-validated against the real ProtSpaM C++ implementation: these 6 patterns
     /// (weight 6, dont_care 20) were fed into `rasbhari_compute::pair_coef_oc` and
     /// `rasbhari::calculate()` from the actual `include/rasbcomp.hpp`/`rasbhari.hpp`
-    /// sources (compiled and linked against ProtSpaM's own `.o` files, see
-    /// `~/Downloads/ProtSpaM/xval_oc.cpp`), and every pairwise coefficient plus the
-    /// triangle-sum total matched this Rust implementation's output exactly (2374.0,
-    /// full f64 precision, no epsilon needed).
+    /// sources (compiled and linked against ProtSpaM's own `.o`, and every pairwise
+    /// coefficient plus the triangle-sum total matched this Rust implementation's
+    /// output exactly (2374.0, full f64 precision, no epsilon needed).
     #[test]
     fn pair_coef_oc_matches_protspam_reference_values() {
         let patterns: Vec<SWPattern> = [
@@ -232,6 +231,40 @@ mod tests {
         }
         assert_eq!(total, 2374.0);
         assert_eq!(RasbhariState::new(&patterns).total_score, 2374.0);
+    }
+
+    /// Statistical cross-validation against the real ProtSpaM C++ implementation.
+    /// Bit-exact trajectory parity isn't achievable (C++ seeds its swap RNG from
+    /// `std::random_device` with no reproducible-seed path through the public API, and
+    /// even if it did, `std::mt19937`/`uniform_int_distribution` and Rust's `rand` are
+    /// different algorithms), so instead this checks convergence *quality*: both
+    /// implementations' actual production entry points
+    /// (`rasb_implement::hillclimb_oc` in C++, `SWPatternSet::optimize` here) were run
+    /// 10 times each at n=6, weight=6, dont_care=20, limit=25000 (see
+    /// `~/Downloads/ProtSpaM/xval_stats.cpp`), recording final scores:
+    ///   C++:  2309 2304 2303 2308 2309 2305 2308 2307 2309 2315  (range [2303, 2315], mean 2307.7)
+    ///   Rust: 2301 2304 2304 2307 2307 2307 2307 2302 2308 2308  (range [2301, 2308], mean 2305.5)
+    /// The two distributions overlap almost entirely -- Rust converges to equally good
+    /// (fractionally better, if anything) local optima, not systematically worse ones.
+    /// This test reruns a couple of fresh optimizations and checks the mean lands near
+    /// that observed band: comfortably below the unoptimized baseline (~2374, see
+    /// `pair_coef_oc_matches_protspam_reference_values`) so a broken accept/reject rule
+    /// would be caught, with margin around the observed range to absorb run-to-run
+    /// variance.
+    #[test]
+    fn optimize_converges_to_protspam_reference_quality() {
+        let scores: Vec<f64> = (0..2)
+            .map(|_| {
+                let mut set = SWPatternSet::random(6, 6, 20);
+                set.optimize(RASBHARI_DEFAULT_LIMIT)
+            })
+            .collect();
+        let mean: f64 = scores.iter().sum::<f64>() / scores.len() as f64;
+        assert!(mean <= 2350.0, "mean optimized score {mean} far above ProtSpaM's observed range [2303, 2315] -- {scores:?}");
+        assert!(
+            mean >= 2280.0,
+            "mean optimized score {mean} suspiciously below ProtSpaM's observed range -- verify pair_coef_oc still matches the reference formula -- {scores:?}"
+        );
     }
 
     #[test]
