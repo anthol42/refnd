@@ -2,10 +2,7 @@ use crate::core::Distance;
 use crate::utils::{SWPattern, SWPatternSet, SWSequence, SWWord};
 
 /// BLOSUM62 substitution matrix, indexed by ProtSpaM's 25-symbol amino-acid encoding
-/// (`utils::sw_sequence::encode_residue`) -- but BLOSUM62 itself only covers the first
-/// 24 symbols (A..*); there's no row/column for J (index 24, Leu/Ile ambiguity).
-/// [`ProtSpamKernel::blosum62_score`] routes J to X (index 22, "unknown") rather than
-/// reading out of bounds the way ProtSpaM's C++ does.
+/// (`utils::sw_sequence::encode_residue`)
 #[rustfmt::skip]
 const BLOSUM62: [[i32; 24]; 24] = [
     [ 4, -1, -2, -2,  0, -1, -1,  0, -2, -1, -1, -1, -1, -2, -1,  1,  0, -3, -2,  0, -2, -1,  0, -4],
@@ -40,27 +37,35 @@ struct BlockBest {
     mismatches: u32,
 }
 
-/// Evolutionary distance between two [`SWSequence`]s, ProtSpaM-style: for each pattern
-/// in a shared [`SWPatternSet`], match spaced words by key (grouping ties into
-/// "blocks"), score the best-aligned pair within each matching block against BLOSUM62,
-/// and pool mismatches at don't-care positions across all accepted matches into a
-/// mismatch rate. The rate is corrected into a distance via the Kimura two-parameter
-/// formula.
-///
-/// This reimplements ProtSpaM's `calc_matches`, fixing two bugs along the way:
-/// - `skip` (the cursor into sequence 2's sorted words) is reset for every pattern
-///   instead of carrying over -- stale from a previous pattern -- into the next.
-/// - the multi-match block-length scan never reads one past the end of the word list.
+/// Which distance [`ProtSpamKernel::call`] reports.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ProtSpamDistance {
+    /// The raw mismatch rate itself (fraction of don't-care positions that mismatch,
+    /// pooled across every pattern's accepted spaced-word matches) -- always in
+    /// `[0, 1]`. `1.0` if no spaced word matched at all or all don't care position mismatch.
+    MismatchRate,
+    /// The mismatch rate corrected into a distance via the Kimura two-parameter
+    /// formula -- always in `[0, inf]`.
+    Evolutionary,
+}
+
+/// Distance between two [`SWSequence`]s, ProtSpaM-style: for each pattern in a shared
+/// [`SWPatternSet`], match spaced words by key (grouping ties into "blocks"), score the
+/// best-aligned pair within each matching block against BLOSUM62, and pool mismatches
+/// at don't-care positions across all accepted matches into a mismatch rate. Reports
+/// either that raw rate or a Kimura-corrected evolutionary distance, per
+/// [`ProtSpamDistance`].
 pub struct ProtSpamKernel {
     pub patterns: SWPatternSet,
     /// Minimum BLOSUM62 score (over don't-care positions) for a spaced-word match to be
     /// considered homologous. ProtSpaM's own default is 0.
     pub threshold: i32,
+    pub distance: ProtSpamDistance,
 }
 
 impl ProtSpamKernel {
-    pub fn new(patterns: SWPatternSet, threshold: i32) -> Self {
-        Self { patterns, threshold }
+    pub fn new(patterns: SWPatternSet, threshold: i32, distance: ProtSpamDistance) -> Self {
+        Self { patterns, threshold, distance }
     }
 
     /// Number of consecutive words starting at `start` that share the same key
@@ -181,17 +186,27 @@ impl ProtSpamKernel {
 impl Distance<SWSequence> for ProtSpamKernel {
     fn call(&self, ref_sample: &SWSequence, query: &SWSequence) -> f32 {
         let mmr = self.mismatch_rate(ref_sample, query);
-        // Kimura two-parameter correction. Its log argument is non-positive (or NaN,
-        // from a 0/0 mismatch rate when no spaced word matched at all) once mmr exceeds
-        // ~0.8541. Rather than propagate NaN into distance comparisons downstream --
-        // which silently break HNSW's ordering, since NaN compares false against
-        // everything -- report these pairs as infinitely distant. `!(arg > 0.0)` (not
-        // `arg <= 0.0`) so NaN is caught too.
-        let arg = 1.0 - mmr - 0.2 * mmr * mmr;
-        if !(arg > 0.0) {
-            return f32::INFINITY;
+        match self.distance {
+            // mismatch_rate is a 0/0 NaN exactly when no spaced word matched at all;
+            // report that as maximally dissimilar (1.0) rather than propagating NaN,
+            // for the same reason Evolutionary avoids it below.
+            ProtSpamDistance::MismatchRate => {
+                if mmr.is_nan() { 1.0 } else { mmr as f32 }
+            }
+            ProtSpamDistance::Evolutionary => {
+                // Kimura two-parameter correction. Its log argument is non-positive (or
+                // NaN, from that same 0/0 mismatch rate) once mmr exceeds ~0.8541.
+                // Rather than propagate NaN into distance comparisons downstream --
+                // which silently break HNSW's ordering, since NaN compares false
+                // against everything -- report these pairs as infinitely distant.
+                // `!(arg > 0.0)` (not `arg <= 0.0`) so NaN is caught too.
+                let arg = 1.0 - mmr - 0.2 * mmr * mmr;
+                if !(arg > 0.0) {
+                    return f32::INFINITY;
+                }
+                -arg.ln() as f32
+            }
         }
-        -arg.ln() as f32
     }
 }
 
@@ -239,7 +254,7 @@ mod tests {
         let patterns = SWPatternSet::from_patterns(vec![pattern()]);
         let s1 = SWSequence::new("MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQAPILSRVGDGTQDNLSGAEK".to_string(), &patterns).unwrap();
         let s2 = SWSequence::new("MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQAPILSRVGDGTQDNLSGAEK".to_string(), &patterns).unwrap();
-        let k = ProtSpamKernel::new(patterns, 0);
+        let k = ProtSpamKernel::new(patterns, 0, ProtSpamDistance::Evolutionary);
         assert_eq!(k.mismatch_rate(&s1, &s2), 0.0);
         assert_eq!(k.call(&s1, &s2), 0.0);
     }
@@ -249,9 +264,33 @@ mod tests {
         let patterns = SWPatternSet::from_patterns(vec![pattern()]);
         let s1 = SWSequence::new("A".repeat(52), &patterns).unwrap();
         let s2 = SWSequence::new("W".repeat(52), &patterns).unwrap();
-        let k = ProtSpamKernel::new(patterns, 0);
+        let k = ProtSpamKernel::new(patterns, 0, ProtSpamDistance::Evolutionary);
         assert!(k.mismatch_rate(&s1, &s2).is_nan());
         assert_eq!(k.call(&s1, &s2), f32::INFINITY);
+    }
+
+    #[test]
+    fn mismatch_rate_mode_returns_raw_rate() {
+        let s1 = "MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQAPILSRVGDGTQDNLSGAEK";
+        let mut s2_bytes = s1.as_bytes().to_vec();
+        s2_bytes[20] = b'A';
+        let s2 = String::from_utf8(s2_bytes).unwrap();
+
+        let patterns = SWPatternSet::from_patterns(vec![pattern()]);
+        let seq1 = SWSequence::new(s1.to_string(), &patterns).unwrap();
+        let seq2 = SWSequence::new(s2, &patterns).unwrap();
+        let k = ProtSpamKernel::new(patterns, 0, ProtSpamDistance::MismatchRate);
+
+        assert_eq!(k.call(&seq1, &seq2), (1.0 / 42.0) as f32);
+    }
+
+    #[test]
+    fn mismatch_rate_mode_is_one_when_no_spaced_word_matches() {
+        let patterns = SWPatternSet::from_patterns(vec![pattern()]);
+        let s1 = SWSequence::new("A".repeat(52), &patterns).unwrap();
+        let s2 = SWSequence::new("W".repeat(52), &patterns).unwrap();
+        let k = ProtSpamKernel::new(patterns, 0, ProtSpamDistance::MismatchRate);
+        assert_eq!(k.call(&s1, &s2), 1.0);
     }
 
     /// Cross-validated against the real ProtSpaM C++ implementation: `Species` built
@@ -269,7 +308,7 @@ mod tests {
         let patterns = SWPatternSet::from_patterns(vec![pattern()]);
         let seq1 = SWSequence::new(s1.to_string(), &patterns).unwrap();
         let seq2 = SWSequence::new(s2, &patterns).unwrap();
-        let k = ProtSpamKernel::new(patterns, 0);
+        let k = ProtSpamKernel::new(patterns, 0, ProtSpamDistance::Evolutionary);
 
         assert_eq!(k.mismatch_rate(&seq1, &seq2), 1.0 / 42.0);
         assert!((k.call(&seq1, &seq2) - 0.024213702342882334_f32).abs() < 1e-6);
