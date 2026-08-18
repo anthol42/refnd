@@ -68,13 +68,13 @@ class ProtSpamKernel:
         Returns:
             The distance -- see ``ProtSpamDistance``.
         
-        Raises:
-            IndexError: If ``ref_sample``/``query`` weren't built from the same
-                ``SWPatternSet`` as this kernel's ``patterns()`` and the mismatched
-                set has fewer patterns -- or, if the mismatched set merely has a
-                different pattern at the same index, this can silently compare the
-                wrong patterns' spaced words against each other instead, with no
-                error at all.
+        Panics:
+            ``ref_sample``/``query`` must have been built from the same
+            ``SWPatternSet`` as this kernel's ``patterns()``. If they weren't, this
+            can panic (index out of range, if the mismatched set has fewer patterns)
+            or -- more insidiously -- silently compare the wrong patterns' spaced
+            words against each other with no panic at all, if the mismatched set
+            merely has a different pattern at the same index.
         """
     def __call__(self, ref_sample: utils.SWSequence, query: utils.SWSequence) -> builtins.float:
         r"""
