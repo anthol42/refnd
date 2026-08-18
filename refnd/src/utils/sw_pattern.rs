@@ -136,6 +136,11 @@ impl SWPatternSet {
         Self { patterns }
     }
 
+    /// Builds a set from already-constructed patterns
+    pub fn from_patterns(patterns: Vec<SWPattern>) -> Self {
+        Self { patterns }
+    }
+
     pub fn patterns(&self) -> &[SWPattern] {
         &self.patterns
     }
