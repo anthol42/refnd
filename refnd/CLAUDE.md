@@ -37,6 +37,8 @@ src/
     molecules/tanimoto/          Molecular similarity (Tanimoto on fingerprints)
   utils/
     read_fasta.rs                FASTA parser
+    sw_pattern.rs                SWPattern / SWPatternSet: spaced-word patterns (ProtSpaM-style)
+    _rasbhari.rs                 RasBhari hill-climbing optimizer for SWPatternSet (Oc variant)
 ../libusalign-sys/               Sys-crate: compiles USalign C++ + bindgen bindings
 ```
 
