@@ -89,6 +89,7 @@ pub enum ProtSpamDistance {
 /// let distance = kernel.call(&swseqs[0], &swseqs[1]);
 /// assert!(distance >= 0.0);
 /// ```
+#[derive(Clone)]
 pub struct ProtSpamKernel {
     /// The pattern set spaced words are matched against. Must be the same set every
     /// [`SWSequence`] passed to [`Self::call`] was built with.

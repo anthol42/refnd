@@ -10,8 +10,9 @@ use crate::kernels::{
     alignments::{GlobalAligner, LocalAligner},
     molecules::{TanimotoBit, TanimotoReal},
     structures::USAlignKernel as _USAlignKernel,
+    protspam::ProtSpamKernel as _ProtSpamKernel,
 };
-use crate::utils::{BitFingerprint, RealFingerprint, PdbStructure};
+use crate::utils::{BitFingerprint, RealFingerprint, PdbStructure, SWSequence};
 use super::_utils::linear_progress_bar;
 use super::edge_store::EdgeStore;
 
@@ -92,6 +93,8 @@ pub fn exact_edges(
             py, RealFingerprint, TanimotoReal, args, kwargs; data; proximity_threshold, n_threads, pb.as_ref())}
         KernelVariant::Structure => {call_generic!(exact_edges_core;
             py, PdbStructure, _USAlignKernel, args, kwargs; data; proximity_threshold, n_threads, pb.as_ref())}
+        KernelVariant::ProtSpam => {call_generic!(exact_edges_core;
+            py, SWSequence, _ProtSpamKernel, args, kwargs; data; proximity_threshold, n_threads, pb.as_ref())}
     };
     if let Some(pb) = pb { pb.finish(); }
     Ok(EdgeStore::new(n, edges))
@@ -164,6 +167,8 @@ pub fn exact_nearest_neighbors(
             py, RealFingerprint, TanimotoReal, args, kwargs; queries, references; k, threads, pb.as_ref())}
         KernelVariant::Structure => {call_generic!(exact_nearest_neighbors_core;
             py, PdbStructure, _USAlignKernel, args, kwargs; queries, references; k, threads, pb.as_ref())}
+        KernelVariant::ProtSpam => {call_generic!(exact_nearest_neighbors_core;
+            py, SWSequence, _ProtSpamKernel, args, kwargs; queries, references; k, threads, pb.as_ref())}
     };
     if let Some(pb) = pb { pb.finish(); }
     Ok(result)

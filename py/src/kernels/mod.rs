@@ -3,6 +3,7 @@ use pyo3_stub_gen::derive::gen_stub_pyclass_enum;
 
 pub mod alignments;
 pub mod molecules;
+pub mod protspam;
 pub mod structures;
 pub mod zip_kernel;
 
@@ -15,4 +16,5 @@ pub enum KernelVariant {
     TanimotoBit,
     TanimotoReal,
     Structure,
+    ProtSpam,
 }

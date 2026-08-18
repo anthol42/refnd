@@ -70,7 +70,7 @@ impl SWPartialWord {
 }
 
 /// A Spaced Word: the residues at a pattern's match positions
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, bincode::Encode, bincode::Decode)]
 pub struct SWWord {
     key: u64,
     pos: usize,
@@ -90,9 +90,7 @@ impl SWWord {
     }
 }
 
-/// Equality/ordering is on `key` alone (matching ProtSpaM's `Word::operator<`) -- `pos`
-/// is metadata carried along for the caller, not part of a word's identity for
-/// matching/sorting purposes.
+/// Equality/ordering is on `key` alone.
 impl PartialEq for SWWord {
     fn eq(&self, other: &Self) -> bool {
         self.key == other.key
@@ -155,7 +153,7 @@ fn encode_residue(c: u8) -> Option<u8> {
 /// necessarily panic -- it can silently compare the wrong patterns' words against each
 /// other. `refnd::kernels::protspam::ProtSpamKernel`, which is what actually compares
 /// two of these, relies on this invariant.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, bincode::Encode, bincode::Decode)]
 pub struct SWSequence {
     seq: Vec<u8>,
     /// `sorted_words[i]` holds the spaced words for `patterns.patterns()[i]`, sorted.
@@ -218,9 +216,16 @@ impl SWSequence {
     ///
     /// # Panics
     /// Panics if `pattern_idx` is out of range for the pattern set this sequence was
-    /// built with (i.e. `pattern_idx >= ` that set's `len()`).
+    /// built with (i.e. `pattern_idx >= ` that set's `len()`, see [`Self::pattern_count`]).
     pub fn sorted_words(&self, pattern_idx: usize) -> &[SWWord] {
         &self.sorted_words[pattern_idx]
+    }
+
+    /// Number of patterns this sequence has spaced words for, i.e. the `len()` of the
+    /// [`SWPatternSet`] it was built with. Valid indices for [`Self::sorted_words`]
+    /// are `0..pattern_count()`.
+    pub fn pattern_count(&self) -> usize {
+        self.sorted_words.len()
     }
 }
 

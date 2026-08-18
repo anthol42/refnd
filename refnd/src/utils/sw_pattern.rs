@@ -5,7 +5,7 @@ use std::str::FromStr;
 /// A spaced-word pattern: a binary mask over `length` positions where a match position
 /// ("1") contributes a residue to the spaced word's key and a don't-care position ("0")
 /// is skipped when hashing but still compared for mismatches. Position 0 and the last
-/// position are always match positions (see [`Self::random`] for why).
+/// position are always match positions.
 #[derive(Clone, Debug, PartialEq, Eq, bincode::Encode, bincode::Decode)]
 pub struct SWPattern {
     pub(super) length: usize,

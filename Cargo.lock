@@ -1257,6 +1257,7 @@ name = "py-refnd"
 version = "0.0.3"
 dependencies = [
  "anyhow",
+ "bincode",
  "indicatif",
  "numpy",
  "pyo3",

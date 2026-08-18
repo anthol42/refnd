@@ -9,6 +9,8 @@ use refnd_core::utils::{BitFingerprint as CoreBitFP, InlineBitSet, RealFingerpri
 use refnd_core::kernels::usalign::PdbStructure as CorePdbStructure;
 use std::collections::{HashMap, HashSet};
 use refnd_core::core::largest_cluster as largest_cluster_core;
+use refnd_core::utils::{SWPattern as CoreSWPattern, SWPatternSet as CoreSWPatternSet, SWSequence as CoreSWSequence, SWWord as CoreSWWord};
+use std::str::FromStr;
 
 /// Newtype so `PyArray1<bool>` gets a stub type — `pyo3_stub_gen` doesn't implement
 /// `NumPyScalar` for `bool`, so we bypass it with a local wrapper.
@@ -417,4 +419,368 @@ pub fn read_fasta(path: &str) -> PyResult<Vec<(String, String)>> {
 #[pyfunction]
 pub fn largest_cluster(clusters: Vec<usize>) -> (usize, usize) {
     largest_cluster_core(&clusters)
+}
+
+// ── SWPattern ─────────────────────────────────────────────────────────────────
+
+/// A spaced-word pattern: a binary mask over `length` positions where a match position
+/// ("1") contributes a residue to the spaced word's key and a don't-care position ("0")
+/// is skipped when hashing but still compared for mismatches. Position 0 and the last
+/// position are always match positions.
+///
+/// Example::
+///
+///     from refnd.utils import SWPattern
+///
+///     pat = SWPattern(6, 20)
+///     assert len(pat) == 26
+///     assert pat.weight() == 6
+///     assert pat.dontcare() == 20
+///     assert pat.is_match(0)
+///     assert pat.is_match(25)
+///
+///     # Parse/render as a string of '1's (match) and '0's (don't-care)
+///     pat2 = SWPattern.parse("10100101")
+///     assert pat2.weight() == 4
+///     assert str(pat2) == "10100101"
+#[gen_stub_pyclass]
+#[pyclass(module = "refnd.utils", from_py_object)]
+#[derive(Clone)]
+pub struct SWPattern {
+    pub inner: CoreSWPattern,
+}
+
+#[gen_stub_pymethods]
+#[pymethods]
+impl SWPattern {
+    /// Build a pattern with ``weight`` match positions (including the fixed first
+    /// and last) and ``dont_care`` don't-care positions, total length
+    /// ``weight + dont_care``. Positions in-between are randomly sampled.
+    ///
+    /// Args:
+    ///     weight: Number of match positions, including both endpoints. Must be ``>= 2``.
+    ///     dont_care: Number of don't-care positions.
+    ///
+    /// Raises:
+    ///     ValueError: If ``weight < 2`` (there would be no way to place both required endpoints).
+    #[new]
+    pub fn new(weight: usize, dont_care: usize) -> PyResult<Self> {
+        if weight < 2 {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!("pattern weight must be >= 2, got {weight}")));
+        }
+        Ok(Self { inner: CoreSWPattern::random(weight, dont_care) })
+    }
+
+    /// Parse a pattern from a string of ``'1'``s (match) and ``'0'``s (don't-care),
+    /// the same format ``str()`` produces.
+    ///
+    /// Raises:
+    ///     ValueError: If the string contains a character other than ``'0'``/``'1'``,
+    ///         or doesn't start and end with ``'1'``.
+    #[staticmethod]
+    pub fn parse(s: &str) -> PyResult<Self> {
+        CoreSWPattern::from_str(s).map(|inner| Self { inner }).map_err(pyo3::exceptions::PyValueError::new_err)
+    }
+
+    /// Number of match ("1") positions.
+    pub fn weight(&self) -> usize {
+        self.inner.weight()
+    }
+
+    /// Number of don't-care ("0") positions.
+    pub fn dontcare(&self) -> usize {
+        self.inner.dontcare()
+    }
+
+    /// Ascending indices of match ("1") positions.
+    pub fn match_positions(&self) -> Vec<usize> {
+        self.inner.match_positions().to_vec()
+    }
+
+    /// Whether ``pos`` is a match position. Never raises: an out-of-range ``pos``
+    /// simply reads as ``False``.
+    pub fn is_match(&self, pos: usize) -> bool {
+        self.inner.is_match(pos)
+    }
+
+    /// Total number of positions (``weight() + dontcare()``).
+    pub fn __len__(&self) -> usize {
+        self.inner.length()
+    }
+
+    /// Render as a string of the same length: ``'1'`` for match positions, ``'0'``
+    /// for don't-care positions -- the inverse of ``SWPattern.parse``.
+    pub fn __str__(&self) -> String {
+        self.inner.to_string()
+    }
+
+    pub fn __repr__(&self) -> String {
+        format!("SWPattern('{}')", self.inner)
+    }
+}
+
+// ── SWPatternSet ──────────────────────────────────────────────────────────────
+
+/// A set of ``SWPattern``s used together to compute spaced words for a sequence.
+///
+/// The default constructor builds a RasBhari-optimized set (recommended for real
+/// use); use ``SWPatternSet.random`` for a cheap, unoptimized set, or
+/// ``SWPatternSet.from_patterns`` to build one from hand-picked patterns.
+///
+/// Example::
+///
+///     from refnd.utils import SWPatternSet
+///
+///     # RasBhari-optimized (recommended)
+///     patterns = SWPatternSet(5, 6, 20)
+///     assert len(patterns) == 5
+///
+///     # Cheap, unoptimized baseline, refined by hand
+///     random_patterns = SWPatternSet.random(5, 6, 20)
+///     score_before = random_patterns.optimize(0)    # limit=0: score only, no changes
+///     score_after = random_patterns.optimize(2000)
+///     assert score_after <= score_before
+#[gen_stub_pyclass]
+#[pyclass(module = "refnd.utils", from_py_object)]
+#[derive(Clone)]
+pub struct SWPatternSet {
+    pub inner: CoreSWPatternSet,
+}
+
+#[gen_stub_pymethods]
+#[pymethods]
+impl SWPatternSet {
+    /// Build a RasBhari-optimized pattern set: ``n`` distinct random patterns of the
+    /// given ``weight``/``dont_care``, refined by hill climbing for ProtSpaM's
+    /// default step budget (25,000).
+    ///
+    /// Args:
+    ///     n: Number of distinct patterns to build.
+    ///     weight: Number of match positions per pattern. ProtSpaM's own default is ``6``.
+    ///     dont_care: Number of don't-care positions per pattern. ProtSpaM's own
+    ///         default is ``40``.
+    ///
+    /// Warning:
+    ///     Same as ``SWPatternSet.random``: hangs if ``n`` isn't well below the
+    ///     number of distinct patterns possible for ``weight``/``dont_care``.
+    #[new]
+    pub fn new(n: usize, weight: usize, dont_care: usize) -> Self {
+        Self { inner: CoreSWPatternSet::new(n, weight, dont_care) }
+    }
+
+    /// Build ``n`` distinct unoptimized random patterns of the given
+    /// ``weight``/``dont_care``. Useful as a cheap baseline, or as the unoptimized
+    /// starting point ``optimize`` refines.
+    ///
+    /// Warning:
+    ///     Patterns are generated by rejection sampling on uniqueness, so this hangs
+    ///     (never returns) if ``n`` isn't well below the number of distinct patterns
+    ///     possible for ``weight``/``dont_care`` (``C(weight + dont_care - 2, weight - 2)``).
+    ///     This is sharpest at ``weight == 2``: there are no interior positions to
+    ///     vary at all, so every generated pattern is identical and any ``n > 1``
+    ///     hangs immediately.
+    #[staticmethod]
+    pub fn random(n: usize, weight: usize, dont_care: usize) -> Self {
+        Self { inner: CoreSWPatternSet::random(n, weight, dont_care) }
+    }
+
+    /// Same as the default constructor, but with an explicit hill-climbing step
+    /// budget instead of ProtSpaM's default of 25,000.
+    #[staticmethod]
+    pub fn with_limit(n: usize, weight: usize, dont_care: usize, limit: usize) -> Self {
+        Self { inner: CoreSWPatternSet::with_limit(n, weight, dont_care, limit) }
+    }
+
+    /// Build a set from already-constructed patterns. Unlike ``random``, there's no uniqueness check -- duplicate
+    /// patterns are allowed, though they add nothing (two identical patterns always
+    /// find exactly the same matches).
+    #[staticmethod]
+    pub fn from_patterns(patterns: Vec<SWPattern>) -> Self {
+        Self { inner: CoreSWPatternSet::from_patterns(patterns.into_iter().map(|p| p.inner).collect()) }
+    }
+
+    /// Optimize this pattern set in place with RasBhari's overlap-complexity hill
+    /// climbing: repeatedly picks a pattern round-robin, swaps one of its interior
+    /// match positions for a don't-care position, and keeps the change only if it
+    /// strictly lowers the set's total pairwise overlap-complexity score.
+    ///
+    /// Args:
+    ///     limit: Number of hill-climbing steps to run. Pass ``0`` to just compute
+    ///         and return the current score without changing anything.
+    ///
+    /// Returns:
+    ///     The achieved overlap-complexity score after optimizing (lower is better).
+    pub fn optimize(&mut self, limit: usize) -> f64 {
+        self.inner.optimize(limit)
+    }
+
+    /// The patterns in this set, in construction order.
+    pub fn patterns(&self) -> Vec<SWPattern> {
+        self.inner.patterns().iter().map(|p| SWPattern { inner: p.clone() }).collect()
+    }
+
+    /// Number of patterns in this set.
+    pub fn __len__(&self) -> usize {
+        self.inner.len()
+    }
+
+    /// Serialize this set to ``path``. Inverse of ``load``.
+    ///
+    /// Raises:
+    ///     IOError: If ``path`` can't be written.
+    pub fn save(&self, path: &str) -> PyResult<()> {
+        self.inner.save(path).map_err(|e| PyIOError::new_err(e.to_string()))
+    }
+
+    /// Deserialize a set previously written by ``save``.
+    ///
+    /// Raises:
+    ///     IOError: If ``path`` can't be read, or its contents aren't a valid pattern set.
+    #[staticmethod]
+    pub fn load(path: &str) -> PyResult<Self> {
+        CoreSWPatternSet::load(path).map(|inner| Self { inner }).map_err(|e| PyIOError::new_err(e.to_string()))
+    }
+}
+
+// ── SWWord ────────────────────────────────────────────────────────────────────
+
+/// One complete spaced word: the residues at a pattern's match positions.
+///
+/// Example::
+///
+///     from refnd.utils import SWPatternSet, SWSequence
+///
+///     patterns = SWPatternSet.random(1, 2, 1)  # single pattern, weight 2, dc 1 -> "101"
+///     seq = SWSequence("ACDE", patterns)
+///     words = seq.sorted_words(0)
+///     assert all(words[i].key() <= words[i + 1].key() for i in range(len(words) - 1))
+#[gen_stub_pyclass]
+#[pyclass(eq, ord, module = "refnd.utils", from_py_object)]
+#[derive(Clone, Copy, PartialEq, PartialOrd)]
+pub struct SWWord {
+    pub inner: CoreSWWord,
+}
+
+#[gen_stub_pymethods]
+#[pymethods]
+impl SWWord {
+    /// The packed key: the pattern's match-position residues, 5 bits each,
+    /// most-significant residue first.
+    pub fn key(&self) -> u64 {
+        self.inner.key()
+    }
+
+    /// Start position of this word's window in the sequence it came from.
+    pub fn pos(&self) -> usize {
+        self.inner.pos()
+    }
+
+    pub fn __repr__(&self) -> String {
+        format!("SWWord(key={}, pos={})", self.inner.key(), self.inner.pos())
+    }
+}
+
+// ── SWSequence ────────────────────────────────────────────────────────────────
+
+/// A sequence prepared for spaced-word comparison (ProtSpaM-style). Its residues are
+/// pre-encoded as 5-bit amino-acid codes, and it holds the sorted spaced words for
+/// every pattern in the ``SWPatternSet`` it was built with.
+///
+/// Two ``SWSequence``s must be built from the same ``SWPatternSet`` (or two equal
+/// copies of it) to be compared meaningfully -- see
+/// ``refnd.kernels.protspam.ProtSpamKernel``, which is what actually compares two of
+/// these.
+///
+/// Picklable: ``pickle.dumps``/``pickle.loads`` round-trip an ``SWSequence`` without
+/// needing the original pattern set again (its encoded residues and sorted spaced
+/// words are serialized directly).
+///
+/// Example::
+///
+///     import pickle
+///     from refnd.utils import SWPatternSet, SWSequence
+///
+///     patterns = SWPatternSet(5, 6, 20)
+///     seq = SWSequence("MKTAYIAKQRQISFVKSHFSRQ", patterns)
+///     assert len(seq) == 22
+///
+///     restored = pickle.loads(pickle.dumps(seq))
+///     assert restored.seq() == seq.seq()
+#[gen_stub_pyclass]
+#[pyclass(module = "refnd.utils", from_py_object)]
+#[derive(Clone)]
+pub struct SWSequence {
+    pub inner: CoreSWSequence,
+}
+
+#[gen_stub_pymethods]
+#[pymethods]
+impl SWSequence {
+    /// Encode ``seq`` and compute its sorted spaced words for every pattern in
+    /// ``patterns``.
+    ///
+    /// Args:
+    ///     seq: The amino-acid sequence.
+    ///     patterns: The pattern set to compute spaced words for. Must be the same
+    ///         set (or an equal copy) used for every other ``SWSequence`` this one
+    ///         will be compared against, and for the kernel doing the comparing.
+    ///
+    /// Raises:
+    ///     ValueError: If ``seq`` contains a character outside ProtSpaM's amino-acid
+    ///         alphabet (the 20 standard amino acids, ambiguity codes B/Z/X, stop
+    ///         ``*``, and J; case-insensitive).
+    #[new]
+    pub fn new(seq: String, patterns: &SWPatternSet) -> PyResult<Self> {
+        CoreSWSequence::new(&seq, &patterns.inner).map(|inner| Self { inner }).map_err(pyo3::exceptions::PyValueError::new_err)
+    }
+
+    /// Residues as 5-bit amino-acid codes, not raw ASCII -- e.g. ``'A'`` reads back
+    /// as ``0``, not ``65``.
+    pub fn seq(&self) -> Vec<u8> {
+        self.inner.seq().to_vec()
+    }
+
+    /// Sequence length in residues.
+    pub fn __len__(&self) -> usize {
+        self.inner.len()
+    }
+
+    /// Sorted spaced words for ``patterns.patterns()[pattern_idx]``, where
+    /// ``patterns`` is the set this sequence was built with. Empty if this sequence
+    /// is shorter than that pattern (no window fits).
+    ///
+    /// Raises:
+    ///     IndexError: If ``pattern_idx`` is out of range for the pattern set this
+    ///         sequence was built with.
+    pub fn sorted_words(&self, pattern_idx: usize) -> PyResult<Vec<SWWord>> {
+        if pattern_idx >= self.inner.pattern_count() {
+            return Err(pyo3::exceptions::PyIndexError::new_err(format!(
+                "pattern_idx {pattern_idx} out of range for {} patterns",
+                self.inner.pattern_count()
+            )));
+        }
+        Ok(self.inner.sorted_words(pattern_idx).iter().map(|w| SWWord { inner: *w }).collect())
+    }
+
+    /// Number of patterns this sequence has spaced words for -- the ``len()`` of the
+    /// ``SWPatternSet`` it was built with. Valid indices for ``sorted_words`` are
+    /// ``0 .. pattern_count()``.
+    pub fn pattern_count(&self) -> usize {
+        self.inner.pattern_count()
+    }
+
+    /// Pickle support.
+    fn __reduce__<'py>(&self, py: Python<'py>) -> PyResult<(Bound<'py, PyAny>, (Vec<u8>,))> {
+        let state = bincode::encode_to_vec(&self.inner, bincode::config::standard())
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+        let ctor = py.get_type::<Self>().getattr("_from_bytes")?;
+        Ok((ctor, (state,)))
+    }
+
+    #[staticmethod]
+    fn _from_bytes(data: Vec<u8>) -> PyResult<Self> {
+        let (inner, _): (CoreSWSequence, usize) = bincode::decode_from_slice(&data, bincode::config::standard())
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+        Ok(Self { inner })
+    }
 }

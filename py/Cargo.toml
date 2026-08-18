@@ -16,3 +16,4 @@ indicatif = "0.17"
 rayon = "1"
 numpy = "0.28"
 anyhow = "1.0.102"
+bincode = { version = "<3.0", features = ["derive"] }

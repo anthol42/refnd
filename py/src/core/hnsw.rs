@@ -5,9 +5,10 @@ use refnd_core::core::hnsw::{HNSWState as HNSWStateCore, HNSWIndex as HNSWIndexC
 use refnd_core::kernels::alignments::parasail::{GlobalAligner, LocalAligner};
 use refnd_core::kernels::usalign::USAlignKernel as CoreUSAlignKernel;
 use refnd_core::kernels::molecules::tanimoto::Tanimoto;
+use refnd_core::kernels::protspam::ProtSpamKernel as CoreProtSpamKernel;
 use super::edge_store::EdgeStore;
 use super::_utils::{logfacto_progress_bar, linear_progress_bar};
-use super::super::utils::{BitFingerprint, RealFingerprint};
+use super::super::utils::{BitFingerprint, RealFingerprint, SWSequence};
 use super::super::kernels::{
     KernelVariant,
     alignments::{
@@ -16,6 +17,7 @@ use super::super::kernels::{
     },
     molecules::{TanimotoReal as _TanimotoReal, TanimotoBit as _TanimotoBit},
     structures::USAlignKernel as _USAlignKernel,
+    protspam::ProtSpamKernel as _ProtSpamKernel,
 };
 use super::super::utils::PdbStructure;
 
@@ -240,6 +242,7 @@ enum HNSWType {
     TanimotoBit(HNSWStateCore<BitFingerprint, Tanimoto>),
     TanimotoReal(HNSWStateCore<RealFingerprint, Tanimoto>),
     Structure(HNSWStateCore<PdbStructure, CoreUSAlignKernel>),
+    ProtSpam(HNSWStateCore<SWSequence, CoreProtSpamKernel>),
 }
 
 /// Expands a `HNSWState::new(data, kernel, config)` constructor for each KernelVariant.
@@ -466,7 +469,8 @@ impl HNSWState {
             AlignmentLocal:_LocalAligner,
             TanimotoBit:_TanimotoBit,
             TanimotoReal:_TanimotoReal,
-            Structure:_USAlignKernel
+            Structure:_USAlignKernel,
+            ProtSpam:_ProtSpamKernel
         );
         Ok(HNSWState { inner, n, config: config_py })
     }
@@ -490,7 +494,8 @@ impl HNSWState {
             AlignmentLocal:_LocalAligner,
             TanimotoBit:_TanimotoBit,
             TanimotoReal:_TanimotoReal,
-            Structure:_USAlignKernel
+            Structure:_USAlignKernel,
+            ProtSpam:_ProtSpamKernel
         ).map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
         if let Some(pb) = pb { pb.finish() };
         Ok(())
@@ -540,6 +545,7 @@ impl HNSWState {
             HNSWType::TanimotoBit(inner)     => inner.parallel_search(queries.extract::<Vec<_>>(py)?.as_slice(), k, ef, threads, pb.as_ref()),
             HNSWType::TanimotoReal(inner)    => inner.parallel_search(queries.extract::<Vec<_>>(py)?.as_slice(), k, ef, threads, pb.as_ref()),
             HNSWType::Structure(inner)       => inner.parallel_search(queries.extract::<Vec<_>>(py)?.as_slice(), k, ef, threads, pb.as_ref()),
+            HNSWType::ProtSpam(inner)        => inner.parallel_search(queries.extract::<Vec<_>>(py)?.as_slice(), k, ef, threads, pb.as_ref()),
         }.map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
         if let Some(pb) = pb { pb.finish() };
         Ok(res)
@@ -560,7 +566,8 @@ impl HNSWState {
             AlignmentLocal:_LocalAligner,
             TanimotoBit:_TanimotoBit,
             TanimotoReal:_TanimotoReal,
-            Structure:_USAlignKernel
+            Structure:_USAlignKernel,
+            ProtSpam:_ProtSpamKernel
         )?;
         Some(EdgeStore::new(self.n, edges))
     }
@@ -606,7 +613,8 @@ impl HNSWState {
             AlignmentLocal:_LocalAligner,
             TanimotoBit:_TanimotoBit,
             TanimotoReal:_TanimotoReal,
-            Structure:_USAlignKernel
+            Structure:_USAlignKernel,
+            ProtSpam:_ProtSpamKernel
         ).map_err(pyo3::exceptions::PyIndexError::new_err)?;
         if let Some(pb) = pb { pb.finish() };
         Ok(EdgeStore::new(self.n, edges))
@@ -634,7 +642,8 @@ impl HNSWState {
             AlignmentLocal:_LocalAligner,
             TanimotoBit:_TanimotoBit,
             TanimotoReal:_TanimotoReal,
-            Structure:_USAlignKernel
+            Structure:_USAlignKernel,
+            ProtSpam:_ProtSpamKernel
         )
         .map_err(|e: Box<dyn std::error::Error>| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))
     }
@@ -677,7 +686,8 @@ impl HNSWState {
             AlignmentLocal:_LocalAligner,
             TanimotoBit:_TanimotoBit,
             TanimotoReal:_TanimotoReal,
-            Structure:_USAlignKernel
+            Structure:_USAlignKernel,
+            ProtSpam:_ProtSpamKernel
         );
         let config = HNSWConfig {
             inner: hnsw_dispatch!(
@@ -686,7 +696,8 @@ impl HNSWState {
                 AlignmentLocal:_LocalAligner,
                 TanimotoBit:_TanimotoBit,
                 TanimotoReal:_TanimotoReal,
-                Structure:_USAlignKernel
+                Structure:_USAlignKernel,
+                ProtSpam:_ProtSpamKernel
             ).clone(),
         };
         Ok(HNSWState { inner, n, config })
@@ -701,6 +712,7 @@ impl HNSWState {
             HNSWType::TanimotoBit(inner)     => inner.has_been_built,
             HNSWType::TanimotoReal(inner)    => inner.has_been_built,
             HNSWType::Structure(inner)       => inner.has_been_built,
+            HNSWType::ProtSpam(inner)        => inner.has_been_built,
         }
     }
 
@@ -720,7 +732,8 @@ impl HNSWState {
                 AlignmentLocal:_LocalAligner,
                 TanimotoBit:_TanimotoBit,
                 TanimotoReal:_TanimotoReal,
-                Structure:_USAlignKernel
+                Structure:_USAlignKernel,
+                ProtSpam:_ProtSpamKernel
             ),
         }
     }
