@@ -81,7 +81,7 @@ pub enum ProtSpamDistance {
 /// let patterns = SWPatternSet::new(5, 6, 20);
 ///
 /// let swseqs: Vec<SWSequence> = sequences
-///     .into_iter()
+///     .iter()
 ///     .map(|s| SWSequence::new(s, &patterns).expect("valid amino acids"))
 ///     .collect();
 ///

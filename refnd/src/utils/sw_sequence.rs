@@ -182,10 +182,10 @@ impl SWSequence {
     /// use refnd::utils::{SWPatternSet, SWSequence};
     ///
     /// let patterns = SWPatternSet::random(3, 6, 10);
-    /// let seq = SWSequence::new("MKTAYIAKQRQISFVKSHFSRQ".to_string(), &patterns).unwrap();
+    /// let seq = SWSequence::new(&"MKTAYIAKQRQISFVKSHFSRQ".to_string(), &patterns).unwrap();
     /// assert_eq!(seq.len(), 22);
     ///
-    /// assert!(SWSequence::new("MK?AY".to_string(), &patterns).is_err()); // '?' isn't a residue
+    /// assert!(SWSequence::new(&"MK?AY".to_string(), &patterns).is_err()); // '?' isn't a residue
     /// ```
     pub fn new(seq: &String, patterns: &SWPatternSet) -> Result<Self, String> {
         let seq: Vec<u8> = seq
