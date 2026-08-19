@@ -60,10 +60,10 @@ mod tests {
     }
 
     #[test]
-    fn cosine_is_zero_when_a_vector_is_all_zero() {
+    fn cosine_is_zero_when_a_vector_is_all_one() {
         let a = vec![0.0, 0.0];
         let b = vec![1.0, 1.0];
-        assert_eq!(Cosine.call(&a, &b), 0.0);
+        assert_eq!(Cosine.call(&a, &b), 1.0);
     }
 
     #[test]

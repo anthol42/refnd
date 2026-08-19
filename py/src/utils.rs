@@ -748,12 +748,12 @@ pub struct SWWord {
 impl SWWord {
     /// The packed key: the pattern's match-position residues, 5 bits each,
     /// most-significant residue first.
-    pub fn key(&self) -> u64 {
+    pub fn key(&self) -> u32 {
         self.inner.key()
     }
 
     /// Start position of this word's window in the sequence it came from.
-    pub fn pos(&self) -> usize {
+    pub fn pos(&self) -> u16 {
         self.inner.pos()
     }
 

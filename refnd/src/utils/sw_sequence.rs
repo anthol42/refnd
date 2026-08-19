@@ -30,9 +30,10 @@ impl std::error::Error for SWWordError {}
 /// (in ascending order), then [`Self::word`] to get the finished, always-valid
 /// [`SWWord`].
 ///
-/// Residues pack 5 bits each into a `u64` key, which caps pattern weight at 12 (`12 * 5 = 60` bits).
+/// Residues pack 5 bits each into a `u32` key, which caps pattern weight at 6 (`6 * 5 = 30` bits) --
+/// matching ProtSpaM's own default weight (see `_rasbhari.rs`).
 struct SWPartialWord {
-    key: u64,
+    key: u32,
     pos: usize,
     matches_added: u8,
     weight: u8,
@@ -40,9 +41,9 @@ struct SWPartialWord {
 
 impl SWPartialWord {
     /// Starts a word at `pos`, expecting `weight` calls to `add_match`. Panics if
-    /// `weight` is 0 or greater than 12
+    /// `weight` is 0 or greater than 6
     pub fn new(pos: usize, weight: usize) -> Self {
-        assert!((1..=12).contains(&weight), "SWPartialWord weight must be between 1 and 12 to fit a u64 key, got {weight}");
+        assert!(weight >= 1 && weight <= 6, "SWPartialWord weight must be between 1 and 6 to fit a u32 key, got {weight}");
         Self { key: 0, pos, matches_added: 0, weight: weight as u8 }
     }
 
@@ -55,37 +56,45 @@ impl SWPartialWord {
         if residue >= 32 {
             return Err(SWWordError::ResidueTooLarge(residue));
         }
-        self.key = (self.key << 5) | residue as u64;
+        self.key = (self.key << 5) | residue as u32;
         self.matches_added += 1;
         Ok(())
     }
 
     /// Finishes the word.
+    ///
+    /// # Panics
+    /// Panics if `pos` doesn't fit in a `u16` -- guarded by `SWSequence::new`'s
+    /// sequence-length check, which every caller of this type goes through.
     pub fn word(self) -> Result<SWWord, SWWordError> {
         if self.matches_added != self.weight {
             return Err(SWWordError::Incomplete { added: self.matches_added, weight: self.weight });
         }
-        Ok(SWWord { key: self.key, pos: self.pos })
+        Ok(SWWord { key: self.key, pos: u16::try_from(self.pos).expect("pos must fit in u16, see SWSequence::new's length check") })
     }
 }
 
-/// A Spaced Word: the residues at a pattern's match positions
-#[derive(Clone, Copy, Debug, bincode::Encode, bincode::Decode)]
+/// A Spaced Word: the residues at a pattern's match positions.
+///
+/// Packed to 6 bytes (`u32` key + `u16` pos, no padding) rather than the default-layout
+/// 8 -- large sequence sets keep millions of these per pattern, so the 2 bytes matter.
+#[repr(packed)]
+#[derive(Clone, Copy, Debug)]
 pub struct SWWord {
-    key: u64,
-    pos: usize,
+    key: u32,
+    pos: u16,
 }
 
 impl SWWord {
     /// The packed key: the pattern's match-position residues, 5 bits each,
     /// most-significant residue first. Two words with equal keys have identical
     /// residues at every match position.
-    pub fn key(&self) -> u64 {
+    pub fn key(&self) -> u32 {
         self.key
     }
 
     /// Start position of this word's window in the sequence it came from.
-    pub fn pos(&self) -> usize {
+    pub fn pos(&self) -> u16 {
         self.pos
     }
 }
@@ -93,7 +102,8 @@ impl SWWord {
 /// Equality/ordering is on `key` alone.
 impl PartialEq for SWWord {
     fn eq(&self, other: &Self) -> bool {
-        self.key == other.key
+        let (a, b) = (self.key, other.key); // copy out: packed fields can't be referenced directly
+        a == b
     }
 }
 impl Eq for SWWord {}
@@ -105,9 +115,26 @@ impl PartialOrd for SWWord {
 }
 impl Ord for SWWord {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.key.cmp(&other.key)
+        let (a, b) = (self.key, other.key); // copy out: packed fields can't be referenced directly
+        a.cmp(&b)
     }
 }
+
+// bincode's derive takes references to fields internally, which doesn't compile against
+// a packed struct's unaligned fields -- so these are hand-written, copying out first.
+impl bincode::Encode for SWWord {
+    fn encode<E: bincode::enc::Encoder>(&self, encoder: &mut E) -> Result<(), bincode::error::EncodeError> {
+        let (key, pos) = (self.key, self.pos);
+        bincode::Encode::encode(&key, encoder)?;
+        bincode::Encode::encode(&pos, encoder)
+    }
+}
+impl<Context> bincode::Decode<Context> for SWWord {
+    fn decode<D: bincode::de::Decoder<Context = Context>>(decoder: &mut D) -> Result<Self, bincode::error::DecodeError> {
+        Ok(Self { key: bincode::Decode::decode(decoder)?, pos: bincode::Decode::decode(decoder)? })
+    }
+}
+bincode::impl_borrow_decode!(SWWord);
 
 /// ProtSpaM's 25-symbol amino-acid alphabet, each mapped to a 5-bit code (0..=24): the
 /// 20 standard amino acids, ambiguity codes B/Z/X, stop `*`, and J (Leu/Ile ambiguity).
@@ -173,7 +200,8 @@ impl SWSequence {
     /// # Errors
     /// Returns `Err` if `seq` contains a character outside ProtSpaM's amino-acid
     /// alphabet (see [`encode_residue`]: the 20 standard amino acids, ambiguity codes
-    /// B/Z/X, stop `*`, and J; case-insensitive).
+    /// B/Z/X, stop `*`, and J; case-insensitive), or if `seq` is longer than
+    /// [`u16::MAX`] residues (spaced-word positions are packed into a `u16`).
     ///
     /// # Examples
     /// ```
@@ -186,6 +214,9 @@ impl SWSequence {
     /// assert!(SWSequence::new(&"MK?AY".to_string(), &patterns).is_err()); // '?' isn't a residue
     /// ```
     pub fn new(seq: &String, patterns: &SWPatternSet) -> Result<Self, String> {
+        if seq.len() > u16::MAX as usize {
+            return Err(format!("sequence is {} residues long, over the {}-residue maximum (spaced-word positions are packed into a u16)", seq.len(), u16::MAX));
+        }
         let seq: Vec<u8> = seq
             .bytes()
             .map(|c| encode_residue(c).ok_or_else(|| format!("invalid amino acid character '{}'", c as char)))
@@ -288,9 +319,9 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "between 1 and 12")]
-    fn partial_word_new_rejects_weight_above_twelve() {
-        SWPartialWord::new(0, 13);
+    #[should_panic(expected = "between 1 and 6")]
+    fn partial_word_new_rejects_weight_above_six() {
+        SWPartialWord::new(0, 7);
     }
 
     #[test]
@@ -321,6 +352,16 @@ mod tests {
     }
 
     #[test]
+    fn new_rejects_sequences_longer_than_u16_max() {
+        let patterns = SWPatternSet::random(1, 2, 0);
+        let too_long = "A".repeat(u16::MAX as usize + 1);
+        assert!(SWSequence::new(&too_long, &patterns).is_err());
+
+        let max_len = "A".repeat(u16::MAX as usize);
+        assert!(SWSequence::new(&max_len, &patterns).is_ok());
+    }
+
+    #[test]
     fn spaced_words_extract_correct_residues_and_positions() {
         let patterns = SWPatternSet::random(1, 2, 1); // single pattern, weight 2, dc 1 -> "101"
         let pattern = &patterns.patterns()[0];
@@ -331,8 +372,8 @@ mod tests {
         assert_eq!(words.len(), 2); // windows at pos 0 and pos 1
 
         let match_offsets = pattern.match_positions();
-        let expected_key = |pos: usize| match_offsets.iter().fold(0u64, |acc, &o| (acc << 5) | seq.seq()[pos + o] as u64);
-        let mut expected: Vec<(u64, usize)> = (0..2).map(|pos| (expected_key(pos), pos)).collect();
+        let expected_key = |pos: usize| match_offsets.iter().fold(0u32, |acc, &o| (acc << 5) | seq.seq()[pos + o] as u32);
+        let mut expected: Vec<(u32, u16)> = (0..2).map(|pos| (expected_key(pos), pos as u16)).collect();
         expected.sort_unstable();
 
         for (word, (key, pos)) in words.iter().zip(expected) {

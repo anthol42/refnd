@@ -167,7 +167,7 @@ impl ProtSpamKernel {
         let mut best = BlockBest { score: self.significance_threshold - 1, mismatches: 0 };
         for a in pos1..pos1 + block_length1 {
             for b in pos2..pos2 + block_length2 {
-                let (score, mismatches) = Self::score_pair(seq1, seq2, words1[a].pos(), words2[b].pos(), pattern);
+                let (score, mismatches) = Self::score_pair(seq1, seq2, words1[a].pos() as usize, words2[b].pos() as usize, pattern);
                 if score >= self.significance_threshold && score > best.score {
                     best = BlockBest { score, mismatches };
                 }
