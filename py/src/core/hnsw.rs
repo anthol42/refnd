@@ -564,6 +564,21 @@ impl HNSWState {
     ///
     /// Raises:
     ///     RuntimeError: If ``build`` has not been called yet.
+    ///
+    /// Example::
+    ///
+    ///     from refnd import HNSWState, KernelVariant
+    ///
+    ///     seqs = ["MKTAYIAK", "MKTAYIAKQR", "ACDEFGHIKLM"]
+    ///     state = HNSWState(KernelVariant.AlignmentGlobal, seqs, proximity_threshold=0.3)
+    ///     state.build()
+    ///
+    ///     more_seqs = ["MKTAYIAKQRQIS", "ACDEFGHIKLMNP"]
+    ///     state.extend_build(more_seqs)
+    ///     state.index.dataset_size  # 5
+    ///
+    ///     results = state.search(["MKTAYIAKQRQIS"], k=2)
+    ///     # results[0] -> [(3, 0.0), (1, 0.23)] -- found itself among the new items
     #[pyo3(signature = (data, progress = true))]
     pub fn extend_build(&mut self, py: Python, data: Py<PyAny>, progress: bool) -> PyResult<()> {
         let offset = self.n;

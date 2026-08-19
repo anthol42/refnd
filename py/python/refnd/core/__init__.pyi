@@ -475,6 +475,21 @@ class HNSWState:
         
         Raises:
             RuntimeError: If ``build`` has not been called yet.
+        
+        Example::
+        
+            from refnd import HNSWState, KernelVariant
+        
+            seqs = ["MKTAYIAK", "MKTAYIAKQR", "ACDEFGHIKLM"]
+            state = HNSWState(KernelVariant.AlignmentGlobal, seqs, proximity_threshold=0.3)
+            state.build()
+        
+            more_seqs = ["MKTAYIAKQRQIS", "ACDEFGHIKLMNP"]
+            state.extend_build(more_seqs)
+            state.index.dataset_size  # 5
+        
+            results = state.search(["MKTAYIAKQRQIS"], k=2)
+            # results[0] -> [(3, 0.0), (1, 0.23)] -- found itself among the new items
         """
     def search(self, queries: typing.Any, k: builtins.int = 1, ef: builtins.int = 64, threads: builtins.int = 0, progress: builtins.bool = True) -> builtins.list[builtins.list[tuple[builtins.int, builtins.float]]]:
         r"""
