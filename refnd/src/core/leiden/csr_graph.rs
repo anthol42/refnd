@@ -7,6 +7,17 @@ pub enum  INWeightType{
     SimilarityComplement,
     Unweighted,
 }
+
+#[inline]
+fn map_weight(inweight_type: &INWeightType, w: f32) -> f32{
+    match inweight_type {
+        INWeightType::Similarity => {w}
+        INWeightType::Distance => {1.0 / (1.0 + w)}
+        INWeightType::SimilarityComplement => {1.0 - w}
+        INWeightType::Unweighted => {1.0}
+    }
+}
+
 #[derive(Clone)]
 pub struct CsrGraph {
     pub n: usize,
@@ -29,7 +40,7 @@ impl CsrGraph {
     ///   - `SimilarityComplement`: `w` is `1 - similarity`, mapped back via `1 - w`.
     ///   - `Unweighted`: `w` is ignored and every edge weight is set to `1.0`.
     pub fn new(n: usize, edges: &[(u32, u32, f32)], inweight_type: INWeightType) -> Self {
-        let m = edges.iter().map(|&(_, _, w)| w).sum();
+        let m = edges.iter().map(|&(_, _, w)| map_weight(&inweight_type, w)).sum();
 
         // Degree count — self-loops occupy one slot, not two
         let mut offsets = vec![0usize; n + 1];
@@ -45,12 +56,7 @@ impl CsrGraph {
 
         for &(src, dst, mut w) in edges {
             let (src, dst) = (src as usize, dst as usize);
-            w = match inweight_type {
-                INWeightType::Similarity => {w}
-                INWeightType::Distance => {1.0 / (1.0 + w)}
-                INWeightType::SimilarityComplement => {1.0 - w}
-                INWeightType::Unweighted => {1.0}
-            };
+            w = map_weight(&inweight_type, w);
             adj[cursor[src]] = (dst as u32, w);
             cursor[src] += 1;
             if src != dst {

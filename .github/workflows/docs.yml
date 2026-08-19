@@ -1,0 +1,88 @@
+name: Docs
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: docs-deploy
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - uses: astral-sh/setup-uv@v7
+
+      - name: Generate stubs
+        run: cargo run -p py-refnd --bin stub_gen
+        working-directory: py
+
+      - name: Build docs
+        run: uv run --group docs --reinstall sphinx-build docs/source docs/build/html
+        working-directory: py
+
+      - name: Fetch existing versions.json from gh-pages
+        run: |
+          git fetch origin gh-pages 2>/dev/null || true
+          git show origin/gh-pages:versions.json > old_versions.json 2>/dev/null || echo '[]' > old_versions.json
+
+      - name: Assemble versioned site
+        run: |
+          mkdir -p "site/${VERSION}"
+          cp -r py/docs/build/html/. "site/${VERSION}/"
+
+          python3 <<'EOF'
+          import json, os, re
+          from pathlib import Path
+
+          version = os.environ["VERSION"]
+          old = json.loads(Path("old_versions.json").read_text() or "[]")
+          versions = sorted(
+              set(old) | {version},
+              key=lambda v: [int(x) for x in re.sub(r"^v", "", v).split(".")],
+              reverse=True,
+          )
+          Path("site/versions.json").write_text(json.dumps(versions, indent=2))
+          EOF
+
+          rm -rf site/latest
+          cp -r "site/${VERSION}" site/latest
+
+          cat > site/index.html <<'HTML'
+          <!doctype html>
+          <html lang="en">
+            <head>
+              <meta charset="utf-8">
+              <title>refnd docs</title>
+              <meta http-equiv="refresh" content="0; url=./latest/">
+              <link rel="canonical" href="./latest/">
+            </head>
+            <body>
+              Redirecting to <a href="./latest/">latest docs</a>...
+            </body>
+          </html>
+          HTML
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: site
+          publish_branch: gh-pages
+          keep_files: true

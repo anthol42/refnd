@@ -9,8 +9,10 @@ use crate::kernels::{
     alignments::{GlobalAligner, LocalAligner},
     molecules::{TanimotoBit, TanimotoReal},
     structures::USAlignKernel,
+    protspam::ProtSpamKernel,
+    vectors::{Cosine, L1, L2},
 };
-use crate::utils::{BitFingerprint, RealFingerprint, PdbStructure};
+use crate::utils::{BitFingerprint, RealFingerprint, PdbStructure, SWSequence, Vector};
 use crate::core::_utils::linear_progress_bar;
 
 fn compute<T, K>(data1: Vec<T>, data2: Vec<T>, kernel: K, n_threads: usize, pb: Option<&ProgressBar>) -> Vec<f32>
@@ -115,6 +117,14 @@ pub fn zip_kernel(
             py, RealFingerprint, TanimotoReal, args, kwargs; data1, data2; n_threads, pb.as_ref()),
         KernelVariant::Structure => dispatch!(
             py, PdbStructure, USAlignKernel, args, kwargs; data1, data2; n_threads, pb.as_ref()),
+        KernelVariant::ProtSpam => dispatch!(
+            py, SWSequence, ProtSpamKernel, args, kwargs; data1, data2; n_threads, pb.as_ref()),
+        KernelVariant::Cosine => dispatch!(
+            py, Vector, Cosine, args, kwargs; data1, data2; n_threads, pb.as_ref()),
+        KernelVariant::L1 => dispatch!(
+            py, Vector, L1, args, kwargs; data1, data2; n_threads, pb.as_ref()),
+        KernelVariant::L2 => dispatch!(
+            py, Vector, L2, args, kwargs; data1, data2; n_threads, pb.as_ref()),
     };
 
     if let Some(ref pb) = pb { pb.finish(); }

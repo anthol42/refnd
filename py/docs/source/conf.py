@@ -44,8 +44,9 @@ html_baseurl = "/refnd/"
 html_js_files = [
     ("https://cdn.jsdelivr.net/npm/turndown@7.2.0/dist/turndown.js", {}),
     "js/copy_markdown.js",
+    "js/version_switcher.js",
 ]
-html_css_files = ["css/copy_markdown.css"]
+html_css_files = ["css/copy_markdown.css", "css/version_switcher.css"]
 
 # ── Autodoc ───────────────────────────────────────────────────────────────────
 

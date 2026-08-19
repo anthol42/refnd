@@ -1,6 +1,6 @@
 [package]
 name = "refnd"
-version = "0.0.2"
+version = "0.0.3"
 edition = "2024"
 
 [features]
@@ -8,6 +8,7 @@ monitor = []
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }
+dashmap = { version = "6", features = ["rayon"] }
 fixedbitset = "0.5.7"
 indicatif = "0.17"
 quick_cache = "0.6"
@@ -17,6 +18,7 @@ parasail-rs = "0.9.0"
 rand = "0.10.0"
 rayon = "1.10"
 rustc-hash = "2.1.2"
+smallvec = "1.15"
 rich_rust = "0.2.1"
 regex = "1.12.3"
 clap_complete = "4.6.2"
@@ -31,3 +33,11 @@ libusalign-sys = "0.1.1"
 [[bin]]
 name = "bench_leiden"
 path = "src/bench_leiden.rs"
+
+[[bin]]
+name = "bench_fingerprints"
+path = "src/bench_fingerprints.rs"
+
+[[bin]]
+name = "bench_hnsw"
+path = "src/bench_hnsw.rs"

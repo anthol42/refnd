@@ -159,6 +159,21 @@ impl EdgeStore {
     pub fn iter(&self) -> impl Iterator<Item = (u32, u32, f32)> + '_ {
         self.edges.iter().copied()
     }
+
+    /// Keep only the edges where `mask[i]` is `true`
+    ///
+    /// `node_count` is left unchanged — the mask selects edges, not nodes.
+    ///
+    /// # Panics
+    /// Panics if `mask.len() != self.len()`.
+    pub fn mask(&self, mask: &[bool]) -> Self {
+        assert_eq!(mask.len(), self.edges.len(), "mask length must equal edge count");
+        let edges = self.edges.iter()
+            .zip(mask)
+            .filter_map(|(&edge, &keep)| keep.then_some(edge))
+            .collect();
+        Self { node_count: self.node_count, edges }
+    }
 }
 
 // ── Display / Debug ───────────────────────────────────────────────────────────

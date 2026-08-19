@@ -1,0 +1,33 @@
+# Changelog
+
+## 0.0.3
+
+- Building an HNSW index is significantly faster, especially on large datasets — roughly
+  2x faster at 8 million items in testing for fingerprints graphs, with the improvement growing larger still at
+  bigger scales.
+- Building, saving, and loading an HNSW index all use substantially less memory, especially
+  on large datasets. Internal graph storage no longer reserves space for connections that
+  were never made, cutting that overhead by roughly 8x at large scale; saving and loading
+  now stream to and from disk instead of holding multiple full copies of the index in
+  memory at once. Together, these make it possible to build and save indexes that
+  previously ran out of memory.
+- `HNSWState(...)` now accepts any Python iterable for `data`, not just a sized sequence
+  (checked at runtime via `len()`). A non-sized iterable (e.g. a generator) is drained one
+  item at a time instead of requiring the caller to first materialize a full list, so a
+  large dataset never needs a fully-materialized Python-side copy to coexist with the
+  Rust-owned copy the constructor builds either way — halving peak memory for datasets
+  where a single item's Python representation is large.
+- `HNSWState.load(...)` now accepts any Python iterable for `data` too (previously it
+  required a sized sequence like a list) — a generator can be used to re-read cached data
+  without first materializing it as a full list.
+- Constructing a `BitFingerprint` from a numpy array (`BitFingerprint.from_np(...)`) is up
+  to 15x faster.
+- HNSW's `.get_layer()` No returns a EdgeStore for consistency and lower memory usage.
+- Changed default proximity threshold to 0.
+- `EdgeStore` now supports numpy-style boolean-mask indexing: `store.mask(&mask)` in Rust,
+  `store[mask]` in Python (accepts a `list[bool]` or a numpy bool array), keeping only the
+  edges where the mask is `True`.
+- Added a new kernel: ProtSpaM.
+- Added new kernels for vectors (Cosine, L1 and L2)
+- Added a new function to extend an index to a new set of data. This allows checkpointing. 
+- Fix few bugs in Leiden algorithm, now should return much better partitions

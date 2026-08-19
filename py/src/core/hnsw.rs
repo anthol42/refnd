@@ -5,9 +5,11 @@ use refnd_core::core::hnsw::{HNSWState as HNSWStateCore, HNSWIndex as HNSWIndexC
 use refnd_core::kernels::alignments::parasail::{GlobalAligner, LocalAligner};
 use refnd_core::kernels::usalign::USAlignKernel as CoreUSAlignKernel;
 use refnd_core::kernels::molecules::tanimoto::Tanimoto;
+use refnd_core::kernels::protspam::ProtSpamKernel as CoreProtSpamKernel;
+use refnd_core::kernels::vectors::{Cosine as CoreCosine, L1 as CoreL1, L2 as CoreL2};
 use super::edge_store::EdgeStore;
-use super::_utils::{logfacto_progress_bar, linear_progress_bar};
-use super::super::utils::{BitFingerprint, RealFingerprint};
+use super::_utils::{logfacto_progress_bar, logfacto_progress_bar_from, linear_progress_bar};
+use super::super::utils::{BitFingerprint, RealFingerprint, SWSequence, Vector};
 use super::super::kernels::{
     KernelVariant,
     alignments::{
@@ -16,6 +18,8 @@ use super::super::kernels::{
     },
     molecules::{TanimotoReal as _TanimotoReal, TanimotoBit as _TanimotoBit},
     structures::USAlignKernel as _USAlignKernel,
+    protspam::ProtSpamKernel as _ProtSpamKernel,
+    vectors::{Cosine as _Cosine, L1 as _L1, L2 as _L2},
 };
 use super::super::utils::PdbStructure;
 
@@ -66,7 +70,7 @@ impl HNSWConfig {
     /// Create an HNSWConfig. See class docstring for parameter descriptions.
     #[new]
     #[pyo3(signature = (
-        proximity_threshold = 0.5,
+        proximity_threshold = 0.,
         ef_construction = 64,
         m = 16,
         m_max = 16,
@@ -176,7 +180,15 @@ pub struct HNSWIndex {
 #[pymethods]
 impl HNSWIndex {
     #[getter] pub fn dataset_size(&self) -> usize { self.inner.dataset_size }
-    #[getter] pub fn layers(&self) -> Vec<Vec<Vec<u32>>> { self.inner.layers.clone() }
+
+    /// Nested multi-layer adjacency list, `layers[layer][node] = [neighbor_ids]`. Layers
+    /// above 0 may be stored sparsely internally (most nodes aren't present at those
+    /// layers); this densifies them into the full node-id-indexed shape on access.
+    #[getter]
+    pub fn layers(&self) -> Vec<Vec<Vec<u32>>> {
+        let n = self.inner.dataset_size;
+        self.inner.layers.iter().map(|layer| layer.to_dense(n)).collect()
+    }
     #[getter] pub fn entry_point(&self) -> Option<(u32, usize)> { self.inner.entry_point }
     #[getter] pub fn max_layers(&self) -> usize { self.inner.max_layers }
     #[getter] pub fn proximity_edges(&self) -> Vec<((u32, u32), f32)> { self.inner.proximity_edges.clone() }
@@ -232,11 +244,21 @@ enum HNSWType {
     TanimotoBit(HNSWStateCore<BitFingerprint, Tanimoto>),
     TanimotoReal(HNSWStateCore<RealFingerprint, Tanimoto>),
     Structure(HNSWStateCore<PdbStructure, CoreUSAlignKernel>),
+    ProtSpam(HNSWStateCore<SWSequence, CoreProtSpamKernel>),
+    Cosine(HNSWStateCore<Vector, CoreCosine>),
+    L1(HNSWStateCore<Vector, CoreL1>),
+    L2(HNSWStateCore<Vector, CoreL2>),
 }
 
 /// Expands a `HNSWState::new(data, kernel, config)` constructor for each KernelVariant.
 /// The kernel is instantiated from Python with forwarded *args/**kwargs.
-/// `data.extract(py)?` is inlined per-arm so the type is inferred from the constructor signature.
+///
+/// Always drains `data` through the iterator protocol (`try_iter()`), one item at a time
+/// -- see the class docstring for why this is a single path rather than a sized/unsized
+/// split. `data.len()` is tried first for an exact capacity hint; `try_iter().size_hint()`
+/// is the fallback for anything that doesn't support `len()` but still tracks its own
+/// remaining length via `__length_hint__`. Also yields the item count (used by the caller
+/// for progress bars).
 macro_rules! hnsw_new {
     ($ctor:path; $py:expr, $which:expr, $data:expr, $config:expr, $args:expr, $kwargs:expr;
      $($variant:ident : $kernel:ty),+ $(,)?) => {
@@ -245,7 +267,22 @@ macro_rules! hnsw_new {
                 KernelVariant::$variant => {
                     let _obj = $py.get_type::<$kernel>().call($args, $kwargs)?;
                     let _aligner: ::pyo3::PyRef<$kernel> = _obj.extract()?;
-                    HNSWType::$variant($ctor($data.extract($py)?, _aligner.inner.clone(), $config))
+                    let _bound = $data.bind($py);
+                    let _iter = _bound.try_iter()?;
+                    let _cap = match _bound.len() {
+                        Ok(_n) => _n,
+                        Err(_) => {
+                            let (_lo, _hi) = _iter.size_hint();
+                            _hi.unwrap_or(_lo)
+                        }
+                    };
+                    let mut _items = Vec::with_capacity(_cap);
+                    for _item in _iter {
+                        _items.push(_item?.extract()?);
+                    }
+                    _items.shrink_to_fit();
+                    let _n = _items.len();
+                    (HNSWType::$variant($ctor(_items, _aligner.inner.clone(), $config)), _n)
                 }
             )+
         }
@@ -253,6 +290,7 @@ macro_rules! hnsw_new {
 }
 
 /// Expands a `HNSWState::load(path, data, config, kernel)` call for each KernelVariant.
+/// Same always-iterator draining and capacity handling as `hnsw_new!`, for the same reason.
 macro_rules! hnsw_load {
     ($py:expr, $which:expr, $path:expr, $data:expr, $config:expr, $args:expr, $kwargs:expr;
      $($variant:ident : $kernel:ty),+ $(,)?) => {
@@ -261,10 +299,67 @@ macro_rules! hnsw_load {
                 KernelVariant::$variant => {
                     let _obj = $py.get_type::<$kernel>().call($args, $kwargs)?;
                     let _aligner: ::pyo3::PyRef<$kernel> = _obj.extract()?;
-                    HNSWType::$variant(
-                        HNSWStateCore::load($path, $data.extract($py)?, $config, _aligner.inner.clone())
-                            .map_err(|e| ::pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?
+                    let _bound = $data.bind($py);
+                    let _iter = _bound.try_iter()?;
+                    let _cap = match _bound.len() {
+                        Ok(_n) => _n,
+                        Err(_) => {
+                            let (_lo, _hi) = _iter.size_hint();
+                            _hi.unwrap_or(_lo)
+                        }
+                    };
+                    let mut _items = Vec::with_capacity(_cap);
+                    for _item in _iter {
+                        _items.push(_item?.extract()?);
+                    }
+                    _items.shrink_to_fit();
+                    let _n = _items.len();
+                    (
+                        HNSWType::$variant(
+                            HNSWStateCore::load($path, _items, $config, _aligner.inner.clone())
+                                .map_err(|e| ::pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?
+                        ),
+                        _n,
                     )
+                }
+            )+
+        }
+    };
+}
+
+/// Expands an `HNSWState::extend_build(additional_data, pb)` call for each KernelVariant.
+/// Same always-iterator draining and capacity handling as `hnsw_new!` (see its doc comment)
+/// -- `extend_build` is the same "append new data" operation, just onto an existing index
+/// rather than an empty one. The progress bar is built only after draining, since its
+/// log-factorial work model needs the exact number of items added, not just a capacity hint.
+macro_rules! hnsw_extend {
+    ($py:expr, $inner:expr, $data:expr, $offset:expr, $progress:expr;
+     $($variant:ident),+ $(,)?) => {
+        match &mut $inner {
+            $(
+                HNSWType::$variant(inner) => {
+                    let _bound = $data.bind($py);
+                    let _iter = _bound.try_iter()?;
+                    let _cap = match _bound.len() {
+                        Ok(_n) => _n,
+                        Err(_) => {
+                            let (_lo, _hi) = _iter.size_hint();
+                            _hi.unwrap_or(_lo)
+                        }
+                    };
+                    let mut _items = Vec::with_capacity(_cap);
+                    for _item in _iter {
+                        _items.push(_item?.extract()?);
+                    }
+                    _items.shrink_to_fit();
+                    let _added = _items.len();
+                    let _pb = if $progress {
+                        Some(logfacto_progress_bar_from($offset, _added, "Extending index"))
+                    } else { None };
+                    inner.extend_build(_items, _pb.as_ref())
+                        .map_err(::pyo3::exceptions::PyRuntimeError::new_err)?;
+                    if let Some(_pb) = _pb { _pb.finish(); }
+                    _added
                 }
             )+
         }
@@ -307,9 +402,18 @@ macro_rules! hnsw_dispatch_mut {
 /// HNSW parameters (``proximity_threshold``, ``ef_construction``, …) are the same as ``HNSWConfig``
 /// and can be passed directly to the constructor as keyword arguments.
 ///
+/// ``data`` may be any Python iterable — a ``list``, a ``tuple``, a generator, anything with
+/// ``__iter__``. It's drained one item at a time into the constructor's own Rust-owned copy,
+/// so a generator never needs to be fully materialized into a Python-side list first — both
+/// copies never need to coexist at once. That matters when a single item's Python
+/// representation is large enough that two full-dataset copies wouldn't fit in memory
+/// together. When ``data`` supports ``len()`` (a ``list``/``tuple``), that's used to
+/// pre-size the Rust-owned copy exactly; it doesn't change how ``data`` is walked.
+///
 /// Args:
 ///     variant: Kernel to use (e.g.  ``KernelVariant.AlignmentGlobal``, ``KernelVariant.AlignmentLocal``, ``KernelVariant.TanimotoBit``, *etc*).
-///     data: The dataset — a list of items matching the kernel type (e.g. ``list[str]`` or ``list[np.ndarray]``).
+///     data: The dataset — a list of items matching the kernel type (e.g. ``list[str]`` or
+///         ``list[np.ndarray]``), or any other Python iterable of such items (e.g. a generator).
 ///     proximity_threshold, ef_construction, m, m_max, m_max0, m_l, ef_init, extend_candidates,
 ///         keep_pruned_connections, keep_all_edges, cache_capacity, cache_shards,
 ///         n_threads, shuffle, use_heuristic, strict_ef,
@@ -347,7 +451,7 @@ impl HNSWState {
     #[pyo3(signature = (
         variant, data,
         *args,
-        proximity_threshold = 0.5,
+        proximity_threshold = 0.,
         ef_construction = 64,
         m = 16,
         m_max = 16,
@@ -391,7 +495,6 @@ impl HNSWState {
         threshold_based_neighbourhood: bool,
         kwargs: Option<&Bound<'_, PyDict>>,
     ) -> PyResult<Self> {
-        let n = data.bind(py).len()?;
         let config = HNSWConfigCore {
             m, m_max, m_max0, m_l, ef_init, ef_construction,
             extend_candidates, keep_pruned_connections, keep_all_edges,
@@ -400,13 +503,21 @@ impl HNSWState {
             strict_ef, threshold_based_neighbourhood,
         };
         let config_py = HNSWConfig { inner: config.clone() };
-        let inner = hnsw_new!(
+
+        // `data` may be any Python iterable — a list, tuple, generator, anything with
+        // `__iter__`. See the class docstring for why it's always drained through the
+        // iterator protocol rather than a sized/unsized split.
+        let (inner, n) = hnsw_new!(
             HNSWStateCore::new; py, variant, data, config, args, kwargs;
             AlignmentGlobal:_GlobalAligner,
             AlignmentLocal:_LocalAligner,
             TanimotoBit:_TanimotoBit,
             TanimotoReal:_TanimotoReal,
-            Structure:_USAlignKernel
+            Structure:_USAlignKernel,
+            ProtSpam:_ProtSpamKernel,
+            Cosine:_Cosine,
+            L1:_L1,
+            L2:_L2
         );
         Ok(HNSWState { inner, n, config: config_py })
     }
@@ -430,9 +541,60 @@ impl HNSWState {
             AlignmentLocal:_LocalAligner,
             TanimotoBit:_TanimotoBit,
             TanimotoReal:_TanimotoReal,
-            Structure:_USAlignKernel
+            Structure:_USAlignKernel,
+            ProtSpam:_ProtSpamKernel,
+            Cosine:_Cosine,
+            L1:_L1,
+            L2:_L2
         ).map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
         if let Some(pb) = pb { pb.finish() };
+        Ok(())
+    }
+
+    /// Extend an already-built index with more data: appended to the dataset, then
+    /// inserted into the graph. Existing nodes and edges are untouched.
+    ///
+    /// ``data`` accepts any Python iterable, same as the constructor (see ``HNSWState``'s
+    /// class docstring) -- drained one item at a time so a generator never needs to be
+    /// fully materialized into a Python-side list first.
+    ///
+    /// Args:
+    ///     data: The new items to add (same type as the original dataset).
+    ///     progress: Display a progress bar. Defaults to ``True``.
+    ///
+    /// Raises:
+    ///     RuntimeError: If ``build`` has not been called yet.
+    ///
+    /// Example::
+    ///
+    ///     from refnd import HNSWState, KernelVariant
+    ///
+    ///     seqs = ["MKTAYIAK", "MKTAYIAKQR", "ACDEFGHIKLM"]
+    ///     state = HNSWState(KernelVariant.AlignmentGlobal, seqs, proximity_threshold=0.3)
+    ///     state.build()
+    ///
+    ///     more_seqs = ["MKTAYIAKQRQIS", "ACDEFGHIKLMNP"]
+    ///     state.extend_build(more_seqs)
+    ///     state.index.dataset_size  # 5
+    ///
+    ///     results = state.search(["MKTAYIAKQRQIS"], k=2)
+    ///     # results[0] -> [(3, 0.0), (1, 0.23)] -- found itself among the new items
+    #[pyo3(signature = (data, progress = true))]
+    pub fn extend_build(&mut self, py: Python, data: Py<PyAny>, progress: bool) -> PyResult<()> {
+        let offset = self.n;
+        let added = hnsw_extend!(
+            py, self.inner, data, offset, progress;
+            AlignmentGlobal,
+            AlignmentLocal,
+            TanimotoBit,
+            TanimotoReal,
+            Structure,
+            ProtSpam,
+            Cosine,
+            L1,
+            L2
+        );
+        self.n = offset + added;
         Ok(())
     }
 
@@ -480,6 +642,10 @@ impl HNSWState {
             HNSWType::TanimotoBit(inner)     => inner.parallel_search(queries.extract::<Vec<_>>(py)?.as_slice(), k, ef, threads, pb.as_ref()),
             HNSWType::TanimotoReal(inner)    => inner.parallel_search(queries.extract::<Vec<_>>(py)?.as_slice(), k, ef, threads, pb.as_ref()),
             HNSWType::Structure(inner)       => inner.parallel_search(queries.extract::<Vec<_>>(py)?.as_slice(), k, ef, threads, pb.as_ref()),
+            HNSWType::ProtSpam(inner)        => inner.parallel_search(queries.extract::<Vec<_>>(py)?.as_slice(), k, ef, threads, pb.as_ref()),
+            HNSWType::Cosine(inner)          => inner.parallel_search(queries.extract::<Vec<_>>(py)?.as_slice(), k, ef, threads, pb.as_ref()),
+            HNSWType::L1(inner)              => inner.parallel_search(queries.extract::<Vec<_>>(py)?.as_slice(), k, ef, threads, pb.as_ref()),
+            HNSWType::L2(inner)              => inner.parallel_search(queries.extract::<Vec<_>>(py)?.as_slice(), k, ef, threads, pb.as_ref()),
         }.map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
         if let Some(pb) = pb { pb.finish() };
         Ok(res)
@@ -500,7 +666,11 @@ impl HNSWState {
             AlignmentLocal:_LocalAligner,
             TanimotoBit:_TanimotoBit,
             TanimotoReal:_TanimotoReal,
-            Structure:_USAlignKernel
+            Structure:_USAlignKernel,
+            ProtSpam:_ProtSpamKernel,
+            Cosine:_Cosine,
+            L1:_L1,
+            L2:_L2
         )?;
         Some(EdgeStore::new(self.n, edges))
     }
@@ -516,15 +686,44 @@ impl HNSWState {
     ///
     /// Raises:
     ///     IndexError: If ``layer_idx`` is out of range.
-    pub fn get_layer(&self, layer_idx: usize) -> PyResult<Vec<Vec<u32>>> {
-        hnsw_dispatch!(
-            self.inner, get_layer(layer_idx);
+    /// Edges of one HNSW layer, as an ``EdgeStore``.
+    ///
+    /// Args:
+    ///     layer_idx: Zero-based layer index (0 = base layer with most nodes).
+    ///     directed: If ``True``, every edge is returned exactly as internally
+    ///         recorded -- an undirected connection contributes one entry per
+    ///         endpoint, i.e. ``(x, y)`` is distinct from ``(y, x)``. If
+    ///         ``False`` (default), edges are canonicalized and deduplicated,
+    ///         so each undirected pair appears exactly once.
+    ///     weights: If ``True`` (default), each edge's weight is its real
+    ///         distance, computed on the fly since not stored in the hierarchical graph.
+    ///         If ``False``, every edge gets weight
+    ///         ``1.0`` -- much cheaper when the real distance isn't needed.
+    ///     progress: Display a progress bar while distances are computed.
+    ///         Only meaningful when ``weights=True``. Defaults to ``False``.
+    ///
+    /// Returns:
+    ///     An ``EdgeStore`` with ``node_count = dataset_size``.
+    ///
+    /// Raises:
+    ///     IndexError: If ``layer_idx`` is out of range.
+    #[pyo3(signature = (layer_idx = 0, directed = false, weights = true, progress = true))]
+    pub fn get_layer(&self, layer_idx: usize, directed: bool, weights: bool, progress: bool) -> PyResult<EdgeStore> {
+        let pb = if progress { Some(linear_progress_bar(0, "Computing edge weights")) } else { None };
+        let edges = hnsw_dispatch!(
+            self.inner, get_layer(layer_idx, directed, weights, pb.as_ref());
             AlignmentGlobal:_GlobalAligner,
             AlignmentLocal:_LocalAligner,
             TanimotoBit:_TanimotoBit,
             TanimotoReal:_TanimotoReal,
-            Structure:_USAlignKernel
-        ).map_err(pyo3::exceptions::PyIndexError::new_err)
+            Structure:_USAlignKernel,
+            ProtSpam:_ProtSpamKernel,
+            Cosine:_Cosine,
+            L1:_L1,
+            L2:_L2
+        ).map_err(pyo3::exceptions::PyIndexError::new_err)?;
+        if let Some(pb) = pb { pb.finish() };
+        Ok(EdgeStore::new(self.n, edges))
     }
 
     /// Serialize the full state (index + config) to a binary file.
@@ -549,7 +748,11 @@ impl HNSWState {
             AlignmentLocal:_LocalAligner,
             TanimotoBit:_TanimotoBit,
             TanimotoReal:_TanimotoReal,
-            Structure:_USAlignKernel
+            Structure:_USAlignKernel,
+            ProtSpam:_ProtSpamKernel,
+            Cosine:_Cosine,
+            L1:_L1,
+            L2:_L2
         )
         .map_err(|e: Box<dyn std::error::Error>| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))
     }
@@ -560,6 +763,9 @@ impl HNSWState {
     /// A file saved with a different package version (older or newer) will fail to load with
     /// a version mismatch error. There is no forward or backward compatibility guarantee during
     /// the unstable pre-0.1.0 phase.
+    ///
+    /// ``data`` accepts any Python iterable, same as the constructor (see ``HNSWState``'s
+    /// class docstring) — including a generator re-reading a cache file.
     ///
     /// Args:
     ///     variant: Must match the kernel used during the original build.
@@ -582,14 +788,18 @@ impl HNSWState {
         args: &Bound<'_, PyTuple>,
         kwargs: Option<&Bound<'_, PyDict>>,
     ) -> PyResult<Self> {
-        let n = data.bind(py).len()?;
-        let inner = hnsw_load!(
+        // Same always-iterator draining as `new()` (see `hnsw_new!`'s doc comment for why).
+        let (inner, n) = hnsw_load!(
             py, variant, path, data, None::<HNSWConfigCore>, args, kwargs;
             AlignmentGlobal:_GlobalAligner,
             AlignmentLocal:_LocalAligner,
             TanimotoBit:_TanimotoBit,
             TanimotoReal:_TanimotoReal,
-            Structure:_USAlignKernel
+            Structure:_USAlignKernel,
+            ProtSpam:_ProtSpamKernel,
+            Cosine:_Cosine,
+            L1:_L1,
+            L2:_L2
         );
         let config = HNSWConfig {
             inner: hnsw_dispatch!(
@@ -598,7 +808,11 @@ impl HNSWState {
                 AlignmentLocal:_LocalAligner,
                 TanimotoBit:_TanimotoBit,
                 TanimotoReal:_TanimotoReal,
-                Structure:_USAlignKernel
+                Structure:_USAlignKernel,
+                ProtSpam:_ProtSpamKernel,
+                Cosine:_Cosine,
+                L1:_L1,
+                L2:_L2
             ).clone(),
         };
         Ok(HNSWState { inner, n, config })
@@ -613,6 +827,10 @@ impl HNSWState {
             HNSWType::TanimotoBit(inner)     => inner.has_been_built,
             HNSWType::TanimotoReal(inner)    => inner.has_been_built,
             HNSWType::Structure(inner)       => inner.has_been_built,
+            HNSWType::ProtSpam(inner)        => inner.has_been_built,
+            HNSWType::Cosine(inner)          => inner.has_been_built,
+            HNSWType::L1(inner)              => inner.has_been_built,
+            HNSWType::L2(inner)              => inner.has_been_built,
         }
     }
 
@@ -632,7 +850,11 @@ impl HNSWState {
                 AlignmentLocal:_LocalAligner,
                 TanimotoBit:_TanimotoBit,
                 TanimotoReal:_TanimotoReal,
-                Structure:_USAlignKernel
+                Structure:_USAlignKernel,
+                ProtSpam:_ProtSpamKernel,
+                Cosine:_Cosine,
+                L1:_L1,
+                L2:_L2
             ),
         }
     }

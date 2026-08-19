@@ -35,8 +35,13 @@ src/
     alignments/parasail/         Protein sequence kernels (NW/SW via libparasail)
     alignments/usalign/          Protein structure kernels (TM-score via libusalign-sys)
     molecules/tanimoto/          Molecular similarity (Tanimoto on fingerprints)
+    protspam.rs                  ProtSpamKernel: alignment-free SWSequence distance (spaced words + Kimura)
+    vectors.rs                   Vector distance (Cosine, L1, L2 on f32 slices)
   utils/
     read_fasta.rs                FASTA parser
+    sw_pattern.rs                SWPattern / SWPatternSet: spaced-word patterns (ProtSpaM-style)
+    _rasbhari.rs                 RasBhari hill-climbing optimizer for SWPatternSet (Oc variant)
+    sw_sequence.rs                SWSequence / SWWord: sequence + sorted spaced words per pattern
 ../libusalign-sys/               Sys-crate: compiles USalign C++ + bindgen bindings
 ```
 

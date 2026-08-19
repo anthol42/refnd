@@ -66,13 +66,20 @@ impl LeidenState {
 
             continue_clustering = nb_clusters < aggregated_graph.n;
             if continue_clustering {
-                // Flatten membership
+                // Flatten membership. At level 0, `super_node_map` is still the identity
+                // mapping ((0..n).collect(), set before this loop and only ever mutated
+                // further down in this same iteration), so `aggregated_membership[super_node_map[v]]`
+                // degenerates to `aggregated_membership[v]` for every node -- a straight copy.
+                // Doing it as a copy instead of the general indexed gather lets the compiler
+                // emit a single memcpy instead of a per-node indirect load.
                 measure!({
                     if level > 0 {
                         for node_id in 0..self.graph.n {
                             let super_node_id = super_node_map[node_id] as usize;
                             self.membership[node_id] = aggregated_membership[super_node_id];
                         }
+                    }else {
+                        self.membership.copy_from_slice(&aggregated_membership);
                     }
                     self.retrieve_clusters(&mut cluster_scratch, &aggregated_membership);
                 }, STAT_FLATTEN);
@@ -197,8 +204,8 @@ impl LeidenState {
 
             // Calculate the score for each cluster to find the best one
             let mut best_cluster = current_cluster;
-            // ΔH = E(v, C) - γ(k_v * k_C)
-            let mut max_diff = weight_to_cluster[current_cluster];
+            let mut max_diff = weight_to_cluster[current_cluster] -
+                config.resolution * (node_weights[v] * cluster_weights[current_cluster]);
             for &c in &neighbor_clusters {
                 let c = c as usize;
                 let diff = weight_to_cluster[c] -
@@ -455,7 +462,7 @@ impl LeidenState {
             aggregated_membership[c] = membership[refined_cluster[0] as usize];
         }
 
-        (CsrGraph::new(nb_refined_clusters, &aggregated_edges, INWeightType::Unweighted),
+        (CsrGraph::new(nb_refined_clusters, &aggregated_edges, INWeightType::Similarity),
         aggregated_membership,
         aggregated_node_weights)
     }

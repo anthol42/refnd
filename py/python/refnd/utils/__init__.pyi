@@ -10,6 +10,11 @@ __all__ = [
     "BitFingerprint",
     "PdbStructure",
     "RealFingerprint",
+    "SWPattern",
+    "SWPatternSet",
+    "SWSequence",
+    "SWWord",
+    "Vector",
     "largest_cluster",
     "read_fasta",
 ]
@@ -52,6 +57,12 @@ class BitFingerprint:
     def from_np(arr: numpy.typing.NDArray[numpy.bool_]) -> BitFingerprint:
         r"""
         Construct from a numpy boolean or uint8 array.
+        
+        For `uint8`/`bool` dtypes, reads the array's raw buffer directly -- a zero-copy
+        view into memory numpy already owns -- and sets bits from it in one pass, with no
+        per-element Python object boxing. Any other dtype falls back to `.tolist()` +
+        `from_list`, which does box each element as an individual Python object along the
+        way; this covers arbitrary array-likes at the cost of that boxing.
         """
     def to_rdkit(self) -> ExplicitBitVect:
         r"""
@@ -169,6 +180,332 @@ class RealFingerprint:
         r"""
         Squared Euclidean norm of the feature vector (``||x||²``).
         """
+
+@typing.final
+class SWPattern:
+    r"""
+    A spaced-word pattern: a binary mask over `length` positions where a match position
+    ("1") contributes a residue to the spaced word's key and a don't-care position ("0")
+    is skipped when hashing but still compared for mismatches. Position 0 and the last
+    position are always match positions.
+    
+    Example::
+    
+        from refnd.utils import SWPattern
+    
+        pat = SWPattern(6, 20)
+        assert len(pat) == 26
+        assert pat.weight() == 6
+        assert pat.dontcare() == 20
+        assert pat.is_match(0)
+        assert pat.is_match(25)
+    
+        # Parse/render as a string of '1's (match) and '0's (don't-care)
+        pat2 = SWPattern.parse("10100101")
+        assert pat2.weight() == 4
+        assert str(pat2) == "10100101"
+    """
+    def __new__(cls, weight: builtins.int, dont_care: builtins.int) -> SWPattern:
+        r"""
+        Build a pattern with ``weight`` match positions (including the fixed first
+        and last) and ``dont_care`` don't-care positions, total length
+        ``weight + dont_care``. Positions in-between are randomly sampled.
+        
+        Args:
+            weight: Number of match positions, including both endpoints. Must be ``>= 2``.
+            dont_care: Number of don't-care positions.
+        
+        Raises:
+            ValueError: If ``weight < 2`` (there would be no way to place both required endpoints).
+        """
+    @staticmethod
+    def parse(s: builtins.str) -> SWPattern:
+        r"""
+        Parse a pattern from a string of ``'1'``s (match) and ``'0'``s (don't-care),
+        the same format ``str()`` produces.
+        
+        Raises:
+            ValueError: If the string contains a character other than ``'0'``/``'1'``,
+                or doesn't start and end with ``'1'``.
+        """
+    def weight(self) -> builtins.int:
+        r"""
+        Number of match ("1") positions.
+        """
+    def dontcare(self) -> builtins.int:
+        r"""
+        Number of don't-care ("0") positions.
+        """
+    def match_positions(self) -> builtins.list[builtins.int]:
+        r"""
+        Ascending indices of match ("1") positions.
+        """
+    def is_match(self, pos: builtins.int) -> builtins.bool:
+        r"""
+        Whether ``pos`` is a match position. Never raises: an out-of-range ``pos``
+        simply reads as ``False``.
+        """
+    def __len__(self) -> builtins.int:
+        r"""
+        Total number of positions (``weight() + dontcare()``).
+        """
+    def __str__(self) -> builtins.str:
+        r"""
+        Render as a string of the same length: ``'1'`` for match positions, ``'0'``
+        for don't-care positions -- the inverse of ``SWPattern.parse``.
+        """
+    def __repr__(self) -> builtins.str: ...
+
+@typing.final
+class SWPatternSet:
+    r"""
+    A set of ``SWPattern``s used together to compute spaced words for a sequence.
+    
+    The default constructor builds a RasBhari-optimized set (recommended for real
+    use); use ``SWPatternSet.random`` for a cheap, unoptimized set, or
+    ``SWPatternSet.from_patterns`` to build one from hand-picked patterns.
+    
+    Example::
+    
+        from refnd.utils import SWPatternSet
+    
+        # RasBhari-optimized (recommended)
+        patterns = SWPatternSet(5, 6, 20)
+        assert len(patterns) == 5
+    
+        # Cheap, unoptimized baseline, refined by hand
+        random_patterns = SWPatternSet.random(5, 6, 20)
+        score_before = random_patterns.optimize(0)    # limit=0: score only, no changes
+        score_after = random_patterns.optimize(2000)
+        assert score_after <= score_before
+    """
+    def __new__(cls, n: builtins.int, weight: builtins.int, dont_care: builtins.int) -> SWPatternSet:
+        r"""
+        Build a RasBhari-optimized pattern set: ``n`` distinct random patterns of the
+        given ``weight``/``dont_care``, refined by hill climbing for ProtSpaM's
+        default step budget (25,000).
+        
+        Args:
+            n: Number of distinct patterns to build.
+            weight: Number of match positions per pattern. ProtSpaM's own default is ``6``.
+            dont_care: Number of don't-care positions per pattern. ProtSpaM's own
+                default is ``40``.
+        
+        Warning:
+            Same as ``SWPatternSet.random``: hangs if ``n`` isn't well below the
+            number of distinct patterns possible for ``weight``/``dont_care``.
+        """
+    @staticmethod
+    def random(n: builtins.int, weight: builtins.int, dont_care: builtins.int) -> SWPatternSet:
+        r"""
+        Build ``n`` distinct unoptimized random patterns of the given
+        ``weight``/``dont_care``. Useful as a cheap baseline, or as the unoptimized
+        starting point ``optimize`` refines.
+        
+        Warning:
+            Patterns are generated by rejection sampling on uniqueness, so this hangs
+            (never returns) if ``n`` isn't well below the number of distinct patterns
+            possible for ``weight``/``dont_care`` (``C(weight + dont_care - 2, weight - 2)``).
+            This is sharpest at ``weight == 2``: there are no interior positions to
+            vary at all, so every generated pattern is identical and any ``n > 1``
+            hangs immediately.
+        """
+    @staticmethod
+    def with_limit(n: builtins.int, weight: builtins.int, dont_care: builtins.int, limit: builtins.int) -> SWPatternSet:
+        r"""
+        Same as the default constructor, but with an explicit hill-climbing step
+        budget instead of ProtSpaM's default of 25,000.
+        """
+    @staticmethod
+    def from_patterns(patterns: typing.Sequence[SWPattern]) -> SWPatternSet:
+        r"""
+        Build a set from already-constructed patterns. Unlike ``random``, there's no uniqueness check -- duplicate
+        patterns are allowed, though they add nothing (two identical patterns always
+        find exactly the same matches).
+        """
+    def optimize(self, limit: builtins.int) -> builtins.float:
+        r"""
+        Optimize this pattern set in place with RasBhari's overlap-complexity hill
+        climbing: repeatedly picks a pattern round-robin, swaps one of its interior
+        match positions for a don't-care position, and keeps the change only if it
+        strictly lowers the set's total pairwise overlap-complexity score.
+        
+        Args:
+            limit: Number of hill-climbing steps to run. Pass ``0`` to just compute
+                and return the current score without changing anything.
+        
+        Returns:
+            The achieved overlap-complexity score after optimizing (lower is better).
+        """
+    def patterns(self) -> builtins.list[SWPattern]:
+        r"""
+        The patterns in this set, in construction order.
+        """
+    def __len__(self) -> builtins.int:
+        r"""
+        Number of patterns in this set.
+        """
+    def save(self, path: builtins.str) -> None:
+        r"""
+        Serialize this set to ``path``. Inverse of ``load``.
+        
+        Raises:
+            IOError: If ``path`` can't be written.
+        """
+    @staticmethod
+    def load(path: builtins.str) -> SWPatternSet:
+        r"""
+        Deserialize a set previously written by ``save``.
+        
+        Raises:
+            IOError: If ``path`` can't be read, or its contents aren't a valid pattern set.
+        """
+
+@typing.final
+class SWSequence:
+    r"""
+    A sequence prepared for spaced-word comparison (ProtSpaM-style). Its residues are
+    pre-encoded as 5-bit amino-acid codes, and it holds the sorted spaced words for
+    every pattern in the ``SWPatternSet`` it was built with.
+    
+    Two ``SWSequence``s must be built from the same ``SWPatternSet`` (or two equal
+    copies of it) to be compared meaningfully -- see
+    ``refnd.kernels.protspam.ProtSpamKernel``, which is what actually compares two of
+    these.
+    
+    Picklable: ``pickle.dumps``/``pickle.loads`` round-trip an ``SWSequence`` without
+    needing the original pattern set again (its encoded residues and sorted spaced
+    words are serialized directly).
+    
+    Example::
+    
+        import pickle
+        from refnd.utils import SWPatternSet, SWSequence
+    
+        patterns = SWPatternSet(5, 6, 20)
+        seq = SWSequence("MKTAYIAKQRQISFVKSHFSRQ", patterns)
+        assert len(seq) == 22
+    
+        restored = pickle.loads(pickle.dumps(seq))
+        assert restored.seq() == seq.seq()
+    """
+    def __new__(cls, seq: builtins.str, patterns: SWPatternSet) -> SWSequence:
+        r"""
+        Encode ``seq`` and compute its sorted spaced words for every pattern in
+        ``patterns``.
+        
+        Args:
+            seq: The amino-acid sequence.
+            patterns: The pattern set to compute spaced words for. Must be the same
+                set (or an equal copy) used for every other ``SWSequence`` this one
+                will be compared against, and for the kernel doing the comparing.
+        
+        Raises:
+            ValueError: If ``seq`` contains a character outside ProtSpaM's amino-acid
+                alphabet (the 20 standard amino acids, ambiguity codes B/Z/X, stop
+                ``*``, and J; case-insensitive).
+        """
+    def seq(self) -> builtins.list[builtins.int]:
+        r"""
+        Residues as 5-bit amino-acid codes, not raw ASCII -- e.g. ``'A'`` reads back
+        as ``0``, not ``65``.
+        """
+    def __len__(self) -> builtins.int:
+        r"""
+        Sequence length in residues.
+        """
+    def sorted_words(self, pattern_idx: builtins.int) -> builtins.list[SWWord]:
+        r"""
+        Sorted spaced words for ``patterns.patterns()[pattern_idx]``, where
+        ``patterns`` is the set this sequence was built with. Empty if this sequence
+        is shorter than that pattern (no window fits).
+        
+        Raises:
+            IndexError: If ``pattern_idx`` is out of range for the pattern set this
+                sequence was built with.
+        """
+    def pattern_count(self) -> builtins.int:
+        r"""
+        Number of patterns this sequence has spaced words for -- the ``len()`` of the
+        ``SWPatternSet`` it was built with. Valid indices for ``sorted_words`` are
+        ``0 .. pattern_count()``.
+        """
+    def __reduce__(self) -> tuple[typing.Any, tuple[builtins.list[builtins.int]]]:
+        r"""
+        Pickle support.
+        """
+    @staticmethod
+    def _from_bytes(data: typing.Sequence[builtins.int]) -> SWSequence: ...
+
+@typing.final
+class SWWord:
+    r"""
+    One complete spaced word: the residues at a pattern's match positions.
+    
+    Example::
+    
+        from refnd.utils import SWPatternSet, SWSequence
+    
+        patterns = SWPatternSet.random(1, 2, 1)  # single pattern, weight 2, dc 1 -> "101"
+        seq = SWSequence("ACDE", patterns)
+        words = seq.sorted_words(0)
+        assert all(words[i].key() <= words[i + 1].key() for i in range(len(words) - 1))
+    """
+    def __eq__(self, other: builtins.object) -> builtins.bool: ...
+    def __lt__(self, other: builtins.object) -> builtins.bool: ...
+    def __le__(self, other: builtins.object) -> builtins.bool: ...
+    def __gt__(self, other: builtins.object) -> builtins.bool: ...
+    def __ge__(self, other: builtins.object) -> builtins.bool: ...
+    def key(self) -> builtins.int:
+        r"""
+        The packed key: the pattern's match-position residues, 5 bits each,
+        most-significant residue first.
+        """
+    def pos(self) -> builtins.int:
+        r"""
+        Start position of this word's window in the sequence it came from.
+        """
+    def __repr__(self) -> builtins.str: ...
+
+@typing.final
+class Vector:
+    r"""
+    A dense ``f32`` vector, used by the ``refnd.kernels.vectors`` kernels (``Cosine``,
+    ``EluDot``, ``L1``, ``L2``). Backed by a plain ``Vec<f32>`` -- unlike
+    ``RealFingerprint``, there's no precomputed cache.
+    
+    Example::
+    
+        import numpy as np
+        from refnd.utils import Vector
+    
+        v = Vector(np.array([1.0, 2.0, 3.0], dtype=np.float32))
+        print(len(v))
+    """
+    def __new__(cls, values: typing.Any) -> Vector:
+        r"""
+        Construct from a numpy array or a list of floats.
+        """
+    @staticmethod
+    def from_list(values: typing.Sequence[builtins.float]) -> Vector:
+        r"""
+        Construct from a list of floats.
+        """
+    @staticmethod
+    def from_np(arr: typing.Any) -> Vector:
+        r"""
+        Construct from a numpy float32 array, reading its buffer directly. Falls back
+        to ``.tolist()`` for other dtypes.
+        """
+    def to_list(self) -> builtins.list[builtins.float]:
+        r"""
+        Export as a list of floats.
+        """
+    def to_np(self) -> numpy.typing.NDArray[numpy.float32]:
+        r"""
+        Export as a numpy float32 array.
+        """
+    def __len__(self) -> builtins.int: ...
 
 def largest_cluster(clusters: typing.Sequence[builtins.int]) -> tuple[builtins.int, builtins.int]:
     r"""

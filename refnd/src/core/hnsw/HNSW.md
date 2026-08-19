@@ -28,6 +28,9 @@ Three strategies are available, selected per-insertion via config flags:
 **Node ids are `u32`.**
 Every node id (`HGraph` adjacency lists, `Candidate.idx`, `ScratchBuffers` vecs, `proximity_edges`/`ShardedCache` keys, the public search/insert API) is `u32`, not `usize` — halves memory for adjacency/proximity storage and, more importantly, shrinks `Candidate` from 16 to 8 bytes so twice as many candidates fit per cache line in the search/insert heaps. Datasets are assumed to fit under 4B points. `(u32, u32)` map/cache keys use `PairHasher`/`PairBuildHasher` (mod.rs) for their *internal* hashmap bucket placement — packs both halves into a u64 via a shift and OR, then runs one multiply + xor-shift in `finish()` so the packed low-bit entropy (node ids are far smaller than 2^32) actually reaches the high bits hash tables typically rely on. Shard *selection* for `ShardedCache`/`ShardedEdgeSet` never uses this hasher — it's a direct `key.0 & mask`.
 
+**Incremental extension.**
+`extend_build` appends new data to an already-built index and inserts only the new indices — existing nodes and edges are untouched. It grows `HGraph`'s dense layer 0 (`resize`) and layer count (`add_layers`) to cover the new, larger dataset, sharing the same layer-budget formula as `HNSWState::new` (`max_layers_for`). Both `HGraph` methods only grow, never shrink, so a call with a smaller size panics rather than silently dropping edges. Requires `build()` to have already run — otherwise the original data would sit in `self.data` without ever being connected into the graph.
+
 **Index format versioning.**
 `HNSWIndex` stores the `(major, minor, patch)` crate version at save time. `HNSWState::load` rejects indices saved before v0.1.0 (pre the u32 node-id refactor) with a clear error rather than silently decoding garbage. From v0.1.0 onward the on-disk format is expected to stay stable.
 
@@ -38,7 +41,7 @@ src/
     hnsw/
       mod.rs                     HNSWState, HGraph, EntryPoint, ScratchBuffers
       config.rs                  HNSWConfig (builder pattern)
-      build.rs                   Parallel build loop + progress bar
+      build.rs                   Parallel build loop + progress bar; extend_build for incremental growth
       insert.rs                  insert_parallel: layer assignment, search, edge wiring
       search_layer.rs            Greedy k-NN search within one layer
       select_neighbors.rs        Neighbour selection 

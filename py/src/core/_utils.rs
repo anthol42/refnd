@@ -37,8 +37,19 @@ fn format_eta(secs: f64) -> String {
 /// Build progress bar for the HNSW index construction.
 /// Uses a log-factorial work model for accurate ETA estimation.
 pub fn logfacto_progress_bar(n: usize, msg: impl Into<String>) -> ProgressBar {
-    let total_work = log_factorial(n as f64);
-    let pb = ProgressBar::new(n as u64);
+    logfacto_progress_bar_from(0, n, msg)
+}
+
+/// Build progress bar for inserting `m` new items into a graph that already has
+/// `offset` nodes (e.g. `extend_build`). Inserting the item at graph size `k` costs
+/// O(log k), so the work done so far isn't `log(m!)` but `log((offset+m)!) - log(offset!)`
+/// -- without subtracting that intercept, an `extend_build` on a large existing graph
+/// would see `fraction` jump close to 1 almost immediately and report a bogus ETA.
+/// `logfacto_progress_bar` is the `offset = 0` case.
+pub fn logfacto_progress_bar_from(offset: usize, m: usize, msg: impl Into<String>) -> ProgressBar {
+    let base = log_factorial(offset as f64);
+    let total_work = log_factorial((offset + m) as f64) - base;
+    let pb = ProgressBar::new(m as u64);
     pb.set_style(
         ProgressStyle::with_template(
             "{spinner:.green} {msg} {bar:40.cyan/white.dim} \
@@ -57,7 +68,7 @@ pub fn logfacto_progress_bar(n: usize, msg: impl Into<String>) -> ProgressBar {
                     write!(w, "estimating…").unwrap();
                     return;
                 }
-                let fraction = log_factorial(i) / total_work;
+                let fraction = (log_factorial(offset as f64 + i) - base) / total_work;
                 if fraction <= 0.0 || fraction >= 1.0 {
                     write!(w, "-").unwrap();
                     return;
