@@ -47,15 +47,15 @@ impl From<CoreProtSpamDistance> for ProtSpamDistance {
     }
 }
 
-/// Distance between two ``SWSequence``s, ProtSpaM-style: for each pattern in a
+/// Distance between two ``SWSequence``, ProtSpaM-style: for each pattern in a
 /// shared ``SWPatternSet``, match spaced words by key (grouping ties into "blocks"),
 /// score the best-aligned spaced word pair within each matching block against
 /// BLOSUM62, and pool mismatches at don't-care positions into a mismatch rate.
 /// Reports either that raw rate or a Kimura-corrected evolutionary distance, per
 /// ``distance``.
 ///
-/// **Every ``SWSequence`` passed to ``call`` must have been built from the same
-/// ``SWPatternSet`` as this kernel's ``patterns()``** (or an equal copy of it).
+/// Every ``SWSequence`` passed to ``call`` must have been built from the same
+/// ``SWPatternSet`` as this kernel's ``patterns()`` (or an equal copy of it).
 ///
 /// Example::
 ///

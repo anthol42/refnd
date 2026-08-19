@@ -36,3 +36,23 @@ Protein structure kernels (USalign TM-score).
    :members:
    :member-order: bysource
 ```
+
+## refnd.kernels.protspam
+
+ProtSpaM-style spaced-word kernel for protein sequences.
+
+```{eval-rst}
+.. automodule:: refnd.kernels.protspam
+   :members:
+   :member-order: bysource
+```
+
+## refnd.kernels.vectors
+
+Vector distance kernels.
+
+```{eval-rst}
+.. automodule:: refnd.kernels.vectors
+   :members:
+   :member-order: bysource
+```
