@@ -1,0 +1,966 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="refnd.kernels" href="kernels.html"><link rel="prev" title="refnd" href="../index.html">
+        <link rel="canonical" href="/refnd/api/utils.html">
+
+    <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
+        <title>refnd.utils - refnd documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/copy_markdown.css?v=6ae93540" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/version_switcher.css?v=84734a79" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../index.html"><div class="brand">refnd  documentation</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
+  
+  <span class="sidebar-brand-text">refnd  documentation</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <ul class="current">
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">refnd.utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="kernels.html">refnd.kernels</a></li>
+<li class="toctree-l1"><a class="reference internal" href="core.html">refnd.core</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="../_sources/api/utils.md.txt" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div>
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <section id="module-refnd.utils">
+<span id="refnd-utils"></span><h1>refnd.utils<a class="headerlink" href="#module-refnd.utils" title="Link to this heading">¶</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="refnd.utils.BitFingerprint">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">refnd.utils.</span></span><span class="sig-name descname"><span class="pre">BitFingerprint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ExplicitBitVect</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#refnd.utils.BitFingerprint" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Dense binary fingerprint backed by a dense bitset.</p>
+<p>Each bit represents the presence or absence of a structural feature.
+The primary source is an RDKit <code class="docutils literal notranslate"><span class="pre">ExplicitBitVect</span></code> (from <code class="docutils literal notranslate"><span class="pre">GetFingerprint</span></code>),
+but plain Python lists and numpy arrays are also accepted.</p>
+<p><code class="docutils literal notranslate"><span class="pre">count</span></code> caches the popcount so Tanimoto computation avoids re-counting.</p>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">rdkit.Chem</span><span class="w"> </span><span class="kn">import</span> <span class="n">rdFingerprintGenerator</span><span class="p">,</span> <span class="n">MolFromSmiles</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">refnd.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">BitFingerprint</span>
+
+<span class="n">mfpgen</span> <span class="o">=</span> <span class="n">rdFingerprintGenerator</span><span class="o">.</span><span class="n">GetMorganGenerator</span><span class="p">(</span><span class="n">fpSize</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">mol</span> <span class="o">=</span> <span class="n">MolFromSmiles</span><span class="p">(</span><span class="s2">&quot;c1ccccc1&quot;</span><span class="p">)</span>
+<span class="n">fp</span> <span class="o">=</span> <span class="n">BitFingerprint</span><span class="p">(</span><span class="n">mfpgen</span><span class="o">.</span><span class="n">GetFingerprint</span><span class="p">(</span><span class="n">mol</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">fp</span><span class="o">.</span><span class="n">count</span><span class="p">(),</span> <span class="nb">len</span><span class="p">(</span><span class="n">fp</span><span class="p">))</span>   <span class="c1"># set bits, total bits</span>
+</pre></div>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="refnd.utils.BitFingerprint.count">
+<span class="sig-name descname"><span class="pre">count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="headerlink" href="#refnd.utils.BitFingerprint.count" title="Link to this definition">¶</a></dt>
+<dd><p>Number of on bits (popcount).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="refnd.utils.BitFingerprint.from_list">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">from_list</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">values</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">bool</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#refnd.utils.BitFingerprint" title="refnd.utils.BitFingerprint"><span class="pre">BitFingerprint</span></a></span></span><a class="headerlink" href="#refnd.utils.BitFingerprint.from_list" title="Link to this definition">¶</a></dt>
+<dd><p>Construct from a list of booleans (or 0/1 ints).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="refnd.utils.BitFingerprint.from_np">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">from_np</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">numpy.typing.NDArray</span><span class="p"><span class="pre">[</span></span><span class="pre">numpy.bool_</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#refnd.utils.BitFingerprint" title="refnd.utils.BitFingerprint"><span class="pre">BitFingerprint</span></a></span></span><a class="headerlink" href="#refnd.utils.BitFingerprint.from_np" title="Link to this definition">¶</a></dt>
+<dd><p>Construct from a numpy boolean or uint8 array.</p>
+<p>For <cite>uint8</cite>/<cite>bool</cite> dtypes, reads the array’s raw buffer directly – a zero-copy
+view into memory numpy already owns – and sets bits from it in one pass, with no
+per-element Python object boxing. Any other dtype falls back to <cite>.tolist()</cite> +
+<cite>from_list</cite>, which does box each element as an individual Python object along the
+way; this covers arbitrary array-likes at the cost of that boxing.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="refnd.utils.BitFingerprint.random">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">random</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">len</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#refnd.utils.BitFingerprint" title="refnd.utils.BitFingerprint"><span class="pre">BitFingerprint</span></a></span></span><a class="headerlink" href="#refnd.utils.BitFingerprint.random" title="Link to this definition">¶</a></dt>
+<dd><p>Create a fingerprint of <code class="docutils literal notranslate"><span class="pre">len</span></code> bits with exactly <code class="docutils literal notranslate"><span class="pre">count</span></code> bits set at random.</p>
+<p>Useful for randomized testing.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>len</strong> – Total number of bits.</p></li>
+<li><p><strong>count</strong> – Number of bits to turn on. Must be <code class="docutils literal notranslate"><span class="pre">&lt;=</span> <span class="pre">len</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If <code class="docutils literal notranslate"><span class="pre">count</span> <span class="pre">&gt;</span> <span class="pre">len</span></code>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="refnd.utils.BitFingerprint.to_list">
+<span class="sig-name descname"><span class="pre">to_list</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">bool</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#refnd.utils.BitFingerprint.to_list" title="Link to this definition">¶</a></dt>
+<dd><p>Export as a list of booleans.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="refnd.utils.BitFingerprint.to_np">
+<span class="sig-name descname"><span class="pre">to_np</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">numpy.typing.NDArray</span><span class="p"><span class="pre">[</span></span><span class="pre">numpy.bool_</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#refnd.utils.BitFingerprint.to_np" title="Link to this definition">¶</a></dt>
+<dd><p>Export as a numpy bool array.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="refnd.utils.BitFingerprint.to_rdkit">
+<span class="sig-name descname"><span class="pre">to_rdkit</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ExplicitBitVect</span></span></span><a class="headerlink" href="#refnd.utils.BitFingerprint.to_rdkit" title="Link to this definition">¶</a></dt>
+<dd><p>Export as an RDKit <code class="docutils literal notranslate"><span class="pre">ExplicitBitVect</span></code>.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.utils.BitFingerprint.fp">
+<span class="sig-name descname"><span class="pre">fp</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ExplicitBitVect</span></span><a class="headerlink" href="#refnd.utils.BitFingerprint.fp" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.utils.BitFingerprint.return">
+<span class="sig-name descname"><span class="pre">return</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#refnd.utils.BitFingerprint" title="refnd.utils.BitFingerprint"><span class="pre">BitFingerprint</span></a></span><a class="headerlink" href="#refnd.utils.BitFingerprint.return" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="refnd.utils.RealFingerprint">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">refnd.utils.</span></span><span class="sig-name descname"><span class="pre">RealFingerprint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">UIntSparseIntVect</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#refnd.utils.RealFingerprint" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Dense real-valued fingerprint backed by a <code class="docutils literal notranslate"><span class="pre">Vec&lt;f32&gt;</span></code>.</p>
+<p>Each element represents a feature count or continuous value. The primary
+source is an RDKit <code class="docutils literal notranslate"><span class="pre">UIntSparseIntVect</span></code> (from <code class="docutils literal notranslate"><span class="pre">GetCountFingerprint</span></code>),
+but plain Python lists and numpy arrays are also accepted.</p>
+<p><code class="docutils literal notranslate"><span class="pre">norm_sq</span></code> caches <code class="docutils literal notranslate"><span class="pre">||x||²</span></code> so Tanimoto computation avoids recomputing it.</p>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">rdkit.Chem</span><span class="w"> </span><span class="kn">import</span> <span class="n">rdFingerprintGenerator</span><span class="p">,</span> <span class="n">MolFromSmiles</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">refnd.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">RealFingerprint</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">refnd.kernels.molecules</span><span class="w"> </span><span class="kn">import</span> <span class="n">TanimotoReal</span>
+
+<span class="n">mfpgen</span> <span class="o">=</span> <span class="n">rdFingerprintGenerator</span><span class="o">.</span><span class="n">GetMorganGenerator</span><span class="p">(</span><span class="n">fpSize</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">mol</span> <span class="o">=</span> <span class="n">MolFromSmiles</span><span class="p">(</span><span class="s2">&quot;c1ccccc1&quot;</span><span class="p">)</span>
+<span class="n">fp</span> <span class="o">=</span> <span class="n">RealFingerprint</span><span class="p">(</span><span class="n">mfpgen</span><span class="o">.</span><span class="n">GetCountFingerprint</span><span class="p">(</span><span class="n">mol</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">fp</span><span class="o">.</span><span class="n">norm_sq</span><span class="p">(),</span> <span class="nb">len</span><span class="p">(</span><span class="n">fp</span><span class="p">))</span>
+</pre></div>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="refnd.utils.RealFingerprint.from_list">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">from_list</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">values</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#refnd.utils.RealFingerprint" title="refnd.utils.RealFingerprint"><span class="pre">RealFingerprint</span></a></span></span><a class="headerlink" href="#refnd.utils.RealFingerprint.from_list" title="Link to this definition">¶</a></dt>
+<dd><p>Construct from a list of floats.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="refnd.utils.RealFingerprint.from_np">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">from_np</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">numpy.typing.NDArray</span><span class="p"><span class="pre">[</span></span><span class="pre">numpy.float32</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#refnd.utils.RealFingerprint" title="refnd.utils.RealFingerprint"><span class="pre">RealFingerprint</span></a></span></span><a class="headerlink" href="#refnd.utils.RealFingerprint.from_np" title="Link to this definition">¶</a></dt>
+<dd><p>Construct from a numpy float32 or float64 array.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="refnd.utils.RealFingerprint.norm_sq">
+<span class="sig-name descname"><span class="pre">norm_sq</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="headerlink" href="#refnd.utils.RealFingerprint.norm_sq" title="Link to this definition">¶</a></dt>
+<dd><p>Squared Euclidean norm of the feature vector (<code class="docutils literal notranslate"><span class="pre">||x||²</span></code>).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="refnd.utils.RealFingerprint.to_list">
+<span class="sig-name descname"><span class="pre">to_list</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#refnd.utils.RealFingerprint.to_list" title="Link to this definition">¶</a></dt>
+<dd><p>Export as a list of floats.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="refnd.utils.RealFingerprint.to_np">
+<span class="sig-name descname"><span class="pre">to_np</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">numpy.typing.NDArray</span><span class="p"><span class="pre">[</span></span><span class="pre">numpy.float32</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#refnd.utils.RealFingerprint.to_np" title="Link to this definition">¶</a></dt>
+<dd><p>Export as a numpy float32 array.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="refnd.utils.RealFingerprint.to_rdkit">
+<span class="sig-name descname"><span class="pre">to_rdkit</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">UIntSparseIntVect</span></span></span><a class="headerlink" href="#refnd.utils.RealFingerprint.to_rdkit" title="Link to this definition">¶</a></dt>
+<dd><p>Export as an RDKit <code class="docutils literal notranslate"><span class="pre">UIntSparseIntVect</span></code>, compatible with <code class="docutils literal notranslate"><span class="pre">GetCountFingerprint</span></code>.
+Only non-zero elements are stored; the length equals <code class="docutils literal notranslate"><span class="pre">len(self)</span></code>.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.utils.RealFingerprint.fp">
+<span class="sig-name descname"><span class="pre">fp</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">UIntSparseIntVect</span></span><a class="headerlink" href="#refnd.utils.RealFingerprint.fp" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.utils.RealFingerprint.return">
+<span class="sig-name descname"><span class="pre">return</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#refnd.utils.RealFingerprint" title="refnd.utils.RealFingerprint"><span class="pre">RealFingerprint</span></a></span><a class="headerlink" href="#refnd.utils.RealFingerprint.return" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="refnd.utils.Vector">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">refnd.utils.</span></span><span class="sig-name descname"><span class="pre">Vector</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">values</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#refnd.utils.Vector" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>A dense <code class="docutils literal notranslate"><span class="pre">f32</span></code> vector, used by the <code class="docutils literal notranslate"><span class="pre">refnd.kernels.vectors</span></code> kernels (<code class="docutils literal notranslate"><span class="pre">Cosine</span></code>,
+<code class="docutils literal notranslate"><span class="pre">EluDot</span></code>, <code class="docutils literal notranslate"><span class="pre">L1</span></code>, <code class="docutils literal notranslate"><span class="pre">L2</span></code>). Backed by a plain <code class="docutils literal notranslate"><span class="pre">Vec&lt;f32&gt;</span></code> – unlike
+<code class="docutils literal notranslate"><span class="pre">RealFingerprint</span></code>, there’s no precomputed cache.</p>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">refnd.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">Vector</span>
+
+<span class="n">v</span> <span class="o">=</span> <span class="n">Vector</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">v</span><span class="p">))</span>
+</pre></div>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="refnd.utils.Vector.from_list">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">from_list</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">values</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#refnd.utils.Vector" title="refnd.utils.Vector"><span class="pre">Vector</span></a></span></span><a class="headerlink" href="#refnd.utils.Vector.from_list" title="Link to this definition">¶</a></dt>
+<dd><p>Construct from a list of floats.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="refnd.utils.Vector.from_np">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">from_np</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#refnd.utils.Vector" title="refnd.utils.Vector"><span class="pre">Vector</span></a></span></span><a class="headerlink" href="#refnd.utils.Vector.from_np" title="Link to this definition">¶</a></dt>
+<dd><p>Construct from a numpy float32 array, reading its buffer directly. Falls back
+to <code class="docutils literal notranslate"><span class="pre">.tolist()</span></code> for other dtypes.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="refnd.utils.Vector.to_list">
+<span class="sig-name descname"><span class="pre">to_list</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#refnd.utils.Vector.to_list" title="Link to this definition">¶</a></dt>
+<dd><p>Export as a list of floats.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="refnd.utils.Vector.to_np">
+<span class="sig-name descname"><span class="pre">to_np</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">numpy.typing.NDArray</span><span class="p"><span class="pre">[</span></span><span class="pre">numpy.float32</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#refnd.utils.Vector.to_np" title="Link to this definition">¶</a></dt>
+<dd><p>Export as a numpy float32 array.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.utils.Vector.values">
+<span class="sig-name descname"><span class="pre">values</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Any</span></span><a class="headerlink" href="#refnd.utils.Vector.values" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.utils.Vector.return">
+<span class="sig-name descname"><span class="pre">return</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#refnd.utils.Vector" title="refnd.utils.Vector"><span class="pre">Vector</span></a></span><a class="headerlink" href="#refnd.utils.Vector.return" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="refnd.utils.PdbStructure">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">refnd.utils.</span></span><span class="sig-name descname"><span class="pre">PdbStructure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#refnd.utils.PdbStructure" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>A protein structure loaded from a PDB file and held in memory.</p>
+<p>The structure is parsed once on construction and the coordinate arrays are
+kept alive for the lifetime of the object. Cloning is cheap (reference-counted).</p>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">refnd.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">PdbStructure</span>
+<span class="n">s</span> <span class="o">=</span> <span class="n">PdbStructure</span><span class="p">(</span><span class="s2">&quot;1abc.pdb&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.utils.PdbStructure.path">
+<span class="sig-name descname"><span class="pre">path</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><a class="headerlink" href="#refnd.utils.PdbStructure.path" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.utils.PdbStructure.return">
+<span class="sig-name descname"><span class="pre">return</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#refnd.utils.PdbStructure" title="refnd.utils.PdbStructure"><span class="pre">PdbStructure</span></a></span><a class="headerlink" href="#refnd.utils.PdbStructure.return" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="refnd.utils.read_fasta">
+<span class="sig-prename descclassname"><span class="pre">refnd.utils.</span></span><span class="sig-name descname"><span class="pre">read_fasta</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#refnd.utils.read_fasta" title="Link to this definition">¶</a></dt>
+<dd><p>Parse a FASTA file and return all records as a list of <code class="docutils literal notranslate"><span class="pre">(header,</span> <span class="pre">sequence)</span></code> pairs.</p>
+<p>The header string is the full description line without the leading <code class="docutils literal notranslate"><span class="pre">&gt;</span></code>.
+The sequence is the concatenation of all continuation lines for that record,
+with whitespace stripped.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>path</strong> – Path to the FASTA file.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A list of <code class="docutils literal notranslate"><span class="pre">(header,</span> <span class="pre">sequence)</span></code> tuples, one per FASTA record.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>IOError</strong> – If the file cannot be opened or is not valid UTF-8.</p>
+</dd>
+</dl>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">refnd.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">read_fasta</span>
+
+<span class="n">records</span> <span class="o">=</span> <span class="n">read_fasta</span><span class="p">(</span><span class="s2">&quot;proteins.fasta&quot;</span><span class="p">)</span>
+<span class="n">header</span><span class="p">,</span> <span class="n">seq</span> <span class="o">=</span> <span class="n">records</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">header</span><span class="p">)</span>  <span class="c1"># &quot;sp|P12345|MYPR_HUMAN ...&quot;</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">seq</span><span class="p">)</span>     <span class="c1"># &quot;MKTAYIAKQRQISFVKSHFSRQ...&quot;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="refnd.utils.largest_cluster">
+<span class="sig-prename descclassname"><span class="pre">refnd.utils.</span></span><span class="sig-name descname"><span class="pre">largest_cluster</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">clusters</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#refnd.utils.largest_cluster" title="Link to this definition">¶</a></dt>
+<dd><p>Return the ID and size of the largest cluster.</p>
+<p>Convenience helper — iterates over a cluster-label vector and finds the
+most populous label.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>clusters</strong> – A list of cluster IDs (e.g. from <code class="docutils literal notranslate"><span class="pre">connected_components</span></code> or
+<code class="docutils literal notranslate"><span class="pre">find_communities</span></code>).</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A tuple <code class="docutils literal notranslate"><span class="pre">(cluster_id,</span> <span class="pre">size)</span></code> for the largest cluster.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="refnd.utils.SWPattern">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">refnd.utils.</span></span><span class="sig-name descname"><span class="pre">SWPattern</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">weight</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dont_care</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#refnd.utils.SWPattern" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>A spaced-word pattern: a binary mask over <cite>length</cite> positions where a match position
+(“1”) contributes a residue to the spaced word’s key and a don’t-care position (“0”)
+is skipped when hashing but still compared for mismatches. Position 0 and the last
+position are always match positions.</p>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">refnd.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">SWPattern</span>
+
+<span class="n">pat</span> <span class="o">=</span> <span class="n">SWPattern</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="mi">20</span><span class="p">)</span>
+<span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">pat</span><span class="p">)</span> <span class="o">==</span> <span class="mi">26</span>
+<span class="k">assert</span> <span class="n">pat</span><span class="o">.</span><span class="n">weight</span><span class="p">()</span> <span class="o">==</span> <span class="mi">6</span>
+<span class="k">assert</span> <span class="n">pat</span><span class="o">.</span><span class="n">dontcare</span><span class="p">()</span> <span class="o">==</span> <span class="mi">20</span>
+<span class="k">assert</span> <span class="n">pat</span><span class="o">.</span><span class="n">is_match</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+<span class="k">assert</span> <span class="n">pat</span><span class="o">.</span><span class="n">is_match</span><span class="p">(</span><span class="mi">25</span><span class="p">)</span>
+
+<span class="c1"># Parse/render as a string of &#39;1&#39;s (match) and &#39;0&#39;s (don&#39;t-care)</span>
+<span class="n">pat2</span> <span class="o">=</span> <span class="n">SWPattern</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="s2">&quot;10100101&quot;</span><span class="p">)</span>
+<span class="k">assert</span> <span class="n">pat2</span><span class="o">.</span><span class="n">weight</span><span class="p">()</span> <span class="o">==</span> <span class="mi">4</span>
+<span class="k">assert</span> <span class="nb">str</span><span class="p">(</span><span class="n">pat2</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;10100101&quot;</span>
+</pre></div>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="refnd.utils.SWPattern.dontcare">
+<span class="sig-name descname"><span class="pre">dontcare</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="headerlink" href="#refnd.utils.SWPattern.dontcare" title="Link to this definition">¶</a></dt>
+<dd><p>Number of don’t-care (“0”) positions.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="refnd.utils.SWPattern.is_match">
+<span class="sig-name descname"><span class="pre">is_match</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pos</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="headerlink" href="#refnd.utils.SWPattern.is_match" title="Link to this definition">¶</a></dt>
+<dd><p>Whether <code class="docutils literal notranslate"><span class="pre">pos</span></code> is a match position. Never raises: an out-of-range <code class="docutils literal notranslate"><span class="pre">pos</span></code>
+simply reads as <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="refnd.utils.SWPattern.match_positions">
+<span class="sig-name descname"><span class="pre">match_positions</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#refnd.utils.SWPattern.match_positions" title="Link to this definition">¶</a></dt>
+<dd><p>Ascending indices of match (“1”) positions.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="refnd.utils.SWPattern.parse">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">parse</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#refnd.utils.SWPattern" title="refnd.utils.SWPattern"><span class="pre">SWPattern</span></a></span></span><a class="headerlink" href="#refnd.utils.SWPattern.parse" title="Link to this definition">¶</a></dt>
+<dd><p>Parse a pattern from a string of <code class="docutils literal notranslate"><span class="pre">'1'``s</span> <span class="pre">(match)</span> <span class="pre">and</span> <span class="pre">``'0'``s</span> <span class="pre">(don't-care),</span>
+<span class="pre">the</span> <span class="pre">same</span> <span class="pre">format</span> <span class="pre">``str()</span></code> produces.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>ValueError</strong> – If the string contains a character other than <code class="docutils literal notranslate"><span class="pre">'0'</span></code>/<code class="docutils literal notranslate"><span class="pre">'1'</span></code>,
+    or doesn’t start and end with <code class="docutils literal notranslate"><span class="pre">'1'</span></code>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="refnd.utils.SWPattern.weight">
+<span class="sig-name descname"><span class="pre">weight</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="headerlink" href="#refnd.utils.SWPattern.weight" title="Link to this definition">¶</a></dt>
+<dd><p>Number of match (“1”) positions.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.utils.SWPattern.dont_care">
+<span class="sig-name descname"><span class="pre">dont_care</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><a class="headerlink" href="#refnd.utils.SWPattern.dont_care" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.utils.SWPattern.return">
+<span class="sig-name descname"><span class="pre">return</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#refnd.utils.SWPattern" title="refnd.utils.SWPattern"><span class="pre">SWPattern</span></a></span><a class="headerlink" href="#refnd.utils.SWPattern.return" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="refnd.utils.SWPatternSet">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">refnd.utils.</span></span><span class="sig-name descname"><span class="pre">SWPatternSet</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">weight</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dont_care</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#refnd.utils.SWPatternSet" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>A set of <a href="#id1"><span class="problematic" id="id2">``</span></a>SWPattern``s used together to compute spaced words for a sequence.</p>
+<p>The default constructor builds a RasBhari-optimized set (recommended for real
+use); use <code class="docutils literal notranslate"><span class="pre">SWPatternSet.random</span></code> for a cheap, unoptimized set, or
+<code class="docutils literal notranslate"><span class="pre">SWPatternSet.from_patterns</span></code> to build one from hand-picked patterns.</p>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">refnd.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">SWPatternSet</span>
+
+<span class="c1"># RasBhari-optimized (recommended)</span>
+<span class="n">patterns</span> <span class="o">=</span> <span class="n">SWPatternSet</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">20</span><span class="p">)</span>
+<span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">patterns</span><span class="p">)</span> <span class="o">==</span> <span class="mi">5</span>
+
+<span class="c1"># Cheap, unoptimized baseline, refined by hand</span>
+<span class="n">random_patterns</span> <span class="o">=</span> <span class="n">SWPatternSet</span><span class="o">.</span><span class="n">random</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">20</span><span class="p">)</span>
+<span class="n">score_before</span> <span class="o">=</span> <span class="n">random_patterns</span><span class="o">.</span><span class="n">optimize</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>    <span class="c1"># limit=0: score only, no changes</span>
+<span class="n">score_after</span> <span class="o">=</span> <span class="n">random_patterns</span><span class="o">.</span><span class="n">optimize</span><span class="p">(</span><span class="mi">2000</span><span class="p">)</span>
+<span class="k">assert</span> <span class="n">score_after</span> <span class="o">&lt;=</span> <span class="n">score_before</span>
+</pre></div>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="refnd.utils.SWPatternSet.from_patterns">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">from_patterns</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">patterns</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#refnd.utils.SWPattern" title="refnd.utils.SWPattern"><span class="pre">SWPattern</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#refnd.utils.SWPatternSet" title="refnd.utils.SWPatternSet"><span class="pre">SWPatternSet</span></a></span></span><a class="headerlink" href="#refnd.utils.SWPatternSet.from_patterns" title="Link to this definition">¶</a></dt>
+<dd><p>Build a set from already-constructed patterns. Unlike <code class="docutils literal notranslate"><span class="pre">random</span></code>, there’s no uniqueness check – duplicate
+patterns are allowed, though they add nothing (two identical patterns always
+find exactly the same matches).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="refnd.utils.SWPatternSet.load">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">load</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#refnd.utils.SWPatternSet" title="refnd.utils.SWPatternSet"><span class="pre">SWPatternSet</span></a></span></span><a class="headerlink" href="#refnd.utils.SWPatternSet.load" title="Link to this definition">¶</a></dt>
+<dd><p>Deserialize a set previously written by <code class="docutils literal notranslate"><span class="pre">save</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>IOError</strong> – If <code class="docutils literal notranslate"><span class="pre">path</span></code> can’t be read, or its contents aren’t a valid pattern set.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="refnd.utils.SWPatternSet.optimize">
+<span class="sig-name descname"><span class="pre">optimize</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">limit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="headerlink" href="#refnd.utils.SWPatternSet.optimize" title="Link to this definition">¶</a></dt>
+<dd><p>Optimize this pattern set in place with RasBhari’s overlap-complexity hill
+climbing: repeatedly picks a pattern round-robin, swaps one of its interior
+match positions for a don’t-care position, and keeps the change only if it
+strictly lowers the set’s total pairwise overlap-complexity score.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>limit</strong> – Number of hill-climbing steps to run. Pass <code class="docutils literal notranslate"><span class="pre">0</span></code> to just compute
+and return the current score without changing anything.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The achieved overlap-complexity score after optimizing (lower is better).</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="refnd.utils.SWPatternSet.patterns">
+<span class="sig-name descname"><span class="pre">patterns</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#refnd.utils.SWPattern" title="refnd.utils.SWPattern"><span class="pre">SWPattern</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#refnd.utils.SWPatternSet.patterns" title="Link to this definition">¶</a></dt>
+<dd><p>The patterns in this set, in construction order.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="refnd.utils.SWPatternSet.random">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">random</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">weight</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dont_care</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#refnd.utils.SWPatternSet" title="refnd.utils.SWPatternSet"><span class="pre">SWPatternSet</span></a></span></span><a class="headerlink" href="#refnd.utils.SWPatternSet.random" title="Link to this definition">¶</a></dt>
+<dd><p>Build <code class="docutils literal notranslate"><span class="pre">n</span></code> distinct unoptimized random patterns of the given
+<code class="docutils literal notranslate"><span class="pre">weight</span></code>/<code class="docutils literal notranslate"><span class="pre">dont_care</span></code>. Useful as a cheap baseline, or as the unoptimized
+starting point <code class="docutils literal notranslate"><span class="pre">optimize</span></code> refines.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Patterns are generated by rejection sampling on uniqueness, so this hangs
+(never returns) if <code class="docutils literal notranslate"><span class="pre">n</span></code> isn’t well below the number of distinct patterns
+possible for <code class="docutils literal notranslate"><span class="pre">weight</span></code>/<code class="docutils literal notranslate"><span class="pre">dont_care</span></code> (<code class="docutils literal notranslate"><span class="pre">C(weight</span> <span class="pre">+</span> <span class="pre">dont_care</span> <span class="pre">-</span> <span class="pre">2,</span> <span class="pre">weight</span> <span class="pre">-</span> <span class="pre">2)</span></code>).
+This is sharpest at <code class="docutils literal notranslate"><span class="pre">weight</span> <span class="pre">==</span> <span class="pre">2</span></code>: there are no interior positions to
+vary at all, so every generated pattern is identical and any <code class="docutils literal notranslate"><span class="pre">n</span> <span class="pre">&gt;</span> <span class="pre">1</span></code>
+hangs immediately.</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="refnd.utils.SWPatternSet.save">
+<span class="sig-name descname"><span class="pre">save</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#refnd.utils.SWPatternSet.save" title="Link to this definition">¶</a></dt>
+<dd><p>Serialize this set to <code class="docutils literal notranslate"><span class="pre">path</span></code>. Inverse of <code class="docutils literal notranslate"><span class="pre">load</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>IOError</strong> – If <code class="docutils literal notranslate"><span class="pre">path</span></code> can’t be written.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="refnd.utils.SWPatternSet.with_limit">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">with_limit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">weight</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dont_care</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">limit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#refnd.utils.SWPatternSet" title="refnd.utils.SWPatternSet"><span class="pre">SWPatternSet</span></a></span></span><a class="headerlink" href="#refnd.utils.SWPatternSet.with_limit" title="Link to this definition">¶</a></dt>
+<dd><p>Same as the default constructor, but with an explicit hill-climbing step
+budget instead of ProtSpaM’s default of 25,000.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.utils.SWPatternSet.n">
+<span class="sig-name descname"><span class="pre">n</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><a class="headerlink" href="#refnd.utils.SWPatternSet.n" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.utils.SWPatternSet.weight">
+<span class="sig-name descname"><span class="pre">weight</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><a class="headerlink" href="#refnd.utils.SWPatternSet.weight" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.utils.SWPatternSet.dont_care">
+<span class="sig-name descname"><span class="pre">dont_care</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><a class="headerlink" href="#refnd.utils.SWPatternSet.dont_care" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.utils.SWPatternSet.return">
+<span class="sig-name descname"><span class="pre">return</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#refnd.utils.SWPatternSet" title="refnd.utils.SWPatternSet"><span class="pre">SWPatternSet</span></a></span><a class="headerlink" href="#refnd.utils.SWPatternSet.return" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="refnd.utils.SWSequence">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">refnd.utils.</span></span><span class="sig-name descname"><span class="pre">SWSequence</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">seq</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">patterns</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#refnd.utils.SWPatternSet" title="refnd.utils.SWPatternSet"><span class="pre">SWPatternSet</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#refnd.utils.SWSequence" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>A sequence prepared for spaced-word comparison (ProtSpaM-style). Its residues are
+pre-encoded as 5-bit amino-acid codes, and it holds the sorted spaced words for
+every pattern in the <code class="docutils literal notranslate"><span class="pre">SWPatternSet</span></code> it was built with.</p>
+<p>Two <code class="docutils literal notranslate"><span class="pre">SWSequence``s</span> <span class="pre">must</span> <span class="pre">be</span> <span class="pre">built</span> <span class="pre">from</span> <span class="pre">the</span> <span class="pre">same</span> <span class="pre">``SWPatternSet</span></code> (or two equal
+copies of it) to be compared meaningfully – see
+<code class="docutils literal notranslate"><span class="pre">refnd.kernels.protspam.ProtSpamKernel</span></code>, which is what actually compares two of
+these.</p>
+<p>Picklable: <code class="docutils literal notranslate"><span class="pre">pickle.dumps</span></code>/<code class="docutils literal notranslate"><span class="pre">pickle.loads</span></code> round-trip an <code class="docutils literal notranslate"><span class="pre">SWSequence</span></code> without
+needing the original pattern set again (its encoded residues and sorted spaced
+words are serialized directly).</p>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">pickle</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">refnd.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">SWPatternSet</span><span class="p">,</span> <span class="n">SWSequence</span>
+
+<span class="n">patterns</span> <span class="o">=</span> <span class="n">SWPatternSet</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">20</span><span class="p">)</span>
+<span class="n">seq</span> <span class="o">=</span> <span class="n">SWSequence</span><span class="p">(</span><span class="s2">&quot;MKTAYIAKQRQISFVKSHFSRQ&quot;</span><span class="p">,</span> <span class="n">patterns</span><span class="p">)</span>
+<span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">seq</span><span class="p">)</span> <span class="o">==</span> <span class="mi">22</span>
+
+<span class="n">restored</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">pickle</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">seq</span><span class="p">))</span>
+<span class="k">assert</span> <span class="n">restored</span><span class="o">.</span><span class="n">seq</span><span class="p">()</span> <span class="o">==</span> <span class="n">seq</span><span class="o">.</span><span class="n">seq</span><span class="p">()</span>
+</pre></div>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="refnd.utils.SWSequence.pattern_count">
+<span class="sig-name descname"><span class="pre">pattern_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="headerlink" href="#refnd.utils.SWSequence.pattern_count" title="Link to this definition">¶</a></dt>
+<dd><p>Number of patterns this sequence has spaced words for – the <code class="docutils literal notranslate"><span class="pre">len()</span></code> of the
+<code class="docutils literal notranslate"><span class="pre">SWPatternSet</span></code> it was built with. Valid indices for <code class="docutils literal notranslate"><span class="pre">sorted_words</span></code> are
+<code class="docutils literal notranslate"><span class="pre">0</span> <span class="pre">..</span> <span class="pre">pattern_count()</span></code>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="refnd.utils.SWSequence.seq">
+<span class="sig-name descname"><span class="pre">seq</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#refnd.utils.SWSequence.seq" title="Link to this definition">¶</a></dt>
+<dd><p>Residues as 5-bit amino-acid codes, not raw ASCII – e.g. <code class="docutils literal notranslate"><span class="pre">'A'</span></code> reads back
+as <code class="docutils literal notranslate"><span class="pre">0</span></code>, not <code class="docutils literal notranslate"><span class="pre">65</span></code>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="refnd.utils.SWSequence.sorted_words">
+<span class="sig-name descname"><span class="pre">sorted_words</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pattern_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#refnd.utils.SWWord" title="refnd.utils.SWWord"><span class="pre">SWWord</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#refnd.utils.SWSequence.sorted_words" title="Link to this definition">¶</a></dt>
+<dd><p>Sorted spaced words for <code class="docutils literal notranslate"><span class="pre">patterns.patterns()[pattern_idx]</span></code>, where
+<code class="docutils literal notranslate"><span class="pre">patterns</span></code> is the set this sequence was built with. Empty if this sequence
+is shorter than that pattern (no window fits).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>IndexError</strong> – If <code class="docutils literal notranslate"><span class="pre">pattern_idx</span></code> is out of range for the pattern set this
+    sequence was built with.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.utils.SWSequence.patterns">
+<span class="sig-name descname"><span class="pre">patterns</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#refnd.utils.SWPatternSet" title="refnd.utils.SWPatternSet"><span class="pre">SWPatternSet</span></a></span><a class="headerlink" href="#refnd.utils.SWSequence.patterns" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.utils.SWSequence.return">
+<span class="sig-name descname"><span class="pre">return</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#refnd.utils.SWSequence" title="refnd.utils.SWSequence"><span class="pre">SWSequence</span></a></span><a class="headerlink" href="#refnd.utils.SWSequence.return" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="refnd.utils.SWWord">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">refnd.utils.</span></span><span class="sig-name descname"><span class="pre">SWWord</span></span><a class="headerlink" href="#refnd.utils.SWWord" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>One complete spaced word: the residues at a pattern’s match positions.</p>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">refnd.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">SWPatternSet</span><span class="p">,</span> <span class="n">SWSequence</span>
+
+<span class="n">patterns</span> <span class="o">=</span> <span class="n">SWPatternSet</span><span class="o">.</span><span class="n">random</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>  <span class="c1"># single pattern, weight 2, dc 1 -&gt; &quot;101&quot;</span>
+<span class="n">seq</span> <span class="o">=</span> <span class="n">SWSequence</span><span class="p">(</span><span class="s2">&quot;ACDE&quot;</span><span class="p">,</span> <span class="n">patterns</span><span class="p">)</span>
+<span class="n">words</span> <span class="o">=</span> <span class="n">seq</span><span class="o">.</span><span class="n">sorted_words</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+<span class="k">assert</span> <span class="nb">all</span><span class="p">(</span><span class="n">words</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">key</span><span class="p">()</span> <span class="o">&lt;=</span> <span class="n">words</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">key</span><span class="p">()</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">words</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span>
+</pre></div>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="refnd.utils.SWWord.key">
+<span class="sig-name descname"><span class="pre">key</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="headerlink" href="#refnd.utils.SWWord.key" title="Link to this definition">¶</a></dt>
+<dd><p>The packed key: the pattern’s match-position residues, 5 bits each,
+most-significant residue first.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="refnd.utils.SWWord.pos">
+<span class="sig-name descname"><span class="pre">pos</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="headerlink" href="#refnd.utils.SWWord.pos" title="Link to this definition">¶</a></dt>
+<dd><p>Start position of this word’s window in the sequence it came from.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="kernels.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">refnd.kernels</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="../index.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Home</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">refnd.utils</a><ul>
+<li><a class="reference internal" href="#refnd.utils.BitFingerprint"><code class="docutils literal notranslate"><span class="pre">BitFingerprint</span></code></a><ul>
+<li><a class="reference internal" href="#refnd.utils.BitFingerprint.count"><code class="docutils literal notranslate"><span class="pre">BitFingerprint.count()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.utils.BitFingerprint.from_list"><code class="docutils literal notranslate"><span class="pre">BitFingerprint.from_list()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.utils.BitFingerprint.from_np"><code class="docutils literal notranslate"><span class="pre">BitFingerprint.from_np()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.utils.BitFingerprint.random"><code class="docutils literal notranslate"><span class="pre">BitFingerprint.random()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.utils.BitFingerprint.to_list"><code class="docutils literal notranslate"><span class="pre">BitFingerprint.to_list()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.utils.BitFingerprint.to_np"><code class="docutils literal notranslate"><span class="pre">BitFingerprint.to_np()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.utils.BitFingerprint.to_rdkit"><code class="docutils literal notranslate"><span class="pre">BitFingerprint.to_rdkit()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.utils.BitFingerprint.fp"><code class="docutils literal notranslate"><span class="pre">BitFingerprint.fp</span></code></a></li>
+<li><a class="reference internal" href="#refnd.utils.BitFingerprint.return"><code class="docutils literal notranslate"><span class="pre">BitFingerprint.return</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#refnd.utils.RealFingerprint"><code class="docutils literal notranslate"><span class="pre">RealFingerprint</span></code></a><ul>
+<li><a class="reference internal" href="#refnd.utils.RealFingerprint.from_list"><code class="docutils literal notranslate"><span class="pre">RealFingerprint.from_list()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.utils.RealFingerprint.from_np"><code class="docutils literal notranslate"><span class="pre">RealFingerprint.from_np()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.utils.RealFingerprint.norm_sq"><code class="docutils literal notranslate"><span class="pre">RealFingerprint.norm_sq()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.utils.RealFingerprint.to_list"><code class="docutils literal notranslate"><span class="pre">RealFingerprint.to_list()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.utils.RealFingerprint.to_np"><code class="docutils literal notranslate"><span class="pre">RealFingerprint.to_np()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.utils.RealFingerprint.to_rdkit"><code class="docutils literal notranslate"><span class="pre">RealFingerprint.to_rdkit()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.utils.RealFingerprint.fp"><code class="docutils literal notranslate"><span class="pre">RealFingerprint.fp</span></code></a></li>
+<li><a class="reference internal" href="#refnd.utils.RealFingerprint.return"><code class="docutils literal notranslate"><span class="pre">RealFingerprint.return</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#refnd.utils.Vector"><code class="docutils literal notranslate"><span class="pre">Vector</span></code></a><ul>
+<li><a class="reference internal" href="#refnd.utils.Vector.from_list"><code class="docutils literal notranslate"><span class="pre">Vector.from_list()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.utils.Vector.from_np"><code class="docutils literal notranslate"><span class="pre">Vector.from_np()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.utils.Vector.to_list"><code class="docutils literal notranslate"><span class="pre">Vector.to_list()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.utils.Vector.to_np"><code class="docutils literal notranslate"><span class="pre">Vector.to_np()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.utils.Vector.values"><code class="docutils literal notranslate"><span class="pre">Vector.values</span></code></a></li>
+<li><a class="reference internal" href="#refnd.utils.Vector.return"><code class="docutils literal notranslate"><span class="pre">Vector.return</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#refnd.utils.PdbStructure"><code class="docutils literal notranslate"><span class="pre">PdbStructure</span></code></a><ul>
+<li><a class="reference internal" href="#refnd.utils.PdbStructure.path"><code class="docutils literal notranslate"><span class="pre">PdbStructure.path</span></code></a></li>
+<li><a class="reference internal" href="#refnd.utils.PdbStructure.return"><code class="docutils literal notranslate"><span class="pre">PdbStructure.return</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#refnd.utils.read_fasta"><code class="docutils literal notranslate"><span class="pre">read_fasta()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.utils.largest_cluster"><code class="docutils literal notranslate"><span class="pre">largest_cluster()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.utils.SWPattern"><code class="docutils literal notranslate"><span class="pre">SWPattern</span></code></a><ul>
+<li><a class="reference internal" href="#refnd.utils.SWPattern.dontcare"><code class="docutils literal notranslate"><span class="pre">SWPattern.dontcare()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.utils.SWPattern.is_match"><code class="docutils literal notranslate"><span class="pre">SWPattern.is_match()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.utils.SWPattern.match_positions"><code class="docutils literal notranslate"><span class="pre">SWPattern.match_positions()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.utils.SWPattern.parse"><code class="docutils literal notranslate"><span class="pre">SWPattern.parse()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.utils.SWPattern.weight"><code class="docutils literal notranslate"><span class="pre">SWPattern.weight()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.utils.SWPattern.dont_care"><code class="docutils literal notranslate"><span class="pre">SWPattern.dont_care</span></code></a></li>
+<li><a class="reference internal" href="#refnd.utils.SWPattern.return"><code class="docutils literal notranslate"><span class="pre">SWPattern.return</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#refnd.utils.SWPatternSet"><code class="docutils literal notranslate"><span class="pre">SWPatternSet</span></code></a><ul>
+<li><a class="reference internal" href="#refnd.utils.SWPatternSet.from_patterns"><code class="docutils literal notranslate"><span class="pre">SWPatternSet.from_patterns()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.utils.SWPatternSet.load"><code class="docutils literal notranslate"><span class="pre">SWPatternSet.load()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.utils.SWPatternSet.optimize"><code class="docutils literal notranslate"><span class="pre">SWPatternSet.optimize()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.utils.SWPatternSet.patterns"><code class="docutils literal notranslate"><span class="pre">SWPatternSet.patterns()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.utils.SWPatternSet.random"><code class="docutils literal notranslate"><span class="pre">SWPatternSet.random()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.utils.SWPatternSet.save"><code class="docutils literal notranslate"><span class="pre">SWPatternSet.save()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.utils.SWPatternSet.with_limit"><code class="docutils literal notranslate"><span class="pre">SWPatternSet.with_limit()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.utils.SWPatternSet.n"><code class="docutils literal notranslate"><span class="pre">SWPatternSet.n</span></code></a></li>
+<li><a class="reference internal" href="#refnd.utils.SWPatternSet.weight"><code class="docutils literal notranslate"><span class="pre">SWPatternSet.weight</span></code></a></li>
+<li><a class="reference internal" href="#refnd.utils.SWPatternSet.dont_care"><code class="docutils literal notranslate"><span class="pre">SWPatternSet.dont_care</span></code></a></li>
+<li><a class="reference internal" href="#refnd.utils.SWPatternSet.return"><code class="docutils literal notranslate"><span class="pre">SWPatternSet.return</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#refnd.utils.SWSequence"><code class="docutils literal notranslate"><span class="pre">SWSequence</span></code></a><ul>
+<li><a class="reference internal" href="#refnd.utils.SWSequence.pattern_count"><code class="docutils literal notranslate"><span class="pre">SWSequence.pattern_count()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.utils.SWSequence.seq"><code class="docutils literal notranslate"><span class="pre">SWSequence.seq()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.utils.SWSequence.sorted_words"><code class="docutils literal notranslate"><span class="pre">SWSequence.sorted_words()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.utils.SWSequence.patterns"><code class="docutils literal notranslate"><span class="pre">SWSequence.patterns</span></code></a></li>
+<li><a class="reference internal" href="#refnd.utils.SWSequence.return"><code class="docutils literal notranslate"><span class="pre">SWSequence.return</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#refnd.utils.SWWord"><code class="docutils literal notranslate"><span class="pre">SWWord</span></code></a><ul>
+<li><a class="reference internal" href="#refnd.utils.SWWord.key"><code class="docutils literal notranslate"><span class="pre">SWWord.key()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.utils.SWWord.pos"><code class="docutils literal notranslate"><span class="pre">SWWord.pos()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/scripts/furo.js?v=46bd48cc"></script>
+    <script src="https://cdn.jsdelivr.net/npm/turndown@7.2.0/dist/turndown.js"></script>
+    <script src="../_static/js/copy_markdown.js?v=f107f389"></script>
+    <script src="../_static/js/version_switcher.js?v=6512b3dc"></script>
+    </body>
+</html>

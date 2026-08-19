@@ -1,0 +1,1491 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="prev" title="refnd.kernels" href="kernels.html">
+        <link rel="canonical" href="/refnd/api/core.html">
+
+    <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
+        <title>refnd.core - refnd documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/copy_markdown.css?v=6ae93540" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/version_switcher.css?v=84734a79" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../index.html"><div class="brand">refnd  documentation</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
+  
+  <span class="sidebar-brand-text">refnd  documentation</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="utils.html">refnd.utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="kernels.html">refnd.kernels</a></li>
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">refnd.core</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="../_sources/api/core.md.txt" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div>
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <section id="refnd-core">
+<h1>refnd.core<a class="headerlink" href="#refnd-core" title="Link to this heading">¶</a></h1>
+<section id="graph-construction">
+<h2>Graph construction<a class="headerlink" href="#graph-construction" title="Link to this heading">¶</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="refnd.core.EdgeStore">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">refnd.core.</span></span><span class="sig-name descname"><span class="pre">EdgeStore</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node_count</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">edges</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#refnd.core.EdgeStore" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>A compact, flat list of weighted directed edges between integer node IDs.</p>
+<p><code class="docutils literal notranslate"><span class="pre">EdgeStore</span></code> is the central data carrier in refnd: it is produced by
+<code class="docutils literal notranslate"><span class="pre">exact_edges</span></code> and <code class="docutils literal notranslate"><span class="pre">HNSWState.edges</span></code>, consumed by <code class="docutils literal notranslate"><span class="pre">CsrGraph</span></code>, and can be
+persisted to disk for later reuse.</p>
+<p>Each edge is a triple <code class="docutils literal notranslate"><span class="pre">(src,</span> <span class="pre">dst,</span> <span class="pre">weight)</span></code> where <code class="docutils literal notranslate"><span class="pre">src</span></code> and <code class="docutils literal notranslate"><span class="pre">dst</span></code> are
+zero-based node indices in <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">node_count)</span></code> and <code class="docutils literal notranslate"><span class="pre">weight</span></code> is a <code class="docutils literal notranslate"><span class="pre">float32</span></code>
+value.</p>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">refnd.core</span><span class="w"> </span><span class="kn">import</span> <span class="n">EdgeStore</span>
+
+<span class="n">store</span> <span class="o">=</span> <span class="n">EdgeStore</span><span class="p">(</span><span class="n">node_count</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">edges</span><span class="o">=</span><span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">)])</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">store</span><span class="p">))</span>     <span class="c1"># 2</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">store</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>       <span class="c1"># (0, 1, 0.9)</span>
+<span class="k">for</span> <span class="n">src</span><span class="p">,</span> <span class="n">dst</span><span class="p">,</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">store</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">dst</span><span class="p">,</span> <span class="n">w</span><span class="p">)</span>
+
+<span class="c1"># numpy-style boolean masking: keep only the edges where mask[i] is True</span>
+<span class="n">store</span><span class="p">[[</span><span class="kc">True</span><span class="p">,</span> <span class="kc">False</span><span class="p">]]</span>   <span class="c1"># EdgeStore with only (0, 1, 0.9)</span>
+</pre></div>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="refnd.core.EdgeStore.edges">
+<span class="sig-name descname"><span class="pre">edges</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#refnd.core.EdgeStore.edges" title="Link to this definition">¶</a></dt>
+<dd><p>Return all edges as a list of <code class="docutils literal notranslate"><span class="pre">(src,</span> <span class="pre">dst,</span> <span class="pre">weight)</span></code> triples.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="refnd.core.EdgeStore.graph">
+<span class="sig-name descname"><span class="pre">graph</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">inweight_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#refnd.core.INWeightType" title="refnd.core.INWeightType"><span class="pre">INWeightType</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">INWeightType.Distance</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#refnd.core.CsrGraph" title="refnd.core.CsrGraph"><span class="pre">CsrGraph</span></a></span></span><a class="headerlink" href="#refnd.core.EdgeStore.graph" title="Link to this definition">¶</a></dt>
+<dd><p>Build a <code class="docutils literal notranslate"><span class="pre">CsrGraph</span></code> from this edge store.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>inweight_type</strong> – How to convert the raw edge weights to similarity-like weights.
+See <code class="docutils literal notranslate"><span class="pre">INWeightType</span></code>. Pass <code class="docutils literal notranslate"><span class="pre">INWeightType.Unweighted</span></code> to ignore
+weights entirely (every edge gets weight <code class="docutils literal notranslate"><span class="pre">1.0</span></code>). Defaults to
+<code class="docutils literal notranslate"><span class="pre">INWeightType.Distance</span></code>, meaning weights are assumed to be a distance
+measurement, and are converted to similarities.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A <code class="docutils literal notranslate"><span class="pre">CsrGraph</span></code> backed by this edge list.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="refnd.core.EdgeStore.load">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">load</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#refnd.core.EdgeStore" title="refnd.core.EdgeStore"><span class="pre">EdgeStore</span></a></span></span><a class="headerlink" href="#refnd.core.EdgeStore.load" title="Link to this definition">¶</a></dt>
+<dd><p>Load an EdgeStore that was previously saved with <code class="docutils literal notranslate"><span class="pre">EdgeStore.save</span></code>. It infers the format
+from the extension of the path, <code class="docutils literal notranslate"><span class="pre">.edgelist</span></code> or <code class="docutils literal notranslate"><span class="pre">.edgestr</span></code>.</p>
+<p><strong>Version compatibility (binary format only):</strong> The binary <code class="docutils literal notranslate"><span class="pre">.edgestr</span></code> format is versioned
+to the exact package version. A file saved with a different package version will fail to
+load with a version mismatch error. There is no forward or backward compatibility. The text
+<code class="docutils literal notranslate"><span class="pre">.edgelist</span></code> format is not versioned and may be portable across versions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>path</strong> – Path to the file produced by <code class="docutils literal notranslate"><span class="pre">save</span></code>.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The deserialized <code class="docutils literal notranslate"><span class="pre">EdgeStore</span></code>.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>IOError</strong> – If the file cannot be read, the format is invalid, or (for <code class="docutils literal notranslate"><span class="pre">.edgestr</span></code> files)
+    the saved version does not match the running package version.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="refnd.core.EdgeStore.node_count">
+<span class="sig-name descname"><span class="pre">node_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="headerlink" href="#refnd.core.EdgeStore.node_count" title="Link to this definition">¶</a></dt>
+<dd><p>Return the total number of nodes this store was created with.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="refnd.core.EdgeStore.save">
+<span class="sig-name descname"><span class="pre">save</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#refnd.core.EdgeStore.save" title="Link to this definition">¶</a></dt>
+<dd><p>Serialize this EdgeStore to disk. It supports two file formats: <code class="docutils literal notranslate"><span class="pre">text</span></code> with
+<code class="docutils literal notranslate"><span class="pre">.edgelist</span></code> extension or <code class="docutils literal notranslate"><span class="pre">binary</span></code> with <code class="docutils literal notranslate"><span class="pre">.edgestr</span></code> extension. Binary is usually 2x
+more space efficient at the cost of not being human-readable.</p>
+<p><strong>Version compatibility (binary format only):</strong> The binary <code class="docutils literal notranslate"><span class="pre">.edgestr</span></code> format is versioned
+to the exact package version and is not forward or backward compatible. A file saved with
+a different package version will fail to load with a version mismatch error. The text
+<code class="docutils literal notranslate"><span class="pre">.edgelist</span></code> format has no version stamp and may be portable across versions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>path</strong> – Destination file path.</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>IOError</strong> – On any I/O failure.</p>
+</dd>
+</dl>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">refnd.core</span><span class="w"> </span><span class="kn">import</span> <span class="n">EdgeStore</span>
+
+<span class="n">store</span> <span class="o">=</span> <span class="n">EdgeStore</span><span class="p">(</span><span class="n">node_count</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">edges</span><span class="o">=</span><span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">)])</span>
+<span class="n">store</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">&quot;my/path/myedges.edgelist&quot;</span><span class="p">)</span> <span class="c1"># Text format</span>
+<span class="n">store</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">&quot;my/path/myedges.edgestr&quot;</span><span class="p">)</span>  <span class="c1"># Bin format</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.EdgeStore.return">
+<span class="sig-name descname"><span class="pre">return</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#refnd.core.EdgeStore" title="refnd.core.EdgeStore"><span class="pre">EdgeStore</span></a></span><a class="headerlink" href="#refnd.core.EdgeStore.return" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="refnd.core.CsrGraph">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">refnd.core.</span></span><span class="sig-name descname"><span class="pre">CsrGraph</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">edges</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#refnd.core.EdgeStore" title="refnd.core.EdgeStore"><span class="pre">EdgeStore</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">inweight_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#refnd.core.INWeightType" title="refnd.core.INWeightType"><span class="pre">INWeightType</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">INWeightType.Distance</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#refnd.core.CsrGraph" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Compressed Sparse Row graph built from an <code class="docutils literal notranslate"><span class="pre">EdgeStore</span></code>. A CSR graph is compact, and highly
+efficient for traversal, exploiting cache structure and maximizing cache hits. However, it is
+immutable, so adding a new node or edge require building the full graph again.</p>
+<p><code class="docutils literal notranslate"><span class="pre">CsrGraph</span></code> is an immutable adjacency structure. Because of its property of being very
+efficient for traversal, it is used by graph algorithms such as <code class="docutils literal notranslate"><span class="pre">partition</span></code> and
+<code class="docutils literal notranslate"><span class="pre">connected_components</span></code>.</p>
+<dl class="simple">
+<dt>Properties:</dt><dd><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">n</span></code>: Number of nodes.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">m</span></code>: Sum of all edge weights (or total edge count when <code class="docutils literal notranslate"><span class="pre">inweight_type=INWeightType.Unweighted</span></code>).</p></li>
+</ul>
+</dd>
+</dl>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">refnd.core</span><span class="w"> </span><span class="kn">import</span> <span class="n">EdgeStore</span><span class="p">,</span> <span class="n">CsrGraph</span>
+
+<span class="n">store</span> <span class="o">=</span> <span class="n">EdgeStore</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="p">[(</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mf">0.9</span><span class="p">),(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mf">0.8</span><span class="p">),(</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mf">0.6</span><span class="p">)])</span>
+<span class="n">g</span> <span class="o">=</span> <span class="n">CsrGraph</span><span class="p">(</span><span class="n">store</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">g</span><span class="o">.</span><span class="n">n</span><span class="p">)</span>               <span class="c1"># 4</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">g</span><span class="o">.</span><span class="n">neighbors</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>    <span class="c1"># [(0, 0.9), (2, 0.8)]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">g</span><span class="o">.</span><span class="n">strength</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>     <span class="c1"># 1.7</span>
+</pre></div>
+</div>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.CsrGraph.m">
+<span class="sig-name descname"><span class="pre">m</span></span><a class="headerlink" href="#refnd.core.CsrGraph.m" title="Link to this definition">¶</a></dt>
+<dd><p>Total weight (each edge counted once)</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.CsrGraph.n">
+<span class="sig-name descname"><span class="pre">n</span></span><a class="headerlink" href="#refnd.core.CsrGraph.n" title="Link to this definition">¶</a></dt>
+<dd><p>Number of nodes</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="refnd.core.CsrGraph.neighbors">
+<span class="sig-name descname"><span class="pre">neighbors</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">v</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#refnd.core.CsrGraph.neighbors" title="Link to this definition">¶</a></dt>
+<dd><p>Return the neighbors of node <code class="docutils literal notranslate"><span class="pre">v</span></code> as a list of <code class="docutils literal notranslate"><span class="pre">(node_id,</span> <span class="pre">weight)</span></code> pairs.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>v</strong> – Zero-based node index.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="refnd.core.CsrGraph.strength">
+<span class="sig-name descname"><span class="pre">strength</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">v</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="headerlink" href="#refnd.core.CsrGraph.strength" title="Link to this definition">¶</a></dt>
+<dd><p>Return the strength (weighted degree) of node <code class="docutils literal notranslate"><span class="pre">v</span></code>.</p>
+<p>When the graph is unweighted this equals the degree (number of neighbors).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>v</strong> – Zero-based node index.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="refnd.core.CsrGraph.subgraph">
+<span class="sig-name descname"><span class="pre">subgraph</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nodes</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#refnd.core.CsrGraph" title="refnd.core.CsrGraph"><span class="pre">CsrGraph</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#refnd.core.CsrGraph.subgraph" title="Link to this definition">¶</a></dt>
+<dd><p>Extract a subgraph composed of a subset of nodes.</p>
+<p>New node ids are assigned contiguously in the order <code class="docutils literal notranslate"><span class="pre">nodes</span></code> is given.</p>
+<p>All edges pointing outside the subgraph are ignores.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>nodes</strong> – Node ids to keep, in the desired new order.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A tuple <code class="docutils literal notranslate"><span class="pre">(subgraph,</span> <span class="pre">mapping)</span></code> where <code class="docutils literal notranslate"><span class="pre">mapping</span></code> is a dict from old node id
+to new node id.</p>
+</dd>
+</dl>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sub</span><span class="p">,</span> <span class="n">mapping</span> <span class="o">=</span> <span class="n">g</span><span class="o">.</span><span class="n">subgraph</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">sub</span><span class="o">.</span><span class="n">n</span><span class="p">)</span>      <span class="c1"># 3</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">mapping</span><span class="p">)</span>    <span class="c1"># {0: 1, 2: 0, 3: 2}</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.CsrGraph.edges">
+<span class="sig-name descname"><span class="pre">edges</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#refnd.core.EdgeStore" title="refnd.core.EdgeStore"><span class="pre">EdgeStore</span></a></span><a class="headerlink" href="#refnd.core.CsrGraph.edges" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.CsrGraph.inweight_type">
+<span class="sig-name descname"><span class="pre">inweight_type</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#refnd.core.INWeightType" title="refnd.core.INWeightType"><span class="pre">INWeightType</span></a></span><a class="headerlink" href="#refnd.core.CsrGraph.inweight_type" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.CsrGraph.return">
+<span class="sig-name descname"><span class="pre">return</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#refnd.core.CsrGraph" title="refnd.core.CsrGraph"><span class="pre">CsrGraph</span></a></span><a class="headerlink" href="#refnd.core.CsrGraph.return" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="hnsw-approximate-nearest-neighbours">
+<h2>HNSW approximate nearest neighbours<a class="headerlink" href="#hnsw-approximate-nearest-neighbours" title="Link to this heading">¶</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="refnd.core.HNSWConfig">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">refnd.core.</span></span><span class="sig-name descname"><span class="pre">HNSWConfig</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">proximity_threshold</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ef_construction</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">m</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">16</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">m_max</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">16</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">m_max0</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">32</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">m_l</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.36</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ef_init</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extend_candidates</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keep_pruned_connections</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keep_all_edges</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cache_capacity</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">2000000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cache_shards</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_threads</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shuffle</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_heuristic</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">strict_ef</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold_based_neighbourhood</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#refnd.core.HNSWConfig" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Configuration for the HNSW approximate nearest-neighbour index.</p>
+<p>All parameters have sensible defaults; in most cases you only need to <code class="docutils literal notranslate"><span class="pre">ef_construction</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">proximity_threshold</span></code>.</p>
+<p><strong>Parameters:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">proximity_threshold</span></code> <em>(float)</em> — Distance threshold under which a connection is established in the proximity graph.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ef_construction</span></code> <em>(int)</em> — Candidate list size during build. Default <code class="docutils literal notranslate"><span class="pre">64</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">m</span></code> <em>(int)</em> — Bidirectional links per node at layers &gt; 0.
+Higher = better recall, more memory, slower build. Typical: 8–64.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">m_max</span></code> <em>(int)</em> — Maximum connections per node at layers &gt; 0. Usually equal to <code class="docutils literal notranslate"><span class="pre">m</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">m_max0</span></code> <em>(int)</em> — Maximum connections at layer 0. Usually <code class="docutils literal notranslate"><span class="pre">2</span> <span class="pre">*</span> <span class="pre">m</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">m_l</span></code> <em>(float)</em> — Level generation factor. Usually <code class="docutils literal notranslate"><span class="pre">0.36</span> <span class="pre">≈</span> <span class="pre">1</span> <span class="pre">/</span> <span class="pre">ln(m)</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ef_init</span></code> <em>(int)</em> — Candidate list size during initial-layer insertion. Almost always 1 for
+a greedy search.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">extend_candidates</span></code> <em>(bool)</em> — Use neighbors of neighbors as candidates, making search more exhaustive.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">keep_pruned_connections</span></code> <em>(bool)</em> — Retain discarded candidates to fill up to <code class="docutils literal notranslate"><span class="pre">m</span></code> connections when not enough connections are found.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">keep_all_edges</span></code> <em>(bool)</em> — Record every below-threshold distance computed during build into
+the proximity graph returned by <code class="docutils literal notranslate"><span class="pre">edges()</span></code>. Default <code class="docutils literal notranslate"><span class="pre">True</span></code>. Setting it to <code class="docutils literal notranslate"><span class="pre">False</span></code> makes
+<code class="docutils literal notranslate"><span class="pre">edges()</span></code> return <code class="docutils literal notranslate"><span class="pre">None</span></code>, but removes a per-hit locked hashmap insert from the hot path.
+Worth doing when the proximity graph is not required.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">cache_capacity</span></code> <em>(int)</em> — Maximum cached kernel scores. Increasing it increase the memory
+footprint, but also cache hits, which can improve runtime performances for computationally expensive kernels.
+Set to <code class="docutils literal notranslate"><span class="pre">0</span></code> to disable the cache entirely — every distance is recomputed directly, which is
+faster for cheap kernels (e.g. <code class="docutils literal notranslate"><span class="pre">TanimotoBit</span></code>/<code class="docutils literal notranslate"><span class="pre">TanimotoReal</span></code>) where cache overhead exceeds the
+cost of the kernel itself.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">cache_shards</span></code> <em>(int)</em> — Number of cache shards (reduces lock contention).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">n_threads</span></code> <em>(int)</em> — Threads used during build. <code class="docutils literal notranslate"><span class="pre">0</span></code> = all available cores.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">shuffle</span></code> <em>(bool)</em> — Shuffle insertion order before building. Can create a less biased
+graph, but reduces cache hits, which increases runtime.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">use_heuristic</span></code> <em>(bool)</em> — Use the heuristic neighbour-selection from the paper (recommended).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">strict_ef</span></code> <em>(bool)</em> — If <code class="docutils literal notranslate"><span class="pre">True</span></code>, enforces the result set size to exactly <code class="docutils literal notranslate"><span class="pre">ef</span></code> during search. Empirically, setting this to <code class="docutils literal notranslate"><span class="pre">False</span></code> can improve runtime performance, as it allows halving <code class="docutils literal notranslate"><span class="pre">ef_construction</span></code> without sacrificing accuracy.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">threshold_based_neighbourhood</span></code> <em>(bool)</em> — Select a minimum of <code class="docutils literal notranslate"><span class="pre">m</span></code> neighbors like the classic algorithm, but doesn’t bound the neighbourhood size as all candidates that are closer than the threshold are kept.</p></li>
+</ul>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.HNSWConfig.cache_capacity">
+<span class="sig-name descname"><span class="pre">cache_capacity</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><a class="headerlink" href="#refnd.core.HNSWConfig.cache_capacity" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.HNSWConfig.cache_shards">
+<span class="sig-name descname"><span class="pre">cache_shards</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><a class="headerlink" href="#refnd.core.HNSWConfig.cache_shards" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="refnd.core.HNSWConfig.dict">
+<span class="sig-name descname"><span class="pre">dict</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="headerlink" href="#refnd.core.HNSWConfig.dict" title="Link to this definition">¶</a></dt>
+<dd><p>Return the configuration as a plain Python dict.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.HNSWConfig.ef_construction">
+<span class="sig-name descname"><span class="pre">ef_construction</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><a class="headerlink" href="#refnd.core.HNSWConfig.ef_construction" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.HNSWConfig.ef_init">
+<span class="sig-name descname"><span class="pre">ef_init</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><a class="headerlink" href="#refnd.core.HNSWConfig.ef_init" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.HNSWConfig.extend_candidates">
+<span class="sig-name descname"><span class="pre">extend_candidates</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></span><a class="headerlink" href="#refnd.core.HNSWConfig.extend_candidates" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.HNSWConfig.keep_all_edges">
+<span class="sig-name descname"><span class="pre">keep_all_edges</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></span><a class="headerlink" href="#refnd.core.HNSWConfig.keep_all_edges" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.HNSWConfig.keep_pruned_connections">
+<span class="sig-name descname"><span class="pre">keep_pruned_connections</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></span><a class="headerlink" href="#refnd.core.HNSWConfig.keep_pruned_connections" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.HNSWConfig.m">
+<span class="sig-name descname"><span class="pre">m</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><a class="headerlink" href="#refnd.core.HNSWConfig.m" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.HNSWConfig.m_l">
+<span class="sig-name descname"><span class="pre">m_l</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#refnd.core.HNSWConfig.m_l" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.HNSWConfig.m_max">
+<span class="sig-name descname"><span class="pre">m_max</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><a class="headerlink" href="#refnd.core.HNSWConfig.m_max" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.HNSWConfig.m_max0">
+<span class="sig-name descname"><span class="pre">m_max0</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><a class="headerlink" href="#refnd.core.HNSWConfig.m_max0" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.HNSWConfig.n_threads">
+<span class="sig-name descname"><span class="pre">n_threads</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><a class="headerlink" href="#refnd.core.HNSWConfig.n_threads" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.HNSWConfig.proximity_threshold">
+<span class="sig-name descname"><span class="pre">proximity_threshold</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#refnd.core.HNSWConfig.proximity_threshold" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.HNSWConfig.shuffle">
+<span class="sig-name descname"><span class="pre">shuffle</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></span><a class="headerlink" href="#refnd.core.HNSWConfig.shuffle" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.HNSWConfig.strict_ef">
+<span class="sig-name descname"><span class="pre">strict_ef</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></span><a class="headerlink" href="#refnd.core.HNSWConfig.strict_ef" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.HNSWConfig.threshold_based_neighbourhood">
+<span class="sig-name descname"><span class="pre">threshold_based_neighbourhood</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></span><a class="headerlink" href="#refnd.core.HNSWConfig.threshold_based_neighbourhood" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.HNSWConfig.use_heuristic">
+<span class="sig-name descname"><span class="pre">use_heuristic</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></span><a class="headerlink" href="#refnd.core.HNSWConfig.use_heuristic" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.HNSWConfig.return">
+<span class="sig-name descname"><span class="pre">return</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#refnd.core.HNSWConfig" title="refnd.core.HNSWConfig"><span class="pre">HNSWConfig</span></a></span><a class="headerlink" href="#refnd.core.HNSWConfig.return" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="refnd.core.HNSWState">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">refnd.core.</span></span><span class="sig-name descname"><span class="pre">HNSWState</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">variant</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="kernels.html#refnd.kernels.KernelVariant" title="refnd.kernels.KernelVariant"><span class="pre">kernels.KernelVariant</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proximity_threshold</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ef_construction</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">m</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">16</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">m_max</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">16</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">m_max0</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">32</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">m_l</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.36</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ef_init</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extend_candidates</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keep_pruned_connections</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keep_all_edges</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cache_capacity</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">2000000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cache_shards</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_threads</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shuffle</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_heuristic</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">strict_ef</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold_based_neighbourhood</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#refnd.core.HNSWState" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Stateful Hierarchical Navigable Small World (HNSW) approximate nearest-neighbour index. This
+class is used to build and search in the index, whereas <code class="docutils literal notranslate"><span class="pre">HNSWIndex</span></code> is a read-only <em>internal</em>
+representation of the index used for saving / loading / structure exploration.</p>
+<p><code class="docutils literal notranslate"><span class="pre">HNSWState</span></code> wraps the dataset and the graph index together. The typical
+workflow is:</p>
+<ol class="arabic simple">
+<li><p>Construct with the data and a <code class="docutils literal notranslate"><span class="pre">KernelVariant</span></code>.</p></li>
+<li><p>Call <code class="docutils literal notranslate"><span class="pre">build()</span></code> to insert all items and form the graph.</p></li>
+<li><p>Call <code class="docutils literal notranslate"><span class="pre">search()</span></code> to query, or <code class="docutils literal notranslate"><span class="pre">edges()</span></code> to extract the proximity graph
+for downstream clustering / splitting.</p></li>
+</ol>
+<p>HNSW parameters (<code class="docutils literal notranslate"><span class="pre">proximity_threshold</span></code>, <code class="docutils literal notranslate"><span class="pre">ef_construction</span></code>, …) are the same as <code class="docutils literal notranslate"><span class="pre">HNSWConfig</span></code>
+and can be passed directly to the constructor as keyword arguments.</p>
+<p><code class="docutils literal notranslate"><span class="pre">data</span></code> may be any Python iterable — a <code class="docutils literal notranslate"><span class="pre">list</span></code>, a <code class="docutils literal notranslate"><span class="pre">tuple</span></code>, a generator, anything with
+<code class="docutils literal notranslate"><span class="pre">__iter__</span></code>. It’s drained one item at a time into the constructor’s own Rust-owned copy,
+so a generator never needs to be fully materialized into a Python-side list first — both
+copies never need to coexist at once. That matters when a single item’s Python
+representation is large enough that two full-dataset copies wouldn’t fit in memory
+together. When <code class="docutils literal notranslate"><span class="pre">data</span></code> supports <code class="docutils literal notranslate"><span class="pre">len()</span></code> (a <code class="docutils literal notranslate"><span class="pre">list</span></code>/<code class="docutils literal notranslate"><span class="pre">tuple</span></code>), that’s used to
+pre-size the Rust-owned copy exactly; it doesn’t change how <code class="docutils literal notranslate"><span class="pre">data</span></code> is walked.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>variant</strong> – Kernel to use (e.g.  <code class="docutils literal notranslate"><span class="pre">KernelVariant.AlignmentGlobal</span></code>, <code class="docutils literal notranslate"><span class="pre">KernelVariant.AlignmentLocal</span></code>, <code class="docutils literal notranslate"><span class="pre">KernelVariant.TanimotoBit</span></code>, <em>etc</em>).</p></li>
+<li><p><strong>data</strong> – The dataset — a list of items matching the kernel type (e.g. <code class="docutils literal notranslate"><span class="pre">list[str]</span></code> or
+<code class="docutils literal notranslate"><span class="pre">list[np.ndarray]</span></code>), or any other Python iterable of such items (e.g. a generator).</p></li>
+<li><p><strong>proximity_threshold, ef_construction, m, m_max, m_max0, m_l, ef_init, extend_candidates,</strong> – keep_pruned_connections, keep_all_edges, cache_capacity, cache_shards,
+n_threads, shuffle, use_heuristic, strict_ef,
+threshold_based_neighbourhood: See <code class="docutils literal notranslate"><span class="pre">HNSWConfig</span></code> for descriptions.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="simple">
+<dt>Properties:</dt><dd><p>config (HNSWConfig): The config in use.
+index (HNSWIndex): A snapshot of the current graph structure.</p>
+</dd>
+</dl>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">refnd</span><span class="w"> </span><span class="kn">import</span> <span class="n">HNSWState</span><span class="p">,</span> <span class="n">KernelVariant</span>
+
+<span class="n">seqs</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;MKTAYIAK&quot;</span><span class="p">,</span> <span class="s2">&quot;MKTAYIAKQR&quot;</span><span class="p">,</span> <span class="s2">&quot;ACDEFGHIKLM&quot;</span><span class="p">,</span> <span class="s2">&quot;MKTAYIAKQRQIS&quot;</span><span class="p">]</span>
+<span class="n">state</span> <span class="o">=</span> <span class="n">HNSWState</span><span class="p">(</span><span class="n">KernelVariant</span><span class="o">.</span><span class="n">AlignmentGlobal</span><span class="p">,</span> <span class="n">seqs</span><span class="p">,</span> <span class="n">proximity_threshold</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">ef_construction</span><span class="o">=</span><span class="mi">64</span><span class="p">)</span>
+<span class="n">state</span><span class="o">.</span><span class="n">build</span><span class="p">()</span>
+<span class="n">results</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">search</span><span class="p">([</span><span class="s2">&quot;MKTAYIAK&quot;</span><span class="p">],</span> <span class="n">k</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="c1"># results[0] -&gt; [(0, 1.0), (1, 0.88)]</span>
+
+<span class="n">store</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">edges</span><span class="p">()</span>        <span class="c1"># EdgeStore for graph-based splitting</span>
+<span class="n">state</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">&quot;index.hnsw&quot;</span><span class="p">)</span>
+<span class="n">state2</span> <span class="o">=</span> <span class="n">HNSWState</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">KernelVariant</span><span class="o">.</span><span class="n">AlignmentGlobal</span><span class="p">,</span> <span class="s2">&quot;index.hnsw&quot;</span><span class="p">,</span> <span class="n">seqs</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="refnd.core.HNSWState.build">
+<span class="sig-name descname"><span class="pre">build</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">progress</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#refnd.core.HNSWState.build" title="Link to this definition">¶</a></dt>
+<dd><p>Build the HNSW index by inserting all data items.</p>
+<p>Must be called before <code class="docutils literal notranslate"><span class="pre">search</span></code> or <code class="docutils literal notranslate"><span class="pre">edges</span></code>. Calling <code class="docutils literal notranslate"><span class="pre">build</span></code> a second
+time raises a <code class="docutils literal notranslate"><span class="pre">RuntimeError</span></code>; construct a new <code class="docutils literal notranslate"><span class="pre">HNSWState</span></code> instead.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>progress</strong> – Display a progress bar. Defaults to <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>RuntimeError</strong> – If the index has already been built.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.HNSWState.config">
+<span class="sig-name descname"><span class="pre">config</span></span><a class="headerlink" href="#refnd.core.HNSWState.config" title="Link to this definition">¶</a></dt>
+<dd><p>Config used to initiate this object.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="refnd.core.HNSWState.edges">
+<span class="sig-name descname"><span class="pre">edges</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#refnd.core.EdgeStore" title="refnd.core.EdgeStore"><span class="pre">EdgeStore</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#refnd.core.HNSWState.edges" title="Link to this definition">¶</a></dt>
+<dd><p>Extract the proximity graph as an <code class="docutils literal notranslate"><span class="pre">EdgeStore</span></code>.</p>
+<p>Returns all edges found during <code class="docutils literal notranslate"><span class="pre">build</span></code>. All distance measurements below the
+<code class="docutils literal notranslate"><span class="pre">proximity_threshold</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>An <code class="docutils literal notranslate"><span class="pre">EdgeStore</span></code> with <code class="docutils literal notranslate"><span class="pre">node_count</span> <span class="pre">=</span> <span class="pre">dataset_size</span></code>, or <code class="docutils literal notranslate"><span class="pre">None</span></code> if the index was built
+with <code class="docutils literal notranslate"><span class="pre">keep_all_edges=False</span></code>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="refnd.core.HNSWState.extend_build">
+<span class="sig-name descname"><span class="pre">extend_build</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">progress</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#refnd.core.HNSWState.extend_build" title="Link to this definition">¶</a></dt>
+<dd><p>Extend an already-built index with more data: appended to the dataset, then
+inserted into the graph. Existing nodes and edges are untouched.</p>
+<p><code class="docutils literal notranslate"><span class="pre">data</span></code> accepts any Python iterable, same as the constructor (see <code class="docutils literal notranslate"><span class="pre">HNSWState</span></code>’s
+class docstring) – drained one item at a time so a generator never needs to be
+fully materialized into a Python-side list first.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> – The new items to add (same type as the original dataset).</p></li>
+<li><p><strong>progress</strong> – Display a progress bar. Defaults to <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>RuntimeError</strong> – If <code class="docutils literal notranslate"><span class="pre">build</span></code> has not been called yet.</p>
+</dd>
+</dl>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">refnd</span><span class="w"> </span><span class="kn">import</span> <span class="n">HNSWState</span><span class="p">,</span> <span class="n">KernelVariant</span>
+
+<span class="n">seqs</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;MKTAYIAK&quot;</span><span class="p">,</span> <span class="s2">&quot;MKTAYIAKQR&quot;</span><span class="p">,</span> <span class="s2">&quot;ACDEFGHIKLM&quot;</span><span class="p">]</span>
+<span class="n">state</span> <span class="o">=</span> <span class="n">HNSWState</span><span class="p">(</span><span class="n">KernelVariant</span><span class="o">.</span><span class="n">AlignmentGlobal</span><span class="p">,</span> <span class="n">seqs</span><span class="p">,</span> <span class="n">proximity_threshold</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>
+<span class="n">state</span><span class="o">.</span><span class="n">build</span><span class="p">()</span>
+
+<span class="n">more_seqs</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;MKTAYIAKQRQIS&quot;</span><span class="p">,</span> <span class="s2">&quot;ACDEFGHIKLMNP&quot;</span><span class="p">]</span>
+<span class="n">state</span><span class="o">.</span><span class="n">extend_build</span><span class="p">(</span><span class="n">more_seqs</span><span class="p">)</span>
+<span class="n">state</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">dataset_size</span>  <span class="c1"># 5</span>
+
+<span class="n">results</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">search</span><span class="p">([</span><span class="s2">&quot;MKTAYIAKQRQIS&quot;</span><span class="p">],</span> <span class="n">k</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="c1"># results[0] -&gt; [(3, 0.0), (1, 0.23)] -- found itself among the new items</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="refnd.core.HNSWState.get_layer">
+<span class="sig-name descname"><span class="pre">get_layer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">layer_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">directed</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">weights</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">progress</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#refnd.core.EdgeStore" title="refnd.core.EdgeStore"><span class="pre">EdgeStore</span></a></span></span><a class="headerlink" href="#refnd.core.HNSWState.get_layer" title="Link to this definition">¶</a></dt>
+<dd><p>Return the adjacency lists for a specific HNSW layer.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>layer_idx</strong> – Zero-based layer index (0 = base layer with most nodes).</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A list of length <code class="docutils literal notranslate"><span class="pre">dataset_size</span></code> where element <code class="docutils literal notranslate"><span class="pre">i</span></code> is the list of
+neighbour IDs of node <code class="docutils literal notranslate"><span class="pre">i</span></code> at this layer. Node IDs are their index in the original dataset.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>IndexError</strong> – If <code class="docutils literal notranslate"><span class="pre">layer_idx</span></code> is out of range.</p>
+</dd>
+</dl>
+<p>Edges of one HNSW layer, as an <code class="docutils literal notranslate"><span class="pre">EdgeStore</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>layer_idx</strong> – Zero-based layer index (0 = base layer with most nodes).</p></li>
+<li><p><strong>directed</strong> – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, every edge is returned exactly as internally
+recorded – an undirected connection contributes one entry per
+endpoint, i.e. <code class="docutils literal notranslate"><span class="pre">(x,</span> <span class="pre">y)</span></code> is distinct from <code class="docutils literal notranslate"><span class="pre">(y,</span> <span class="pre">x)</span></code>. If
+<code class="docutils literal notranslate"><span class="pre">False</span></code> (default), edges are canonicalized and deduplicated,
+so each undirected pair appears exactly once.</p></li>
+<li><p><strong>weights</strong> – If <code class="docutils literal notranslate"><span class="pre">True</span></code> (default), each edge’s weight is its real
+distance, computed on the fly since not stored in the hierarchical graph.
+If <code class="docutils literal notranslate"><span class="pre">False</span></code>, every edge gets weight
+<code class="docutils literal notranslate"><span class="pre">1.0</span></code> – much cheaper when the real distance isn’t needed.</p></li>
+<li><p><strong>progress</strong> – Display a progress bar while distances are computed.
+Only meaningful when <code class="docutils literal notranslate"><span class="pre">weights=True</span></code>. Defaults to <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>An <code class="docutils literal notranslate"><span class="pre">EdgeStore</span></code> with <code class="docutils literal notranslate"><span class="pre">node_count</span> <span class="pre">=</span> <span class="pre">dataset_size</span></code>.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>IndexError</strong> – If <code class="docutils literal notranslate"><span class="pre">layer_idx</span></code> is out of range.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.HNSWState.index">
+<span class="sig-name descname"><span class="pre">index</span></span><a class="headerlink" href="#refnd.core.HNSWState.index" title="Link to this definition">¶</a></dt>
+<dd><p>HNSWIndex snapshot.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.HNSWState.is_built">
+<span class="sig-name descname"><span class="pre">is_built</span></span><a class="headerlink" href="#refnd.core.HNSWState.is_built" title="Link to this definition">¶</a></dt>
+<dd><p>Whether <code class="docutils literal notranslate"><span class="pre">build</span></code> has been called on this index.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="refnd.core.HNSWState.load">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">load</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">variant</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="kernels.html#refnd.kernels.KernelVariant" title="refnd.kernels.KernelVariant"><span class="pre">kernels.KernelVariant</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#refnd.core.HNSWState" title="refnd.core.HNSWState"><span class="pre">HNSWState</span></a></span></span><a class="headerlink" href="#refnd.core.HNSWState.load" title="Link to this definition">¶</a></dt>
+<dd><p>Load an HNSWState form a binary file saved with <code class="docutils literal notranslate"><span class="pre">HNSWState.save</span></code>.</p>
+<p><strong>Version compatibility:</strong> The binary format is versioned to the exact package version.
+A file saved with a different package version (older or newer) will fail to load with
+a version mismatch error. There is no forward or backward compatibility guarantee during
+the unstable pre-0.1.0 phase.</p>
+<p><code class="docutils literal notranslate"><span class="pre">data</span></code> accepts any Python iterable, same as the constructor (see <code class="docutils literal notranslate"><span class="pre">HNSWState</span></code>’s
+class docstring) — including a generator re-reading a cache file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>variant</strong> – Must match the kernel used during the original build.</p></li>
+<li><p><strong>path</strong> – Path to the saved file.</p></li>
+<li><p><strong>data</strong> – The original dataset (required to re-attach the kernel).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The restored <code class="docutils literal notranslate"><span class="pre">HNSWState</span></code>, ready to call <code class="docutils literal notranslate"><span class="pre">search</span></code> or <code class="docutils literal notranslate"><span class="pre">edges</span></code> if the index was built.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>RuntimeError</strong> – If the file cannot be read, the format is invalid, or the saved
+    version does not match the running package version.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="refnd.core.HNSWState.save">
+<span class="sig-name descname"><span class="pre">save</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#refnd.core.HNSWState.save" title="Link to this definition">¶</a></dt>
+<dd><p>Serialize the full state (index + config) to a binary file.</p>
+<p>The saved file can be loaded back with <code class="docutils literal notranslate"><span class="pre">HNSWState.load</span></code>. The original
+data must be provided again at load time (it is not embedded in the file).</p>
+<p><strong>Version compatibility:</strong> The binary format is versioned to the exact package version.
+A file saved with a different package version (older or newer) will fail to load with
+a version mismatch error. There is no forward or backward compatibility guarantee during
+the unstable pre-0.1.0 phase.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>path</strong> – Destination file path.</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>RuntimeError</strong> – On serialisation or I/O failure.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="refnd.core.HNSWState.search">
+<span class="sig-name descname"><span class="pre">search</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">queries</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ef</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threads</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">progress</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#refnd.core.HNSWState.search" title="Link to this definition">¶</a></dt>
+<dd><p>Search the index for approximate nearest neighbours.</p>
+<p>For each query item, returns the <code class="docutils literal notranslate"><span class="pre">k</span></code> most similar items in the dataset,
+sorted by descending similarity. The quality of the approximation is
+controlled by <code class="docutils literal notranslate"><span class="pre">ef</span></code>: larger values explore more candidates and improve
+recall at the cost of speed.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>queries</strong> – List of query items (same type as the indexed data).</p></li>
+<li><p><strong>k</strong> – Number of nearest neighbours to return per query. Defaults to <code class="docutils literal notranslate"><span class="pre">1</span></code>.</p></li>
+<li><p><strong>ef</strong> – Size of the dynamic candidate list during search. Must be ≥ <code class="docutils literal notranslate"><span class="pre">k</span></code>.
+Defaults to <code class="docutils literal notranslate"><span class="pre">64</span></code>.</p></li>
+<li><p><strong>threads</strong> – Number of parallel threads. <code class="docutils literal notranslate"><span class="pre">0</span></code> = all available cores.</p></li>
+<li><p><strong>progress</strong> – Display a progress bar. Defaults to <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A list of length <code class="docutils literal notranslate"><span class="pre">len(queries)</span></code>. Each element is a sorted list of
+up to <code class="docutils literal notranslate"><span class="pre">k</span></code> tuples <code class="docutils literal notranslate"><span class="pre">(dataset_index,</span> <span class="pre">similarity_score)</span></code>.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>RuntimeError</strong> – If <code class="docutils literal notranslate"><span class="pre">build</span></code> has not been called yet.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.HNSWState.variant">
+<span class="sig-name descname"><span class="pre">variant</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="kernels.html#refnd.kernels.KernelVariant" title="refnd.kernels.KernelVariant"><span class="pre">KernelVariant</span></a></span><a class="headerlink" href="#refnd.core.HNSWState.variant" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.HNSWState.data">
+<span class="sig-name descname"><span class="pre">data</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Any</span></span><a class="headerlink" href="#refnd.core.HNSWState.data" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.HNSWState.args">
+<span class="sig-name descname"><span class="pre">args</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Any</span></span><a class="headerlink" href="#refnd.core.HNSWState.args" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.HNSWState.proximity_threshold">
+<span class="sig-name descname"><span class="pre">proximity_threshold</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#refnd.core.HNSWState.proximity_threshold" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.HNSWState.ef_construction">
+<span class="sig-name descname"><span class="pre">ef_construction</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><a class="headerlink" href="#refnd.core.HNSWState.ef_construction" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.HNSWState.m">
+<span class="sig-name descname"><span class="pre">m</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><a class="headerlink" href="#refnd.core.HNSWState.m" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.HNSWState.m_max">
+<span class="sig-name descname"><span class="pre">m_max</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><a class="headerlink" href="#refnd.core.HNSWState.m_max" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.HNSWState.m_max0">
+<span class="sig-name descname"><span class="pre">m_max0</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><a class="headerlink" href="#refnd.core.HNSWState.m_max0" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.HNSWState.m_l">
+<span class="sig-name descname"><span class="pre">m_l</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#refnd.core.HNSWState.m_l" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.HNSWState.ef_init">
+<span class="sig-name descname"><span class="pre">ef_init</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><a class="headerlink" href="#refnd.core.HNSWState.ef_init" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.HNSWState.extend_candidates">
+<span class="sig-name descname"><span class="pre">extend_candidates</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></span><a class="headerlink" href="#refnd.core.HNSWState.extend_candidates" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.HNSWState.keep_pruned_connections">
+<span class="sig-name descname"><span class="pre">keep_pruned_connections</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></span><a class="headerlink" href="#refnd.core.HNSWState.keep_pruned_connections" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.HNSWState.keep_all_edges">
+<span class="sig-name descname"><span class="pre">keep_all_edges</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></span><a class="headerlink" href="#refnd.core.HNSWState.keep_all_edges" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.HNSWState.cache_capacity">
+<span class="sig-name descname"><span class="pre">cache_capacity</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><a class="headerlink" href="#refnd.core.HNSWState.cache_capacity" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.HNSWState.cache_shards">
+<span class="sig-name descname"><span class="pre">cache_shards</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><a class="headerlink" href="#refnd.core.HNSWState.cache_shards" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.HNSWState.n_threads">
+<span class="sig-name descname"><span class="pre">n_threads</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><a class="headerlink" href="#refnd.core.HNSWState.n_threads" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.HNSWState.shuffle">
+<span class="sig-name descname"><span class="pre">shuffle</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></span><a class="headerlink" href="#refnd.core.HNSWState.shuffle" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.HNSWState.use_heuristic">
+<span class="sig-name descname"><span class="pre">use_heuristic</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></span><a class="headerlink" href="#refnd.core.HNSWState.use_heuristic" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.HNSWState.strict_ef">
+<span class="sig-name descname"><span class="pre">strict_ef</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></span><a class="headerlink" href="#refnd.core.HNSWState.strict_ef" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.HNSWState.threshold_based_neighbourhood">
+<span class="sig-name descname"><span class="pre">threshold_based_neighbourhood</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></span><a class="headerlink" href="#refnd.core.HNSWState.threshold_based_neighbourhood" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.HNSWState.kwargs">
+<span class="sig-name descname"><span class="pre">kwargs</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Any</span></span><a class="headerlink" href="#refnd.core.HNSWState.kwargs" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.HNSWState.return">
+<span class="sig-name descname"><span class="pre">return</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#refnd.core.HNSWState" title="refnd.core.HNSWState"><span class="pre">HNSWState</span></a></span><a class="headerlink" href="#refnd.core.HNSWState.return" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="refnd.core.HNSWIndex">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">refnd.core.</span></span><span class="sig-name descname"><span class="pre">HNSWIndex</span></span><a class="headerlink" href="#refnd.core.HNSWIndex" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Read-only snapshot of the HNSW graph structure after a build.</p>
+<p>Obtained via <code class="docutils literal notranslate"><span class="pre">HNSWState.index</span></code>. Primarily useful for inspection,
+serialisation, and debugging; normal users interact with <code class="docutils literal notranslate"><span class="pre">HNSWState</span></code>
+instead.</p>
+<dl class="simple">
+<dt>Properties:</dt><dd><p>dataset_size (int): Number of items indexed.
+layers (list): Nested multi-layer adjacency list <code class="docutils literal notranslate"><span class="pre">layers[layer][node]</span> <span class="pre">=</span> <span class="pre">[neighbor_ids]</span></code>.
+entry_point (tuple | None): <code class="docutils literal notranslate"><span class="pre">(layer,</span> <span class="pre">node_id)</span></code> of the global entry point, or <code class="docutils literal notranslate"><span class="pre">None</span></code> if empty.
+max_layers (int): Number of layers in the hierarchy.
+proximity_edges (list): List of <code class="docutils literal notranslate"><span class="pre">((src,</span> <span class="pre">dst),</span> <span class="pre">score)</span></code> for proximity-threshold edges.
+config (HNSWConfig): The config used to build this index.</p>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.HNSWIndex.config">
+<span class="sig-name descname"><span class="pre">config</span></span><a class="headerlink" href="#refnd.core.HNSWIndex.config" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.HNSWIndex.dataset_size">
+<span class="sig-name descname"><span class="pre">dataset_size</span></span><a class="headerlink" href="#refnd.core.HNSWIndex.dataset_size" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.HNSWIndex.entry_point">
+<span class="sig-name descname"><span class="pre">entry_point</span></span><a class="headerlink" href="#refnd.core.HNSWIndex.entry_point" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.HNSWIndex.layers">
+<span class="sig-name descname"><span class="pre">layers</span></span><a class="headerlink" href="#refnd.core.HNSWIndex.layers" title="Link to this definition">¶</a></dt>
+<dd><p>Nested multi-layer adjacency list, <cite>layers[layer][node] = [neighbor_ids]</cite>. Layers
+above 0 may be stored sparsely internally (most nodes aren’t present at those
+layers); this densifies them into the full node-id-indexed shape on access.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="refnd.core.HNSWIndex.load">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">load</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#refnd.core.HNSWIndex" title="refnd.core.HNSWIndex"><span class="pre">HNSWIndex</span></a></span></span><a class="headerlink" href="#refnd.core.HNSWIndex.load" title="Link to this definition">¶</a></dt>
+<dd><p>Load an index previously saved with <code class="docutils literal notranslate"><span class="pre">HNSWIndex.save</span></code>.</p>
+<p><strong>Version compatibility:</strong> The binary format is versioned to the exact package version.
+A file saved with a different package version (older or newer) will fail to load with
+a version mismatch error. There is no forward or backward compatibility guarantee during
+the unstable pre-0.1.0 phase.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>path</strong> – Path to the saved file.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The deserialised <code class="docutils literal notranslate"><span class="pre">HNSWIndex</span></code>.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>RuntimeError</strong> – If the file cannot be read, the format is invalid, or the saved
+    version does not match the running package version.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.HNSWIndex.max_layers">
+<span class="sig-name descname"><span class="pre">max_layers</span></span><a class="headerlink" href="#refnd.core.HNSWIndex.max_layers" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.HNSWIndex.proximity_edges">
+<span class="sig-name descname"><span class="pre">proximity_edges</span></span><a class="headerlink" href="#refnd.core.HNSWIndex.proximity_edges" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="refnd.core.HNSWIndex.save">
+<span class="sig-name descname"><span class="pre">save</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#refnd.core.HNSWIndex.save" title="Link to this definition">¶</a></dt>
+<dd><p>Save the object to a binary representation (e.g. <em>.hnsw</em> file).</p>
+<p>The binary format is versioned to the exact package version and is not
+forward or backward compatible. A file saved with version X can only be
+loaded by the exact same version X. Files saved with a different version
+will fail to load with a version mismatch error.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>path</strong> – Destination file path (recommended with a .hnsw extension)</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>RuntimeError</strong> – On serialisation or I/O failure.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="graph-algorithms">
+<h2>Graph algorithms<a class="headerlink" href="#graph-algorithms" title="Link to this heading">¶</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="refnd.core.INWeightType">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">refnd.core.</span></span><span class="sig-name descname"><span class="pre">INWeightType</span></span><a class="headerlink" href="#refnd.core.INWeightType" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>How to convert a raw <code class="docutils literal notranslate"><span class="pre">EdgeStore</span></code> weight into the similarity-like edge weight
+used internally by <code class="docutils literal notranslate"><span class="pre">CsrGraph</span></code> and the Leiden algorithm.</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">Similarity</span></code> — the raw weight is already a similarity; used as-is.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Distance</span></code> — the raw weight is a distance in <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">∞)</span></code>; mapped to
+<code class="docutils literal notranslate"><span class="pre">1</span> <span class="pre">/</span> <span class="pre">(1</span> <span class="pre">+</span> <span class="pre">w)</span></code> so closer nodes get a higher weight.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">SimilarityComplement</span></code> — the raw weight is <code class="docutils literal notranslate"><span class="pre">1</span> <span class="pre">-</span> <span class="pre">similarity</span></code>; mapped
+back to a similarity via <code class="docutils literal notranslate"><span class="pre">1</span> <span class="pre">-</span> <span class="pre">w</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Unweighted</span></code> — the raw weight is ignored; every edge weight is set to <code class="docutils literal notranslate"><span class="pre">1.0</span></code>.</p></li>
+</ul>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.INWeightType.Distance">
+<span class="sig-name descname"><span class="pre">Distance</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">INWeightType.Distance</span></span><a class="headerlink" href="#refnd.core.INWeightType.Distance" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.INWeightType.Similarity">
+<span class="sig-name descname"><span class="pre">Similarity</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">INWeightType.Similarity</span></span><a class="headerlink" href="#refnd.core.INWeightType.Similarity" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.INWeightType.SimilarityComplement">
+<span class="sig-name descname"><span class="pre">SimilarityComplement</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">INWeightType.SimilarityComplement</span></span><a class="headerlink" href="#refnd.core.INWeightType.SimilarityComplement" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.INWeightType.Unweighted">
+<span class="sig-name descname"><span class="pre">Unweighted</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">INWeightType.Unweighted</span></span><a class="headerlink" href="#refnd.core.INWeightType.Unweighted" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="refnd.core.LeidenObjective">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">refnd.core.</span></span><span class="sig-name descname"><span class="pre">LeidenObjective</span></span><a class="headerlink" href="#refnd.core.LeidenObjective" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Objective function used by the Leiden community-detection algorithm.</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">Modularity</span></code> — Maximise Newman-Girvan modularity. Good default for most graphs.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">CPM</span></code> — Constant Potts Model. Finds communities of a fixed internal density.</p></li>
+</ul>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.LeidenObjective.CPM">
+<span class="sig-name descname"><span class="pre">CPM</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">LeidenObjective.CPM</span></span><a class="headerlink" href="#refnd.core.LeidenObjective.CPM" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="refnd.core.LeidenObjective.Modularity">
+<span class="sig-name descname"><span class="pre">Modularity</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">LeidenObjective.Modularity</span></span><a class="headerlink" href="#refnd.core.LeidenObjective.Modularity" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="refnd.core.find_communities">
+<span class="sig-prename descclassname"><span class="pre">refnd.core.</span></span><span class="sig-name descname"><span class="pre">find_communities</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">graph</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#refnd.core.CsrGraph" title="refnd.core.CsrGraph"><span class="pre">CsrGraph</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">gamma</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">beta</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.01</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_iterations</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">objective</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#refnd.core.LeidenObjective" title="refnd.core.LeidenObjective"><span class="pre">LeidenObjective</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">LeidenObjective.Modularity</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#refnd.core.find_communities" title="Link to this definition">¶</a></dt>
+<dd><p>Detect communities in a graph with the Leiden algorithm.</p>
+<p>The Leiden algorithm is an improvement over Louvain that guarantees
+well-connected communities. Use the returned cluster labels with
+<code class="docutils literal notranslate"><span class="pre">partition</span></code> to produce train/test splits that consider community boundaries.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>graph</strong> – The graph to partition into communities.</p></li>
+<li><p><strong>gamma</strong> – Resolution parameter. Higher values produce more, smaller communities.
+For <code class="docutils literal notranslate"><span class="pre">Modularity</span></code>, typical range is 0.5–2.0; default <code class="docutils literal notranslate"><span class="pre">1.0</span></code>.
+For <code class="docutils literal notranslate"><span class="pre">CPM</span></code>, it represents the minimum internal edge density.</p></li>
+<li><p><strong>beta</strong> – Randomness parameter controlling the refinement phase.
+Smaller values yield more deterministic results. Default <code class="docutils literal notranslate"><span class="pre">0.01</span></code>.</p></li>
+<li><p><strong>n_iterations</strong> – Number of optimisation passes. More iterations improve
+quality at the cost of runtime.</p></li>
+<li><p><strong>objective</strong> – <code class="docutils literal notranslate"><span class="pre">LeidenObjective.Modularity</span></code> (default) or <code class="docutils literal notranslate"><span class="pre">LeidenObjective.CPM</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A list of length <code class="docutils literal notranslate"><span class="pre">graph.n</span></code> where element <code class="docutils literal notranslate"><span class="pre">i</span></code> is the cluster ID of node <code class="docutils literal notranslate"><span class="pre">i</span></code>.
+Cluster IDs are arbitrary non-negative integers.</p>
+</dd>
+</dl>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">refnd.core</span><span class="w"> </span><span class="kn">import</span> <span class="n">CsrGraph</span><span class="p">,</span> <span class="n">EdgeStore</span><span class="p">,</span> <span class="n">find_communities</span><span class="p">,</span> <span class="n">LeidenObjective</span><span class="p">,</span> <span class="n">INWeightType</span>
+
+<span class="n">store</span> <span class="o">=</span> <span class="n">EdgeStore</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="p">[(</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mf">0.9</span><span class="p">),(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mf">0.8</span><span class="p">),(</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mf">0.6</span><span class="p">)])</span>
+<span class="n">g</span> <span class="o">=</span> <span class="n">CsrGraph</span><span class="p">(</span><span class="n">store</span><span class="p">,</span> <span class="n">inweight_type</span><span class="o">=</span><span class="n">INWeightType</span><span class="o">.</span><span class="n">Similarity</span><span class="p">)</span>
+<span class="n">clusters</span> <span class="o">=</span> <span class="n">find_communities</span><span class="p">(</span><span class="n">g</span><span class="p">,</span> <span class="n">gamma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">n_iterations</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span> <span class="c1"># e.g. [0, 1, 2, 3]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="refnd.core.find_components">
+<span class="sig-prename descclassname"><span class="pre">refnd.core.</span></span><span class="sig-name descname"><span class="pre">find_components</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">graph</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#refnd.core.CsrGraph" title="refnd.core.CsrGraph"><span class="pre">CsrGraph</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#refnd.core.find_components" title="Link to this definition">¶</a></dt>
+<dd><p>Finds the connected components of a graph.</p>
+<p>Runs a standard BFS/union-find over the graph and assigns each node to
+its component.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>graph</strong> – The graph to find components.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A list of length <code class="docutils literal notranslate"><span class="pre">graph.n</span></code> where element <code class="docutils literal notranslate"><span class="pre">i</span></code> is the component ID of
+node <code class="docutils literal notranslate"><span class="pre">i</span></code>. IDs are arbitrary non-negative integers.</p>
+</dd>
+</dl>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">refnd.core</span><span class="w"> </span><span class="kn">import</span> <span class="n">EdgeStore</span><span class="p">,</span> <span class="n">find_components</span>
+
+<span class="n">store</span> <span class="o">=</span> <span class="n">EdgeStore</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="p">[(</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mf">0.9</span><span class="p">),(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mf">0.8</span><span class="p">),(</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mf">0.7</span><span class="p">),(</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mf">0.6</span><span class="p">)])</span>
+<span class="n">g</span> <span class="o">=</span> <span class="n">store</span><span class="o">.</span><span class="n">graph</span><span class="p">()</span>
+<span class="n">clusters</span> <span class="o">=</span> <span class="n">find_components</span><span class="p">(</span><span class="n">g</span><span class="p">)</span> <span class="c1"># [0, 0, 0, 1, 1, 1]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="refnd.core.partition">
+<span class="sig-prename descclassname"><span class="pre">refnd.core.</span></span><span class="sig-name descname"><span class="pre">partition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">clusters</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">graph</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#refnd.core.CsrGraph" title="refnd.core.CsrGraph"><span class="pre">CsrGraph</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">test_ratio</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">post_filtering</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#refnd.core.partition" title="Link to this definition">¶</a></dt>
+<dd><p>Split a clustered dataset into train and test index sets along clusters</p>
+<p>Clusters are kept intact — no cluster is split across train and test.
+The function greedily and randomly assigns whole clusters to the test set until the test size
+is larger than <code class="docutils literal notranslate"><span class="pre">test_ratio</span></code>, then assigns the rest to train.</p>
+<p>This is the key function for leakage-free dataset splitting: run
+<code class="docutils literal notranslate"><span class="pre">find_communities</span></code>, <code class="docutils literal notranslate"><span class="pre">find_components</span></code>, or your own clustering, then call <code class="docutils literal notranslate"><span class="pre">partition</span></code>
+to obtain indices you can use to slice your data arrays.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>clusters</strong> – A list of cluster IDs, one per data point (as returned by
+<code class="docutils literal notranslate"><span class="pre">find_communities</span></code> or <code class="docutils literal notranslate"><span class="pre">connected_components</span></code>). Length must
+equal the number of nodes in <code class="docutils literal notranslate"><span class="pre">graph</span></code>.</p></li>
+<li><p><strong>graph</strong> – The graph used to derive community structure. Its node count
+must match <code class="docutils literal notranslate"><span class="pre">len(clusters)</span></code>.</p></li>
+<li><p><strong>test_ratio</strong> – Target fraction of data points to place in the test set.
+The actual fraction may differ slightly because clusters
+are indivisible. Defaults to <code class="docutils literal notranslate"><span class="pre">0.2</span></code>.</p></li>
+<li><p><strong>seed</strong> – Optional integer seed for reproducible cluster shuffling.
+Pass <code class="docutils literal notranslate"><span class="pre">None</span></code> for a random assignment.</p></li>
+<li><p><strong>post_filtering</strong> – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, remove train nodes that share an edge with
+any test node (stricter leakage prevention at the
+cost of a smaller train set). Use only when clusters are found from
+communities (<code class="docutils literal notranslate"><span class="pre">find_communities</span></code>). It won’t have any effect when used with
+<code class="docutils literal notranslate"><span class="pre">connected_components</span></code> as this prevents inter-cluster connections.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A tuple <code class="docutils literal notranslate"><span class="pre">(train_indices,</span> <span class="pre">test_indices)</span></code> of zero-based data-point indices.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>ValueError</strong> – If <code class="docutils literal notranslate"><span class="pre">clusters</span></code> length does not match <code class="docutils literal notranslate"><span class="pre">graph.n</span></code>, or if
+    <code class="docutils literal notranslate"><span class="pre">test_ratio</span></code> is not in <code class="docutils literal notranslate"><span class="pre">(0,</span> <span class="pre">1)</span></code>.</p>
+</dd>
+</dl>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">refnd.core</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">EdgeStore</span><span class="p">,</span> <span class="n">CsrGraph</span><span class="p">,</span> <span class="n">find_communities</span><span class="p">,</span> <span class="n">partition</span><span class="p">,</span> <span class="n">INWeightType</span>
+<span class="p">)</span>
+
+<span class="n">store</span> <span class="o">=</span> <span class="n">EdgeStore</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="p">[(</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mf">0.9</span><span class="p">),(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mf">0.8</span><span class="p">),(</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mf">0.7</span><span class="p">),(</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mf">0.6</span><span class="p">)])</span>
+<span class="n">g</span> <span class="o">=</span> <span class="n">CsrGraph</span><span class="p">(</span><span class="n">store</span><span class="p">,</span> <span class="n">inweight_type</span><span class="o">=</span><span class="n">INWeightType</span><span class="o">.</span><span class="n">Similarity</span><span class="p">)</span>
+<span class="n">clusters</span> <span class="o">=</span> <span class="n">find_communities</span><span class="p">(</span><span class="n">g</span><span class="p">)</span> <span class="c1"># or connected_components(g)</span>
+<span class="n">train_idx</span><span class="p">,</span> <span class="n">test_idx</span> <span class="o">=</span> <span class="n">partition</span><span class="p">(</span><span class="n">clusters</span><span class="p">,</span> <span class="n">g</span><span class="p">,</span> <span class="n">test_ratio</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</section>
+<section id="exact-search">
+<h2>Exact search<a class="headerlink" href="#exact-search" title="Link to this heading">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="refnd.core.exact_edges">
+<span class="sig-prename descclassname"><span class="pre">refnd.core.</span></span><span class="sig-name descname"><span class="pre">exact_edges</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">variant</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="kernels.html#refnd.kernels.KernelVariant" title="refnd.kernels.KernelVariant"><span class="pre">kernels.KernelVariant</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proximity_threshold</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_threads</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">progress</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#refnd.core.EdgeStore" title="refnd.core.EdgeStore"><span class="pre">EdgeStore</span></a></span></span><a class="headerlink" href="#refnd.core.exact_edges" title="Link to this definition">¶</a></dt>
+<dd><p>Compute all pairs of data points whose similarity exceeds a threshold (exact, brute-force).</p>
+<p>Evaluates every unordered pair <code class="docutils literal notranslate"><span class="pre">(i,</span> <span class="pre">j)</span></code> with <code class="docutils literal notranslate"><span class="pre">i</span> <span class="pre">&lt;</span> <span class="pre">j</span></code> and records an edge
+when <code class="docutils literal notranslate"><span class="pre">kernel(data[i],</span> <span class="pre">data[j])</span> <span class="pre">&lt;=</span> <span class="pre">proximity_threshold</span></code>. This is O(n²) in the number
+of data points; prefer the approximate``HNSWState`` for large datasets.</p>
+<p>Extra positional and keyword arguments are forwarded to the kernel constructor.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>variant</strong> – Which kernel to use (<code class="docutils literal notranslate"><span class="pre">KernelVariant.AlignmentGlobal</span></code> or
+<code class="docutils literal notranslate"><span class="pre">KernelVariant.AlignmentLocal</span></code>).</p></li>
+<li><p><strong>data</strong> – Sequence of data items (e.g. <code class="docutils literal notranslate"><span class="pre">list[str]</span></code> for protein sequences).</p></li>
+<li><p><strong>proximity_threshold</strong> – Maximum distance for an edge to be recorded.</p></li>
+<li><p><strong>n_threads</strong> – Number of parallel threads. <code class="docutils literal notranslate"><span class="pre">0</span></code> uses all available cores.</p></li>
+<li><p><strong>progress</strong> – Show a progress bar. Defaults to <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>An <code class="docutils literal notranslate"><span class="pre">EdgeStore</span></code> containing all edges whose distance ≤ <code class="docutils literal notranslate"><span class="pre">proximity_threshold</span></code>.</p>
+</dd>
+</dl>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">refnd</span><span class="w"> </span><span class="kn">import</span> <span class="n">KernelVariant</span><span class="p">,</span> <span class="n">exact_edges</span>
+
+<span class="n">seqs</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;MKTAYIAK&quot;</span><span class="p">,</span> <span class="s2">&quot;MKTAYIAKQR&quot;</span><span class="p">,</span> <span class="s2">&quot;ACDEFGHIKLM&quot;</span><span class="p">]</span>
+<span class="n">store</span> <span class="o">=</span> <span class="n">exact_edges</span><span class="p">(</span><span class="n">KernelVariant</span><span class="o">.</span><span class="n">AlignmentGlobal</span><span class="p">,</span> <span class="n">seqs</span><span class="p">,</span> <span class="n">proximity_threshold</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">store</span><span class="p">))</span>   <span class="c1"># number of similar pairs</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="refnd.core.exact_nearest_neighbors">
+<span class="sig-prename descclassname"><span class="pre">refnd.core.</span></span><span class="sig-name descname"><span class="pre">exact_nearest_neighbors</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">variant</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="kernels.html#refnd.kernels.KernelVariant" title="refnd.kernels.KernelVariant"><span class="pre">kernels.KernelVariant</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">queries</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">references</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threads</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">progress</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#refnd.core.exact_nearest_neighbors" title="Link to this definition">¶</a></dt>
+<dd><p>Find the k nearest neighbors of each query in a reference set (exact, brute-force).</p>
+<p>For every query item, scores it against every reference item using the
+chosen kernel and returns the top-k references sorted by ascending
+distance. Complexity is O(n_queries × n_references); prefer
+<code class="docutils literal notranslate"><span class="pre">HNSWState.search</span></code> for approximate nearest neighbors with large datasets.</p>
+<p>Extra positional and keyword arguments are forwarded to the kernel constructor.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>variant</strong> – Which kernel to use (<code class="docutils literal notranslate"><span class="pre">KernelVariant.AlignmentGlobal</span></code> or
+<code class="docutils literal notranslate"><span class="pre">KernelVariant.AlignmentsLocal</span></code>).</p></li>
+<li><p><strong>queries</strong> – Sequence of query items.</p></li>
+<li><p><strong>references</strong> – Sequence of reference items to search over. List of items of the same type of the selected kernel variant.</p></li>
+<li><p><strong>k</strong> – Number of nearest neighbors to return per query. List of items of the same type of the selected kernel variant.</p></li>
+<li><p><strong>threads</strong> – Number of parallel threads. <code class="docutils literal notranslate"><span class="pre">0</span></code> uses all available cores.</p></li>
+<li><p><strong>progress</strong> – Show a progress bar. Defaults to <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A list of length <code class="docutils literal notranslate"><span class="pre">len(queries)</span></code>. Each element is a list of up to <code class="docutils literal notranslate"><span class="pre">k</span></code>
+tuples <code class="docutils literal notranslate"><span class="pre">(reference_index,</span> <span class="pre">similarity_score)</span></code> sorted by ascending distance.</p>
+</dd>
+</dl>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">refnd</span><span class="w"> </span><span class="kn">import</span> <span class="n">KernelVariant</span><span class="p">,</span> <span class="n">exact_nearest_neighbors</span>
+
+<span class="n">queries</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;MKTAYIAK&quot;</span><span class="p">]</span>
+<span class="n">refs</span>    <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;MKTAYIAKQR&quot;</span><span class="p">,</span> <span class="s2">&quot;ACDEFGHIKLM&quot;</span><span class="p">,</span> <span class="s2">&quot;MKTAYIAKQRQ&quot;</span><span class="p">]</span>
+<span class="n">results</span> <span class="o">=</span> <span class="n">exact_nearest_neighbors</span><span class="p">(</span>
+    <span class="n">KernelVariant</span><span class="o">.</span><span class="n">AlignmentGlobal</span><span class="p">,</span> <span class="n">queries</span><span class="p">,</span> <span class="n">refs</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mi">2</span>
+<span class="p">)</span>
+<span class="c1"># results[0] -&gt; [(0, 0.20), (2, 0.27)]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          
+          <a class="prev-page" href="kernels.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">refnd.kernels</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">refnd.core</a><ul>
+<li><a class="reference internal" href="#graph-construction">Graph construction</a><ul>
+<li><a class="reference internal" href="#refnd.core.EdgeStore"><code class="docutils literal notranslate"><span class="pre">EdgeStore</span></code></a><ul>
+<li><a class="reference internal" href="#refnd.core.EdgeStore.edges"><code class="docutils literal notranslate"><span class="pre">EdgeStore.edges()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.EdgeStore.graph"><code class="docutils literal notranslate"><span class="pre">EdgeStore.graph()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.EdgeStore.load"><code class="docutils literal notranslate"><span class="pre">EdgeStore.load()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.EdgeStore.node_count"><code class="docutils literal notranslate"><span class="pre">EdgeStore.node_count()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.EdgeStore.save"><code class="docutils literal notranslate"><span class="pre">EdgeStore.save()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.EdgeStore.return"><code class="docutils literal notranslate"><span class="pre">EdgeStore.return</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#refnd.core.CsrGraph"><code class="docutils literal notranslate"><span class="pre">CsrGraph</span></code></a><ul>
+<li><a class="reference internal" href="#refnd.core.CsrGraph.m"><code class="docutils literal notranslate"><span class="pre">CsrGraph.m</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.CsrGraph.n"><code class="docutils literal notranslate"><span class="pre">CsrGraph.n</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.CsrGraph.neighbors"><code class="docutils literal notranslate"><span class="pre">CsrGraph.neighbors()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.CsrGraph.strength"><code class="docutils literal notranslate"><span class="pre">CsrGraph.strength()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.CsrGraph.subgraph"><code class="docutils literal notranslate"><span class="pre">CsrGraph.subgraph()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.CsrGraph.edges"><code class="docutils literal notranslate"><span class="pre">CsrGraph.edges</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.CsrGraph.inweight_type"><code class="docutils literal notranslate"><span class="pre">CsrGraph.inweight_type</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.CsrGraph.return"><code class="docutils literal notranslate"><span class="pre">CsrGraph.return</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#hnsw-approximate-nearest-neighbours">HNSW approximate nearest neighbours</a><ul>
+<li><a class="reference internal" href="#refnd.core.HNSWConfig"><code class="docutils literal notranslate"><span class="pre">HNSWConfig</span></code></a><ul>
+<li><a class="reference internal" href="#refnd.core.HNSWConfig.cache_capacity"><code class="docutils literal notranslate"><span class="pre">HNSWConfig.cache_capacity</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWConfig.cache_shards"><code class="docutils literal notranslate"><span class="pre">HNSWConfig.cache_shards</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWConfig.dict"><code class="docutils literal notranslate"><span class="pre">HNSWConfig.dict()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWConfig.ef_construction"><code class="docutils literal notranslate"><span class="pre">HNSWConfig.ef_construction</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWConfig.ef_init"><code class="docutils literal notranslate"><span class="pre">HNSWConfig.ef_init</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWConfig.extend_candidates"><code class="docutils literal notranslate"><span class="pre">HNSWConfig.extend_candidates</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWConfig.keep_all_edges"><code class="docutils literal notranslate"><span class="pre">HNSWConfig.keep_all_edges</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWConfig.keep_pruned_connections"><code class="docutils literal notranslate"><span class="pre">HNSWConfig.keep_pruned_connections</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWConfig.m"><code class="docutils literal notranslate"><span class="pre">HNSWConfig.m</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWConfig.m_l"><code class="docutils literal notranslate"><span class="pre">HNSWConfig.m_l</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWConfig.m_max"><code class="docutils literal notranslate"><span class="pre">HNSWConfig.m_max</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWConfig.m_max0"><code class="docutils literal notranslate"><span class="pre">HNSWConfig.m_max0</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWConfig.n_threads"><code class="docutils literal notranslate"><span class="pre">HNSWConfig.n_threads</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWConfig.proximity_threshold"><code class="docutils literal notranslate"><span class="pre">HNSWConfig.proximity_threshold</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWConfig.shuffle"><code class="docutils literal notranslate"><span class="pre">HNSWConfig.shuffle</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWConfig.strict_ef"><code class="docutils literal notranslate"><span class="pre">HNSWConfig.strict_ef</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWConfig.threshold_based_neighbourhood"><code class="docutils literal notranslate"><span class="pre">HNSWConfig.threshold_based_neighbourhood</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWConfig.use_heuristic"><code class="docutils literal notranslate"><span class="pre">HNSWConfig.use_heuristic</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWConfig.return"><code class="docutils literal notranslate"><span class="pre">HNSWConfig.return</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#refnd.core.HNSWState"><code class="docutils literal notranslate"><span class="pre">HNSWState</span></code></a><ul>
+<li><a class="reference internal" href="#refnd.core.HNSWState.build"><code class="docutils literal notranslate"><span class="pre">HNSWState.build()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWState.config"><code class="docutils literal notranslate"><span class="pre">HNSWState.config</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWState.edges"><code class="docutils literal notranslate"><span class="pre">HNSWState.edges()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWState.extend_build"><code class="docutils literal notranslate"><span class="pre">HNSWState.extend_build()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWState.get_layer"><code class="docutils literal notranslate"><span class="pre">HNSWState.get_layer()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWState.index"><code class="docutils literal notranslate"><span class="pre">HNSWState.index</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWState.is_built"><code class="docutils literal notranslate"><span class="pre">HNSWState.is_built</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWState.load"><code class="docutils literal notranslate"><span class="pre">HNSWState.load()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWState.save"><code class="docutils literal notranslate"><span class="pre">HNSWState.save()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWState.search"><code class="docutils literal notranslate"><span class="pre">HNSWState.search()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWState.variant"><code class="docutils literal notranslate"><span class="pre">HNSWState.variant</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWState.data"><code class="docutils literal notranslate"><span class="pre">HNSWState.data</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWState.args"><code class="docutils literal notranslate"><span class="pre">HNSWState.args</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWState.proximity_threshold"><code class="docutils literal notranslate"><span class="pre">HNSWState.proximity_threshold</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWState.ef_construction"><code class="docutils literal notranslate"><span class="pre">HNSWState.ef_construction</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWState.m"><code class="docutils literal notranslate"><span class="pre">HNSWState.m</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWState.m_max"><code class="docutils literal notranslate"><span class="pre">HNSWState.m_max</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWState.m_max0"><code class="docutils literal notranslate"><span class="pre">HNSWState.m_max0</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWState.m_l"><code class="docutils literal notranslate"><span class="pre">HNSWState.m_l</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWState.ef_init"><code class="docutils literal notranslate"><span class="pre">HNSWState.ef_init</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWState.extend_candidates"><code class="docutils literal notranslate"><span class="pre">HNSWState.extend_candidates</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWState.keep_pruned_connections"><code class="docutils literal notranslate"><span class="pre">HNSWState.keep_pruned_connections</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWState.keep_all_edges"><code class="docutils literal notranslate"><span class="pre">HNSWState.keep_all_edges</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWState.cache_capacity"><code class="docutils literal notranslate"><span class="pre">HNSWState.cache_capacity</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWState.cache_shards"><code class="docutils literal notranslate"><span class="pre">HNSWState.cache_shards</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWState.n_threads"><code class="docutils literal notranslate"><span class="pre">HNSWState.n_threads</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWState.shuffle"><code class="docutils literal notranslate"><span class="pre">HNSWState.shuffle</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWState.use_heuristic"><code class="docutils literal notranslate"><span class="pre">HNSWState.use_heuristic</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWState.strict_ef"><code class="docutils literal notranslate"><span class="pre">HNSWState.strict_ef</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWState.threshold_based_neighbourhood"><code class="docutils literal notranslate"><span class="pre">HNSWState.threshold_based_neighbourhood</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWState.kwargs"><code class="docutils literal notranslate"><span class="pre">HNSWState.kwargs</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWState.return"><code class="docutils literal notranslate"><span class="pre">HNSWState.return</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#refnd.core.HNSWIndex"><code class="docutils literal notranslate"><span class="pre">HNSWIndex</span></code></a><ul>
+<li><a class="reference internal" href="#refnd.core.HNSWIndex.config"><code class="docutils literal notranslate"><span class="pre">HNSWIndex.config</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWIndex.dataset_size"><code class="docutils literal notranslate"><span class="pre">HNSWIndex.dataset_size</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWIndex.entry_point"><code class="docutils literal notranslate"><span class="pre">HNSWIndex.entry_point</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWIndex.layers"><code class="docutils literal notranslate"><span class="pre">HNSWIndex.layers</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWIndex.load"><code class="docutils literal notranslate"><span class="pre">HNSWIndex.load()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWIndex.max_layers"><code class="docutils literal notranslate"><span class="pre">HNSWIndex.max_layers</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWIndex.proximity_edges"><code class="docutils literal notranslate"><span class="pre">HNSWIndex.proximity_edges</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.HNSWIndex.save"><code class="docutils literal notranslate"><span class="pre">HNSWIndex.save()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#graph-algorithms">Graph algorithms</a><ul>
+<li><a class="reference internal" href="#refnd.core.INWeightType"><code class="docutils literal notranslate"><span class="pre">INWeightType</span></code></a><ul>
+<li><a class="reference internal" href="#refnd.core.INWeightType.Distance"><code class="docutils literal notranslate"><span class="pre">INWeightType.Distance</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.INWeightType.Similarity"><code class="docutils literal notranslate"><span class="pre">INWeightType.Similarity</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.INWeightType.SimilarityComplement"><code class="docutils literal notranslate"><span class="pre">INWeightType.SimilarityComplement</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.INWeightType.Unweighted"><code class="docutils literal notranslate"><span class="pre">INWeightType.Unweighted</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#refnd.core.LeidenObjective"><code class="docutils literal notranslate"><span class="pre">LeidenObjective</span></code></a><ul>
+<li><a class="reference internal" href="#refnd.core.LeidenObjective.CPM"><code class="docutils literal notranslate"><span class="pre">LeidenObjective.CPM</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.LeidenObjective.Modularity"><code class="docutils literal notranslate"><span class="pre">LeidenObjective.Modularity</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#refnd.core.find_communities"><code class="docutils literal notranslate"><span class="pre">find_communities()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.find_components"><code class="docutils literal notranslate"><span class="pre">find_components()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.partition"><code class="docutils literal notranslate"><span class="pre">partition()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#exact-search">Exact search</a><ul>
+<li><a class="reference internal" href="#refnd.core.exact_edges"><code class="docutils literal notranslate"><span class="pre">exact_edges()</span></code></a></li>
+<li><a class="reference internal" href="#refnd.core.exact_nearest_neighbors"><code class="docutils literal notranslate"><span class="pre">exact_nearest_neighbors()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/scripts/furo.js?v=46bd48cc"></script>
+    <script src="https://cdn.jsdelivr.net/npm/turndown@7.2.0/dist/turndown.js"></script>
+    <script src="../_static/js/copy_markdown.js?v=f107f389"></script>
+    <script src="../_static/js/version_switcher.js?v=6512b3dc"></script>
+    </body>
+</html>
