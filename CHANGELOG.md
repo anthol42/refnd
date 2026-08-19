@@ -28,4 +28,5 @@
   `store[mask]` in Python (accepts a `list[bool]` or a numpy bool array), keeping only the
   edges where the mask is `True`.
 - Add a new kernel: ProtSpaM.
+- Added new kernels for vectors (Cosine, L1 and L2)
 - Fix few bugs in Leiden algorithm, now should return much better partitions

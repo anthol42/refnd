@@ -11,8 +11,9 @@ use crate::kernels::{
     molecules::{TanimotoBit, TanimotoReal},
     structures::USAlignKernel as _USAlignKernel,
     protspam::ProtSpamKernel as _ProtSpamKernel,
+    vectors::{Cosine, L1, L2},
 };
-use crate::utils::{BitFingerprint, RealFingerprint, PdbStructure, SWSequence};
+use crate::utils::{BitFingerprint, RealFingerprint, PdbStructure, SWSequence, Vector};
 use super::_utils::linear_progress_bar;
 use super::edge_store::EdgeStore;
 
@@ -95,6 +96,12 @@ pub fn exact_edges(
             py, PdbStructure, _USAlignKernel, args, kwargs; data; proximity_threshold, n_threads, pb.as_ref())}
         KernelVariant::ProtSpam => {call_generic!(exact_edges_core;
             py, SWSequence, _ProtSpamKernel, args, kwargs; data; proximity_threshold, n_threads, pb.as_ref())}
+        KernelVariant::Cosine => {call_generic!(exact_edges_core;
+            py, Vector, Cosine, args, kwargs; data; proximity_threshold, n_threads, pb.as_ref())}
+        KernelVariant::L1 => {call_generic!(exact_edges_core;
+            py, Vector, L1, args, kwargs; data; proximity_threshold, n_threads, pb.as_ref())}
+        KernelVariant::L2 => {call_generic!(exact_edges_core;
+            py, Vector, L2, args, kwargs; data; proximity_threshold, n_threads, pb.as_ref())}
     };
     if let Some(pb) = pb { pb.finish(); }
     Ok(EdgeStore::new(n, edges))
@@ -169,6 +176,12 @@ pub fn exact_nearest_neighbors(
             py, PdbStructure, _USAlignKernel, args, kwargs; queries, references; k, threads, pb.as_ref())}
         KernelVariant::ProtSpam => {call_generic!(exact_nearest_neighbors_core;
             py, SWSequence, _ProtSpamKernel, args, kwargs; queries, references; k, threads, pb.as_ref())}
+        KernelVariant::Cosine => {call_generic!(exact_nearest_neighbors_core;
+            py, Vector, Cosine, args, kwargs; queries, references; k, threads, pb.as_ref())}
+        KernelVariant::L1 => {call_generic!(exact_nearest_neighbors_core;
+            py, Vector, L1, args, kwargs; queries, references; k, threads, pb.as_ref())}
+        KernelVariant::L2 => {call_generic!(exact_nearest_neighbors_core;
+            py, Vector, L2, args, kwargs; queries, references; k, threads, pb.as_ref())}
     };
     if let Some(pb) = pb { pb.finish(); }
     Ok(result)

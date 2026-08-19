@@ -5,6 +5,7 @@ pub mod alignments;
 pub mod molecules;
 pub mod protspam;
 pub mod structures;
+pub mod vectors;
 pub mod zip_kernel;
 
 #[gen_stub_pyclass_enum]
@@ -17,4 +18,7 @@ pub enum KernelVariant {
     TanimotoReal,
     Structure,
     ProtSpam,
+    Cosine,
+    L1,
+    L2,
 }

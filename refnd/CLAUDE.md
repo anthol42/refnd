@@ -36,6 +36,7 @@ src/
     alignments/usalign/          Protein structure kernels (TM-score via libusalign-sys)
     molecules/tanimoto/          Molecular similarity (Tanimoto on fingerprints)
     protspam.rs                  ProtSpamKernel: alignment-free SWSequence distance (spaced words + Kimura)
+    vectors.rs                   Vector distance (Cosine, L1, L2 on f32 slices)
   utils/
     read_fasta.rs                FASTA parser
     sw_pattern.rs                SWPattern / SWPatternSet: spaced-word patterns (ProtSpaM-style)

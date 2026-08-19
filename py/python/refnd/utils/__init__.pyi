@@ -14,6 +14,7 @@ __all__ = [
     "SWPatternSet",
     "SWSequence",
     "SWWord",
+    "Vector",
     "largest_cluster",
     "read_fasta",
 ]
@@ -465,6 +466,46 @@ class SWWord:
         Start position of this word's window in the sequence it came from.
         """
     def __repr__(self) -> builtins.str: ...
+
+@typing.final
+class Vector:
+    r"""
+    A dense ``f32`` vector, used by the ``refnd.kernels.vectors`` kernels (``Cosine``,
+    ``EluDot``, ``L1``, ``L2``). Backed by a plain ``Vec<f32>`` -- unlike
+    ``RealFingerprint``, there's no precomputed cache.
+    
+    Example::
+    
+        import numpy as np
+        from refnd.utils import Vector
+    
+        v = Vector(np.array([1.0, 2.0, 3.0], dtype=np.float32))
+        print(len(v))
+    """
+    def __new__(cls, values: typing.Any) -> Vector:
+        r"""
+        Construct from a numpy array or a list of floats.
+        """
+    @staticmethod
+    def from_list(values: typing.Sequence[builtins.float]) -> Vector:
+        r"""
+        Construct from a list of floats.
+        """
+    @staticmethod
+    def from_np(arr: typing.Any) -> Vector:
+        r"""
+        Construct from a numpy float32 array, reading its buffer directly. Falls back
+        to ``.tolist()`` for other dtypes.
+        """
+    def to_list(self) -> builtins.list[builtins.float]:
+        r"""
+        Export as a list of floats.
+        """
+    def to_np(self) -> numpy.typing.NDArray[numpy.float32]:
+        r"""
+        Export as a numpy float32 array.
+        """
+    def __len__(self) -> builtins.int: ...
 
 def largest_cluster(clusters: typing.Sequence[builtins.int]) -> tuple[builtins.int, builtins.int]:
     r"""

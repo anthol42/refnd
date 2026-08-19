@@ -339,6 +339,88 @@ impl<'a, 'py> FromPyObject<'a, 'py> for RealFingerprint {
     }
 }
 
+// ── Vector ────────────────────────────────────────────────────────────────────
+
+/// A dense ``f32`` vector, used by the ``refnd.kernels.vectors`` kernels (``Cosine``,
+/// ``EluDot``, ``L1``, ``L2``). Backed by a plain ``Vec<f32>`` -- unlike
+/// ``RealFingerprint``, there's no precomputed cache.
+///
+/// Example::
+///
+///     import numpy as np
+///     from refnd.utils import Vector
+///
+///     v = Vector(np.array([1.0, 2.0, 3.0], dtype=np.float32))
+///     print(len(v))
+#[gen_stub_pyclass]
+#[pyclass(module = "refnd.utils", skip_from_py_object)]
+#[derive(Clone)]
+pub struct Vector {
+    pub inner: Vec<f32>,
+}
+
+#[gen_stub_pymethods]
+#[pymethods]
+impl Vector {
+    /// Construct from a numpy array or a list of floats.
+    #[new]
+    pub fn new(values: &Bound<'_, PyAny>) -> PyResult<Self> {
+        values.extract()
+    }
+
+    /// Construct from a list of floats.
+    #[staticmethod]
+    pub fn from_list(values: Vec<f32>) -> Self {
+        Self { inner: values }
+    }
+
+    /// Construct from a numpy float32 array, reading its buffer directly. Falls back
+    /// to ``.tolist()`` for other dtypes.
+    #[staticmethod]
+    pub fn from_np(arr: &Bound<'_, PyAny>) -> PyResult<Self> {
+        if let Ok(a) = arr.extract::<numpy::PyReadonlyArray1<f32>>() {
+            return Ok(Self { inner: a.as_slice()?.to_vec() });
+        }
+        let values: Vec<f32> = arr.call_method0("tolist")?.extract()?;
+        Ok(Self { inner: values })
+    }
+
+    /// Export as a list of floats.
+    pub fn to_list(&self) -> Vec<f32> {
+        self.inner.clone()
+    }
+
+    /// Export as a numpy float32 array.
+    pub fn to_np<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray1<f32>> {
+        self.inner.clone().into_pyarray(py)
+    }
+
+    pub fn __len__(&self) -> usize { self.inner.len() }
+}
+
+impl<'a, 'py> FromPyObject<'a, 'py> for Vector {
+    type Error = PyErr;
+
+    fn extract(ob: Borrowed<'a, 'py, PyAny>) -> Result<Self, Self::Error> {
+        // already a Vector wrapper
+        if let Ok(v) = ob.cast::<Vector>() {
+            let inner = v.borrow().inner.clone();
+            return Ok(Self { inner });
+        }
+        // numpy ndarray — has dtype
+        if ob.hasattr("dtype")? {
+            return Self::from_np(&*ob);
+        }
+        // plain list of floats
+        let values: Vec<f32> = ob.extract().map_err(|_| {
+            pyo3::exceptions::PyTypeError::new_err(
+                "cannot convert to Vector: expected numpy array or list of floats",
+            )
+        })?;
+        Ok(Self::from_list(values))
+    }
+}
+
 // ── PdbStructure ──────────────────────────────────────────────────────────────
 
 /// A protein structure loaded from a PDB file and held in memory.

@@ -28,6 +28,8 @@ mod refnd {
         modules.set_item("refnd.kernels.structures", &structures)?;
         let protspam = kernels.getattr("protspam")?;
         modules.set_item("refnd.kernels.protspam", &protspam)?;
+        let vectors = kernels.getattr("vectors")?;
+        modules.set_item("refnd.kernels.vectors", &vectors)?;
         Ok(())
     }
 
@@ -65,7 +67,7 @@ mod refnd {
     mod utils {
         #[pymodule_export]
         use crate::utils::{
-            BitFingerprint, RealFingerprint, PdbStructure, read_fasta, largest_cluster,
+            BitFingerprint, RealFingerprint, Vector, PdbStructure, read_fasta, largest_cluster,
             SWPattern, SWPatternSet, SWSequence, SWWord,
         };
     }
@@ -101,6 +103,12 @@ mod refnd {
         mod protspam {
             #[pymodule_export]
             use crate::kernels::protspam::{ProtSpamKernel, ProtSpamDistance};
+        }
+
+        #[pymodule]
+        mod vectors {
+            #[pymodule_export]
+            use crate::kernels::vectors::{Cosine, L1, L2};
         }
 
         #[pymodule_export]

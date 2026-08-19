@@ -6,9 +6,10 @@ use refnd_core::kernels::alignments::parasail::{GlobalAligner, LocalAligner};
 use refnd_core::kernels::usalign::USAlignKernel as CoreUSAlignKernel;
 use refnd_core::kernels::molecules::tanimoto::Tanimoto;
 use refnd_core::kernels::protspam::ProtSpamKernel as CoreProtSpamKernel;
+use refnd_core::kernels::vectors::{Cosine as CoreCosine, L1 as CoreL1, L2 as CoreL2};
 use super::edge_store::EdgeStore;
 use super::_utils::{logfacto_progress_bar, linear_progress_bar};
-use super::super::utils::{BitFingerprint, RealFingerprint, SWSequence};
+use super::super::utils::{BitFingerprint, RealFingerprint, SWSequence, Vector};
 use super::super::kernels::{
     KernelVariant,
     alignments::{
@@ -18,6 +19,7 @@ use super::super::kernels::{
     molecules::{TanimotoReal as _TanimotoReal, TanimotoBit as _TanimotoBit},
     structures::USAlignKernel as _USAlignKernel,
     protspam::ProtSpamKernel as _ProtSpamKernel,
+    vectors::{Cosine as _Cosine, L1 as _L1, L2 as _L2},
 };
 use super::super::utils::PdbStructure;
 
@@ -243,6 +245,9 @@ enum HNSWType {
     TanimotoReal(HNSWStateCore<RealFingerprint, Tanimoto>),
     Structure(HNSWStateCore<PdbStructure, CoreUSAlignKernel>),
     ProtSpam(HNSWStateCore<SWSequence, CoreProtSpamKernel>),
+    Cosine(HNSWStateCore<Vector, CoreCosine>),
+    L1(HNSWStateCore<Vector, CoreL1>),
+    L2(HNSWStateCore<Vector, CoreL2>),
 }
 
 /// Expands a `HNSWState::new(data, kernel, config)` constructor for each KernelVariant.
@@ -470,7 +475,10 @@ impl HNSWState {
             TanimotoBit:_TanimotoBit,
             TanimotoReal:_TanimotoReal,
             Structure:_USAlignKernel,
-            ProtSpam:_ProtSpamKernel
+            ProtSpam:_ProtSpamKernel,
+            Cosine:_Cosine,
+            L1:_L1,
+            L2:_L2
         );
         Ok(HNSWState { inner, n, config: config_py })
     }
@@ -495,7 +503,10 @@ impl HNSWState {
             TanimotoBit:_TanimotoBit,
             TanimotoReal:_TanimotoReal,
             Structure:_USAlignKernel,
-            ProtSpam:_ProtSpamKernel
+            ProtSpam:_ProtSpamKernel,
+            Cosine:_Cosine,
+            L1:_L1,
+            L2:_L2
         ).map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
         if let Some(pb) = pb { pb.finish() };
         Ok(())
@@ -546,6 +557,9 @@ impl HNSWState {
             HNSWType::TanimotoReal(inner)    => inner.parallel_search(queries.extract::<Vec<_>>(py)?.as_slice(), k, ef, threads, pb.as_ref()),
             HNSWType::Structure(inner)       => inner.parallel_search(queries.extract::<Vec<_>>(py)?.as_slice(), k, ef, threads, pb.as_ref()),
             HNSWType::ProtSpam(inner)        => inner.parallel_search(queries.extract::<Vec<_>>(py)?.as_slice(), k, ef, threads, pb.as_ref()),
+            HNSWType::Cosine(inner)          => inner.parallel_search(queries.extract::<Vec<_>>(py)?.as_slice(), k, ef, threads, pb.as_ref()),
+            HNSWType::L1(inner)              => inner.parallel_search(queries.extract::<Vec<_>>(py)?.as_slice(), k, ef, threads, pb.as_ref()),
+            HNSWType::L2(inner)              => inner.parallel_search(queries.extract::<Vec<_>>(py)?.as_slice(), k, ef, threads, pb.as_ref()),
         }.map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
         if let Some(pb) = pb { pb.finish() };
         Ok(res)
@@ -567,7 +581,10 @@ impl HNSWState {
             TanimotoBit:_TanimotoBit,
             TanimotoReal:_TanimotoReal,
             Structure:_USAlignKernel,
-            ProtSpam:_ProtSpamKernel
+            ProtSpam:_ProtSpamKernel,
+            Cosine:_Cosine,
+            L1:_L1,
+            L2:_L2
         )?;
         Some(EdgeStore::new(self.n, edges))
     }
@@ -614,7 +631,10 @@ impl HNSWState {
             TanimotoBit:_TanimotoBit,
             TanimotoReal:_TanimotoReal,
             Structure:_USAlignKernel,
-            ProtSpam:_ProtSpamKernel
+            ProtSpam:_ProtSpamKernel,
+            Cosine:_Cosine,
+            L1:_L1,
+            L2:_L2
         ).map_err(pyo3::exceptions::PyIndexError::new_err)?;
         if let Some(pb) = pb { pb.finish() };
         Ok(EdgeStore::new(self.n, edges))
@@ -643,7 +663,10 @@ impl HNSWState {
             TanimotoBit:_TanimotoBit,
             TanimotoReal:_TanimotoReal,
             Structure:_USAlignKernel,
-            ProtSpam:_ProtSpamKernel
+            ProtSpam:_ProtSpamKernel,
+            Cosine:_Cosine,
+            L1:_L1,
+            L2:_L2
         )
         .map_err(|e: Box<dyn std::error::Error>| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))
     }
@@ -687,7 +710,10 @@ impl HNSWState {
             TanimotoBit:_TanimotoBit,
             TanimotoReal:_TanimotoReal,
             Structure:_USAlignKernel,
-            ProtSpam:_ProtSpamKernel
+            ProtSpam:_ProtSpamKernel,
+            Cosine:_Cosine,
+            L1:_L1,
+            L2:_L2
         );
         let config = HNSWConfig {
             inner: hnsw_dispatch!(
@@ -697,7 +723,10 @@ impl HNSWState {
                 TanimotoBit:_TanimotoBit,
                 TanimotoReal:_TanimotoReal,
                 Structure:_USAlignKernel,
-                ProtSpam:_ProtSpamKernel
+                ProtSpam:_ProtSpamKernel,
+                Cosine:_Cosine,
+                L1:_L1,
+                L2:_L2
             ).clone(),
         };
         Ok(HNSWState { inner, n, config })
@@ -713,6 +742,9 @@ impl HNSWState {
             HNSWType::TanimotoReal(inner)    => inner.has_been_built,
             HNSWType::Structure(inner)       => inner.has_been_built,
             HNSWType::ProtSpam(inner)        => inner.has_been_built,
+            HNSWType::Cosine(inner)          => inner.has_been_built,
+            HNSWType::L1(inner)              => inner.has_been_built,
+            HNSWType::L2(inner)              => inner.has_been_built,
         }
     }
 
@@ -733,7 +765,10 @@ impl HNSWState {
                 TanimotoBit:_TanimotoBit,
                 TanimotoReal:_TanimotoReal,
                 Structure:_USAlignKernel,
-                ProtSpam:_ProtSpamKernel
+                ProtSpam:_ProtSpamKernel,
+                Cosine:_Cosine,
+                L1:_L1,
+                L2:_L2
             ),
         }
     }

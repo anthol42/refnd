@@ -8,12 +8,14 @@ from . import alignments
 from . import molecules
 from . import protspam
 from . import structures
+from . import vectors
 __all__ = [
     "KernelVariant",
     "alignments",
     "molecules",
     "protspam",
     "structures",
+    "vectors",
     "zip_kernel",
 ]
 
@@ -25,6 +27,9 @@ class KernelVariant(enum.Enum):
     TanimotoReal = ...
     Structure = ...
     ProtSpam = ...
+    Cosine = ...
+    L1 = ...
+    L2 = ...
 
 def zip_kernel(variant: KernelVariant, data1: typing.Any, data2: typing.Any, n_threads: builtins.int = 0, progress: builtins.bool = True, *args: typing.Any, **kwargs: typing.Any) -> builtins.list[builtins.float]:
     r"""
