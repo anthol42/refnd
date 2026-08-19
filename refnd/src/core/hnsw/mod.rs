@@ -455,6 +455,32 @@ impl HGraph {
     pub fn set_neighbourhood(&self, layer: usize, node: u32, neighbourhood: &[u32]) {
         self.layers[layer].set_neighbourhood(node, neighbourhood);
     }
+
+    /// Grow to `total_layers` layers, appending empty sparse layers. `total_layers`
+    /// must be >= the current count -- shrinking would drop existing layers' edges.
+    pub fn add_layers(&mut self, total_layers: usize) {
+        assert!(
+            total_layers >= self.layers.len(),
+            "add_layers: total_layers ({total_layers}) must be >= current layer count ({})",
+            self.layers.len()
+        );
+        self.layers.resize_with(total_layers, || LayerStorage::Sparse(DashMap::new()));
+    }
+
+    /// Grow layer 0's dense, node-id-indexed storage to `new_length` entries.
+    /// `new_length` must be >= the current length -- shrinking would drop existing
+    /// nodes' neighbor lists.
+    pub fn resize(&mut self, new_length: usize) {
+        let LayerStorage::Dense(v) = &mut self.layers[0] else {
+            unreachable!("layer 0 is always Dense");
+        };
+        assert!(
+            new_length >= v.len(),
+            "resize: new_length ({new_length}) must be >= current length ({})",
+            v.len()
+        );
+        v.resize_with(new_length, || RwLock::new(Vec::new()));
+    }
 }
 
 /// Entry point protected by a mutex — updates are O(log N) total, contention is negligible.
@@ -643,6 +669,13 @@ thread_local! {
     static SCRATCH: RefCell<Option<ScratchBuffers>> = const { RefCell::new(None) };
 }
 
+/// Layer budget for a dataset of `len` nodes given `m_l` (the level-generation
+/// multiplier) -- shared by `HNSWState::new` and `build::extend_build` so both size
+/// the graph the same way.
+fn max_layers_for(len: usize, m_l: f64) -> usize {
+    (((len as f64).ln() * m_l).ceil() as usize + 2).max(1)
+}
+
 pub struct HNSWState<T: Sync, D: Distance<T>> {
     data: Vec<T>,
     hgraph: HGraph,
@@ -661,8 +694,7 @@ pub struct HNSWState<T: Sync, D: Distance<T>> {
 impl<T: Sync, D: Distance<T>> HNSWState<T, D> {
     pub fn new(data: Vec<T>, distance: D, config: HNSWConfig) -> Self {
         let len = data.len();
-        let max_layers = ((len as f64).ln() * config.m_l).ceil() as usize + 2;
-        let max_layers = max_layers.max(1);
+        let max_layers = max_layers_for(len, config.m_l);
         Self {
             hgraph: HGraph::with_capacity(max_layers, len),
             entry_point: EntryPoint::new(),
@@ -1026,5 +1058,96 @@ mod tests {
             for v in b_dense.iter_mut() { v.sort_unstable(); }
             assert_eq!(a_dense, b_dense);
         }
+    }
+
+    #[test]
+    fn hgraph_add_layers_grows_and_preserves_edges() {
+        let mut hgraph = HGraph::with_capacity(2, 4);
+        hgraph.add_edge(1, 0, 1);
+        hgraph.add_layers(4);
+        assert_eq!(hgraph.layers.len(), 4);
+
+        let mut buf = Vec::new();
+        hgraph.neighbors_snapshot(1, 0, &mut buf);
+        assert_eq!(buf, vec![1]);
+        hgraph.neighbors_snapshot(2, 0, &mut buf);
+        assert!(buf.is_empty());
+    }
+
+    #[test]
+    #[should_panic(expected = "must be >=")]
+    fn hgraph_add_layers_rejects_shrink() {
+        let mut hgraph = HGraph::with_capacity(4, 4);
+        hgraph.add_layers(2);
+    }
+
+    #[test]
+    fn hgraph_resize_grows_dense_layer_and_preserves_edges() {
+        let mut hgraph = HGraph::with_capacity(1, 2);
+        hgraph.add_edge(0, 0, 1);
+        hgraph.resize(4);
+
+        let mut buf = Vec::new();
+        hgraph.neighbors_snapshot(0, 0, &mut buf);
+        assert_eq!(buf, vec![1]);
+        hgraph.neighbors_snapshot(0, 3, &mut buf);
+        assert!(buf.is_empty());
+    }
+
+    #[test]
+    #[should_panic(expected = "must be >=")]
+    fn hgraph_resize_rejects_shrink() {
+        let mut hgraph = HGraph::with_capacity(1, 4);
+        hgraph.resize(2);
+    }
+
+    #[test]
+    fn extend_build_rejects_unbuilt_index() {
+        let data: Vec<i32> = (0..10).collect();
+        let mut state = HNSWState::new(data, AbsDiff, HNSWConfig::default());
+        let err = state.extend_build(vec![10, 11], None).unwrap_err();
+        assert!(err.contains("build()"));
+    }
+
+    #[test]
+    fn extend_build_is_noop_on_empty_input() {
+        let data: Vec<i32> = (0..10).collect();
+        let mut config = HNSWConfig::default();
+        config.proximity_threshold = 5.0;
+        let mut state = HNSWState::new(data, AbsDiff, config);
+        state.build(None).unwrap();
+
+        state.extend_build(Vec::new(), None).unwrap();
+        assert_eq!(state.data.len(), 10);
+    }
+
+    /// Builds a small index, extends it, and checks the graph structures grew
+    /// consistently (dense layer 0 and layer count both cover the new dataset size)
+    /// and that both the pre-existing and newly-added nodes remain searchable.
+    #[test]
+    fn extend_build_grows_dataset_and_keeps_all_nodes_searchable() {
+        let data: Vec<i32> = (0..50).collect();
+        let mut config = HNSWConfig::default();
+        config.proximity_threshold = 5.0;
+        let mut state = HNSWState::new(data, AbsDiff, config.clone());
+        state.build(None).unwrap();
+
+        let additional: Vec<i32> = (50..100).collect();
+        state.extend_build(additional, None).unwrap();
+
+        assert_eq!(state.data.len(), 100);
+        assert_eq!(state.hgraph.layers.len(), state.max_layers);
+        let LayerStorage::Dense(v) = &state.hgraph.layers[0] else { panic!("layer 0 must be Dense") };
+        assert_eq!(v.len(), 100);
+
+        let mut scratch = ScratchBuffers::with_capacity(state.data.len(), config.ef_construction, config.m_max);
+
+        // A newly-added node is findable...
+        let results = state.search(&80, 1, config.ef_construction, &mut scratch);
+        assert_eq!(results[0].0, 80);
+
+        // ...and a pre-existing node still is too.
+        let results = state.search(&5, 1, config.ef_construction, &mut scratch);
+        assert_eq!(results[0].0, 5);
     }
 }

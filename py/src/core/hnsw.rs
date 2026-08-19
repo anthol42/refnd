@@ -8,7 +8,7 @@ use refnd_core::kernels::molecules::tanimoto::Tanimoto;
 use refnd_core::kernels::protspam::ProtSpamKernel as CoreProtSpamKernel;
 use refnd_core::kernels::vectors::{Cosine as CoreCosine, L1 as CoreL1, L2 as CoreL2};
 use super::edge_store::EdgeStore;
-use super::_utils::{logfacto_progress_bar, linear_progress_bar};
+use super::_utils::{logfacto_progress_bar, logfacto_progress_bar_from, linear_progress_bar};
 use super::super::utils::{BitFingerprint, RealFingerprint, SWSequence, Vector};
 use super::super::kernels::{
     KernelVariant,
@@ -327,6 +327,45 @@ macro_rules! hnsw_load {
     };
 }
 
+/// Expands an `HNSWState::extend_build(additional_data, pb)` call for each KernelVariant.
+/// Same always-iterator draining and capacity handling as `hnsw_new!` (see its doc comment)
+/// -- `extend_build` is the same "append new data" operation, just onto an existing index
+/// rather than an empty one. The progress bar is built only after draining, since its
+/// log-factorial work model needs the exact number of items added, not just a capacity hint.
+macro_rules! hnsw_extend {
+    ($py:expr, $inner:expr, $data:expr, $offset:expr, $progress:expr;
+     $($variant:ident),+ $(,)?) => {
+        match &mut $inner {
+            $(
+                HNSWType::$variant(inner) => {
+                    let _bound = $data.bind($py);
+                    let _iter = _bound.try_iter()?;
+                    let _cap = match _bound.len() {
+                        Ok(_n) => _n,
+                        Err(_) => {
+                            let (_lo, _hi) = _iter.size_hint();
+                            _hi.unwrap_or(_lo)
+                        }
+                    };
+                    let mut _items = Vec::with_capacity(_cap);
+                    for _item in _iter {
+                        _items.push(_item?.extract()?);
+                    }
+                    _items.shrink_to_fit();
+                    let _added = _items.len();
+                    let _pb = if $progress {
+                        Some(logfacto_progress_bar_from($offset, _added, "Extending index"))
+                    } else { None };
+                    inner.extend_build(_items, _pb.as_ref())
+                        .map_err(::pyo3::exceptions::PyRuntimeError::new_err)?;
+                    if let Some(_pb) = _pb { _pb.finish(); }
+                    _added
+                }
+            )+
+        }
+    };
+}
+
 /// Dispatches a method call to the inner HNSWState for each HNSWType variant.
 /// `$args` is a parenthesized token tree, e.g. `(k, ef)` or `()`.
 /// This avoids mixing two independent repetition depths in one `$()+` block.
@@ -509,6 +548,38 @@ impl HNSWState {
             L2:_L2
         ).map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
         if let Some(pb) = pb { pb.finish() };
+        Ok(())
+    }
+
+    /// Extend an already-built index with more data: appended to the dataset, then
+    /// inserted into the graph. Existing nodes and edges are untouched.
+    ///
+    /// ``data`` accepts any Python iterable, same as the constructor (see ``HNSWState``'s
+    /// class docstring) -- drained one item at a time so a generator never needs to be
+    /// fully materialized into a Python-side list first.
+    ///
+    /// Args:
+    ///     data: The new items to add (same type as the original dataset).
+    ///     progress: Display a progress bar. Defaults to ``True``.
+    ///
+    /// Raises:
+    ///     RuntimeError: If ``build`` has not been called yet.
+    #[pyo3(signature = (data, progress = true))]
+    pub fn extend_build(&mut self, py: Python, data: Py<PyAny>, progress: bool) -> PyResult<()> {
+        let offset = self.n;
+        let added = hnsw_extend!(
+            py, self.inner, data, offset, progress;
+            AlignmentGlobal,
+            AlignmentLocal,
+            TanimotoBit,
+            TanimotoReal,
+            Structure,
+            ProtSpam,
+            Cosine,
+            L1,
+            L2
+        );
+        self.n = offset + added;
         Ok(())
     }
 

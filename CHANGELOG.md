@@ -27,6 +27,7 @@
 - `EdgeStore` now supports numpy-style boolean-mask indexing: `store.mask(&mask)` in Rust,
   `store[mask]` in Python (accepts a `list[bool]` or a numpy bool array), keeping only the
   edges where the mask is `True`.
-- Add a new kernel: ProtSpaM.
+- Added a new kernel: ProtSpaM.
 - Added new kernels for vectors (Cosine, L1 and L2)
+- Added a new function to extend an index to a new set of data. This allows checkpointing. 
 - Fix few bugs in Leiden algorithm, now should return much better partitions

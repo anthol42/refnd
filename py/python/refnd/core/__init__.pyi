@@ -460,6 +460,22 @@ class HNSWState:
         Raises:
             RuntimeError: If the index has already been built.
         """
+    def extend_build(self, data: typing.Any, progress: builtins.bool = True) -> None:
+        r"""
+        Extend an already-built index with more data: appended to the dataset, then
+        inserted into the graph. Existing nodes and edges are untouched.
+        
+        ``data`` accepts any Python iterable, same as the constructor (see ``HNSWState``'s
+        class docstring) -- drained one item at a time so a generator never needs to be
+        fully materialized into a Python-side list first.
+        
+        Args:
+            data: The new items to add (same type as the original dataset).
+            progress: Display a progress bar. Defaults to ``True``.
+        
+        Raises:
+            RuntimeError: If ``build`` has not been called yet.
+        """
     def search(self, queries: typing.Any, k: builtins.int = 1, ef: builtins.int = 64, threads: builtins.int = 0, progress: builtins.bool = True) -> builtins.list[builtins.list[tuple[builtins.int, builtins.float]]]:
         r"""
         Search the index for approximate nearest neighbours.
